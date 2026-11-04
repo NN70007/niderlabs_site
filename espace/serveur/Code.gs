@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-04-aviator1',
+  VERSION: '2026-11-04-aviator2',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -628,7 +628,7 @@ function aviatorCarte_() {
   if (lire_('Montres').some(function (m) { return Number(m.Vu) < vieux; })) verrou_(function () { supprimerLignes_('Montres', function (m) { return Number(m.Vu) < vieux; }); });
   var limite = Date.now() - CONFIG.CARTE_JOURS * 86400000, compte = {};
   lire_('Montres').forEach(function (m) {
-    if (m.Carte === 'non' || Number(m.Vu) < limite || !m.Reglages) return;
+    if (m.Carte === 'non' || Number(m.Vu) < limite || !m.Reglages || /^TEST/.test(m.Id)) return; // TEST… = essais techniques
     var s; try { s = JSON.parse(m.Reglages); } catch (e) { return; }
     var vus = {};
     [s.icao, s.icao2, s.icao3].forEach(function (x) { if (x && !vus[x]) { vus[x] = 1; compte[x] = (compte[x] || 0) + 1; } });
