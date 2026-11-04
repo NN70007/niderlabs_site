@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-04-aviator2',
+  VERSION: '2026-11-04-aviator3',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -57,6 +57,13 @@ var ONGLETS = {
 /* ======================= Points d'entrée ======================= */
 function doGet(e) {
   var p = (e && e.parameter) || {};
+  // Diagnostic anonyme (aucun identifiant) : quand chaque montre a été vue pour la dernière fois
+  if (p.a === 'diag') {
+    var now = Date.now();
+    return json_({ ok: true, version: CONFIG.VERSION, montres: lire_('Montres').map(function (m) {
+      return { v: m.Version, vu_min: Math.round((now - Number(m.Vu)) / 60000), cree_min: Math.round((now - Number(m.Cree)) / 60000), rev: m.Rev, test: /^TEST/.test(m.Id) };
+    }) });
+  }
   if (p.a === 'w') {
     try { return json_(montreAppel_(p)); }
     catch (err) {
