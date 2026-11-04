@@ -151,6 +151,12 @@ function charger(opts) {
           const info = googleTokens[decodeURIComponent(url.split('id_token=')[1] || '')];
           return { getResponseCode: () => (info ? 200 : 400), getContentText: () => JSON.stringify(info || { error: 'invalid_token' }) };
         }
+        if (url.startsWith('https://aviationweather.gov/api/data/airport')) {
+          const AP = { ELLX: [49.6233, 6.2044, 'Luxembourg/Findel'], LFSB: [47.59, 7.5291, 'Basel/Mulhouse'], LSGS: [46.2196, 7.3267, 'Sion'] };
+          const ids = decodeURIComponent(url.split('ids=')[1].split('&')[0]).split(',');
+          const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2] }));
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
+        }
         throw new Error('Adresse non simulée : ' + url);
       }
     },
@@ -175,7 +181,7 @@ function charger(opts) {
   return {
     ctx, sheets, props, cache, mails, github, depot, drive,
     run: (fnName) => vm.runInContext(fnName + '()', ctx),
-    get: () => JSON.parse(ctx.doGet().content),
+    get: (params) => JSON.parse(ctx.doGet(params ? { parameter: params } : undefined).content),
     post: (body) => JSON.parse(ctx.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).content),
     lastCode: (email) => {
       const m = mails.filter((x) => x.to === email).pop();

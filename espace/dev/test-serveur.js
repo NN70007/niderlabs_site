@@ -202,4 +202,33 @@ console.log('Script autonome (hors feuille)');
   ok(auto.sheets.Acces.data.length === 2, 'onglets créés dans la feuille mémorisée');
 }
 
+console.log('Aviator METAR : montres');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  ok(av.sheets.Montres && av.sheets.Aeroports, 'onglets Montres et Aeroports créés');
+  const ID = 'abcDEF1234567890', K = 'cleSecrete0123456789XYZ';
+  let w = av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '0' });
+  ok(w.ok && /^\d{6}$/.test(w.c) && w.st === 'beta' && !w.s, 'premier appel : montre enregistrée, code à 6 chiffres, statut bêta');
+  ok(!JSON.stringify(av.sheets.Montres.data).includes(K), 'la clé de la montre n\'est jamais stockée en clair');
+  ok(av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '0' }).c === w.c, 'le même code tant qu\'il est encore valable');
+  ok(av.get({ a: 'w', id: ID, k: 'mauvaiseCle0123456789', r: '0' }).code === 'montre', 'mauvaise clé refusée');
+  ok(av.get({ a: 'w', id: 'x', k: K }).code === 'montre', 'identifiant invalide refusé');
+  ok(av.post({ action: 'aviator.ouvrir', code: '000000' }).code === 'code', 'code inconnu refusé');
+  let o = av.post({ action: 'aviator.ouvrir', code: w.c });
+  ok(o.ok && o.jeton && o.reglages.icao === 'ELLX' && o.statut === 'beta', 'le code ouvre les réglages de la montre');
+  const reg = Object.assign({}, o.reglages, { icao: 'ellx', rwy: 6, icao2: 'LFSB', icao3: 'LSGS', xwLim: 12, dateFmt: 1 });
+  ok(av.post({ action: 'aviator.enregistrer', jeton: o.jeton, reglages: reg }).code === 'accepte', 'enregistrement refusé sans acceptation des conditions');
+  ok(av.post({ action: 'aviator.enregistrer', jeton: o.jeton, reglages: Object.assign({}, reg, { icao: 'E;LX' }), accepte: true }).code === 'donnees', 'code OACI invalide refusé');
+  ok(av.post({ action: 'aviator.enregistrer', jeton: o.jeton, reglages: Object.assign({}, reg, { rwy: 40 }), accepte: true }).code === 'donnees', 'piste hors limites refusée');
+  ok(av.post({ action: 'aviator.enregistrer', jeton: 'faux', reglages: reg, accepte: true }).code === 'session', 'jeton inventé refusé');
+  const e = av.post({ action: 'aviator.enregistrer', jeton: o.jeton, reglages: reg, accepte: true });
+  ok(e.ok && e.rev === 1 && e.reglages.icao === 'ELLX', 'réglages enregistrés (révision 1)');
+  w = av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '0' });
+  ok(w.rv === 1 && w.s && w.s.icao2 === 'LFSB' && w.s.dateFmt === 1, 'la montre reçoit les nouveaux réglages');
+  ok(!av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '1' }).s, 'rien n\'est renvoyé si la montre est déjà à jour');
+  const c = av.post({ action: 'aviator.carte' });
+  ok(c.ok && c.points.length === 3 && c.points.every((p) => p.t === '1-4' && isFinite(p.lat)), 'carte : 3 aéroports, nombre en tranches');
+}
+
 console.log('\n' + n + ' vérifications réussies.');

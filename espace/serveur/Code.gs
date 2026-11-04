@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-04b',
+  VERSION: '2026-11-04-aviator1',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -39,16 +39,32 @@ var CONFIG = {
   SAUV_JOURS: 30,
   // Publication
   ARTICLES_MAX: 1000,
-  IMAGE_MAX_OCTETS: 6 * 1024 * 1024
+  IMAGE_MAX_OCTETS: 6 * 1024 * 1024,
+  // Aviator METAR (montres)
+  MONTRE_CODE_MINUTES: 15,
+  MONTRE_SESSION_MINUTES: 120,
+  MONTRE_ESSAIS_PAR_MINUTE: 30,
+  CARTE_JOURS: 30
 };
 
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
-  Journal: ['Date', 'Qui', 'Action', 'Detail']
+  Journal: ['Date', 'Qui', 'Action', 'Detail'],
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte'],
+  Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj']
 };
 
 /* ======================= Points d'entrée ======================= */
-function doGet() {
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.a === 'w') {
+    try { return json_(montreAppel_(p)); }
+    catch (err) {
+      if (err && err.public) return json_({ ok: false, error: err.message, code: err.code || 'refus' });
+      console.error(err && err.stack || err);
+      return json_({ ok: false, code: 'serveur' });
+    }
+  }
   return json_({ ok: true, version: CONFIG.VERSION });
 }
 
@@ -72,6 +88,10 @@ function route_(req) {
   if (a === 'auth.google') return authGoogle_(req.idToken);
   if (a === 'auth.demanderCode') return demanderCode_(req.email);
   if (a === 'auth.verifierCode') return verifierCode_(req.email, req.code);
+  // Aviator METAR : page publique niderlabs.com/aviator (pas de compte, code affiché sur la montre)
+  if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code);
+  if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
+  if (a === 'aviator.carte') return aviatorCarte_();
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -456,6 +476,148 @@ function verifierImage_(b64) {
   if (!ok) throw refus_('Ce fichier n’est pas une image JPEG, PNG, GIF ou WebP.', 'donnees');
 }
 
+/* ======================= Aviator METAR : montres ======================= */
+/* La montre appelle  GET /exec?a=w&id=<identifiant>&k=<clé>&v=<version>&r=<révision connue>
+   - premier appel : la montre est enregistrée (seule l'empreinte de la clé est gardée) ;
+   - chaque appel : renvoie le code à 6 chiffres en cours (valable MONTRE_CODE_MINUTES), le statut,
+     et les réglages s'ils sont plus récents que la révision connue de la montre.
+   La page web échange ce code contre un jeton de courte durée qui permet de lire et d'écrire les réglages. */
+var REGL_DEF = { icao: 'ELLX', rwy: 0, icao2: '', rwy2: 0, icao3: '', rwy3: 0, gps: false, xwLim: 15, pUnit: 0, wUnit: 0, magVar: 0, dateFmt: 0 };
+var STATUTS = ['beta', 'gratuit', 'premium'];
+
+function montreAppel_(p) {
+  var id = String(p.id || ''), k = String(p.k || '');
+  if (!/^[A-Za-z0-9]{12,40}$/.test(id) || !/^[A-Za-z0-9]{16,64}$/.test(k)) throw refus_('Identifiant invalide.', 'montre');
+  var rev = Number(p.r) || 0, ver = texte_(p.v, 20);
+  var cache = CacheService.getScriptCache();
+  var m = verrou_(function () {
+    var row = montre_(id), now = String(Date.now());
+    if (!row) {
+      var n = Number(cache.get('mreg:*') || 0);
+      if (n > 200) throw refus_('Trop d’enregistrements. Réessayez plus tard.', 'limite');
+      cache.put('mreg:*', String(n + 1), 3600);
+      row = { Id: id, Cle: hash_(k + '|' + id), Statut: 'beta', Reglages: '', Rev: '0', Version: ver, Cree: now, Vu: now, Accepte: '', Carte: 'oui' };
+      ajouter_('Montres', row);
+      return row;
+    }
+    if (row.Cle !== hash_(k + '|' + id)) throw refus_('Clé invalide.', 'montre');
+    // « Vu » mis à jour au plus une fois par heure pour ménager la feuille
+    if (Date.now() - Number(row.Vu || 0) > 3600000 || row.Version !== ver) majLigne_('Montres', function (r) { return r.Id === id; }, { Vu: now, Version: ver });
+    return row;
+  });
+  var c = codeMontre_(id);
+  var out = { ok: true, c: c.code, ce: Math.round((c.exp - Date.now()) / 1000), st: STATUTS.indexOf(m.Statut) > -1 ? m.Statut : 'beta', rv: Number(m.Rev) || 0 };
+  if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
+  return out;
+}
+
+function montre_(id) {
+  return lire_('Montres').filter(function (r) { return r.Id === id; })[0] || null;
+}
+
+/** Code à 6 chiffres de la montre : le même tant qu'il reste plus de 5 minutes, sinon un nouveau. */
+function codeMontre_(id) {
+  var cache = CacheService.getScriptCache();
+  var raw = cache.get('mc:' + id);
+  if (raw) { var o = JSON.parse(raw); if (o.exp - Date.now() > 300000 && cache.get('mcode:' + o.code) === id) return o; }
+  var code, essai = 0;
+  do { code = String(100000 + parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 900000); essai++; }
+  while (cache.get('mcode:' + code) && essai < 10);
+  var exp = Date.now() + CONFIG.MONTRE_CODE_MINUTES * 60000;
+  cache.put('mcode:' + code, id, CONFIG.MONTRE_CODE_MINUTES * 60);
+  cache.put('mc:' + id, JSON.stringify({ code: code, exp: exp }), CONFIG.MONTRE_CODE_MINUTES * 60);
+  return { code: code, exp: exp };
+}
+
+function aviatorOuvrir_(code) {
+  code = String(code || '').replace(/\D/g, '');
+  if (code.length !== 6) throw refus_('Enter the 6-digit code shown on your watch.', 'code');
+  var cache = CacheService.getScriptCache();
+  var minute = 'mtry:' + Math.floor(Date.now() / 60000), n = Number(cache.get(minute) || 0);
+  if (n >= CONFIG.MONTRE_ESSAIS_PAR_MINUTE) throw refus_('Too many attempts. Please wait a minute and try again.', 'limite');
+  cache.put(minute, String(n + 1), 120);
+  var id = cache.get('mcode:' + code);
+  if (!id) throw refus_('Unknown or expired code. Check the code on your watch (it changes every few minutes).', 'code');
+  var m = montre_(id);
+  if (!m) throw refus_('Unknown watch.', 'code');
+  var jeton = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  cache.put('mtok:' + hash_(jeton), id, CONFIG.MONTRE_SESSION_MINUTES * 60);
+  return { ok: true, jeton: jeton, reglages: reglagesDe_(m), statut: m.Statut || 'beta', accepte: !!m.Accepte, carte: m.Carte !== 'non' };
+}
+
+function reglagesDe_(m) {
+  var r = {}, s = {};
+  try { s = m.Reglages ? JSON.parse(m.Reglages) : {}; } catch (e) { s = {}; }
+  Object.keys(REGL_DEF).forEach(function (k) { r[k] = (k in s) ? s[k] : REGL_DEF[k]; });
+  return r;
+}
+
+function aviatorEnregistrer_(jeton, reg, accepte) {
+  var id = CacheService.getScriptCache().get('mtok:' + hash_(String(jeton || '')));
+  if (!id) throw refus_('Your session has expired. Enter a new code from your watch.', 'session');
+  if (accepte !== true) throw refus_('Please read and accept the terms before saving.', 'accepte');
+  if (!reg || typeof reg !== 'object') throw refus_('Invalid settings.', 'donnees');
+  var icao = function (v, vide) { v = String(v || '').trim().toUpperCase(); if (!v && vide) return ''; if (!/^[A-Z0-9]{4}$/.test(v)) throw refus_('Invalid ICAO code: ' + texte_(v, 8) + ' (4 letters, e.g. ELLX).', 'donnees'); return v; };
+  var ent = function (v, a, b, nom) { v = Number(v); if (!isFinite(v) || Math.round(v) !== v || v < a || v > b) throw refus_('Invalid value: ' + nom + '.', 'donnees'); return v; };
+  var s = {
+    icao: icao(reg.icao, false), rwy: ent(reg.rwy, 0, 36, 'runway 1'),
+    icao2: icao(reg.icao2, true), rwy2: ent(reg.rwy2, 0, 36, 'runway 2'),
+    icao3: icao(reg.icao3, true), rwy3: ent(reg.rwy3, 0, 36, 'runway 3'),
+    gps: reg.gps === true, xwLim: ent(reg.xwLim, 0, 60, 'crosswind limit'),
+    pUnit: ent(reg.pUnit, 0, 1, 'pressure unit'), wUnit: ent(reg.wUnit, 0, 1, 'wind unit'),
+    magVar: ent(reg.magVar, -30, 30, 'magnetic variation'), dateFmt: ent(reg.dateFmt, 0, 1, 'date format')
+  };
+  var carte = reg.carte === false ? 'non' : 'oui';
+  var rev = verrou_(function () {
+    var m = montre_(id);
+    if (!m) throw refus_('Unknown watch.', 'code');
+    var r = (Number(m.Rev) || 0) + 1;
+    majLigne_('Montres', function (x) { return x.Id === id; }, { Reglages: JSON.stringify(s), Rev: String(r), Accepte: m.Accepte || String(Date.now()), Carte: carte });
+    return r;
+  });
+  try { aeroportsConnus_([s.icao, s.icao2, s.icao3].filter(String)); } catch (e) { /* la carte se complétera plus tard */ }
+  return { ok: true, rev: rev, reglages: s };
+}
+
+/** Coordonnées des aéroports (aviationweather.gov), gardées dans l'onglet Aeroports. */
+function aeroportsConnus_(liste) {
+  var connus = {};
+  lire_('Aeroports').forEach(function (r) { connus[r.Icao] = r; });
+  var manquants = liste.filter(function (x, i) { return x && !connus[x] && liste.indexOf(x) === i; });
+  if (!manquants.length) return connus;
+  var res = UrlFetchApp.fetch('https://aviationweather.gov/api/data/airport?ids=' + manquants.join(',') + '&format=json', { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Aviator/1.0' } });
+  if (res.getResponseCode() !== 200) return connus;
+  var data = JSON.parse(res.getContentText() || '[]');
+  data.forEach(function (a) {
+    var ic = String(a.icaoId || a.id || '').toUpperCase();
+    if (!ic || connus[ic] || !isFinite(a.lat) || !isFinite(a.lon)) return;
+    var o = { Icao: ic, Lat: String(a.lat), Lon: String(a.lon), Nom: texte_(a.name, 80), Maj: String(Date.now()) };
+    ajouter_('Aeroports', o); connus[ic] = o;
+  });
+  return connus;
+}
+
+/** Carte publique : aéroports réglés sur des montres vues ces CARTE_JOURS derniers jours, nombre arrondi en tranches. */
+function aviatorCarte_() {
+  var cache = CacheService.getScriptCache(), deja = cache.get('carte');
+  if (deja) return JSON.parse(deja);
+  var limite = Date.now() - CONFIG.CARTE_JOURS * 86400000, compte = {};
+  lire_('Montres').forEach(function (m) {
+    if (m.Carte === 'non' || Number(m.Vu) < limite || !m.Reglages) return;
+    var s; try { s = JSON.parse(m.Reglages); } catch (e) { return; }
+    var vus = {};
+    [s.icao, s.icao2, s.icao3].forEach(function (x) { if (x && !vus[x]) { vus[x] = 1; compte[x] = (compte[x] || 0) + 1; } });
+  });
+  var connus = aeroportsConnus_(Object.keys(compte));
+  var points = Object.keys(compte).filter(function (x) { return connus[x]; }).map(function (x) {
+    var n = compte[x];
+    return { icao: x, nom: connus[x].Nom, lat: Number(connus[x].Lat), lon: Number(connus[x].Lon), t: n >= 10 ? '10+' : n >= 5 ? '5+' : '1-4' };
+  });
+  var out = { ok: true, points: points, maj: Date.now() };
+  cache.put('carte', JSON.stringify(out), 1800);
+  return out;
+}
+
 /* ======================= Feuille : utilitaires ======================= */
 function classeur_(creerSiAbsent) {
   var actif = null;
@@ -470,7 +632,14 @@ function classeur_(creerSiAbsent) {
   return ss;
 }
 function feuille_(nom) {
-  var sh = classeur_(false).getSheetByName(nom);
+  var ss = classeur_(false), sh = ss.getSheetByName(nom);
+  // Onglets ajoutés après l'installation (Aviator METAR) : créés au premier besoin, sans relancer « installer »
+  if (!sh && (nom === 'Montres' || nom === 'Aeroports')) {
+    sh = ss.insertSheet(nom);
+    sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, Math.max(sh.getMaxRows(), 2), ONGLETS[nom].length).setNumberFormat('@');
+  }
   if (!sh) throw refus_("La feuille n'est pas installée (onglet " + nom + ' manquant). Lancez « installer ».', 'installation');
   return sh;
 }
