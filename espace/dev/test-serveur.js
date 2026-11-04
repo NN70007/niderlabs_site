@@ -227,6 +227,9 @@ console.log('Aviator METAR : montres');
   w = av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '0' });
   ok(w.rv === 1 && w.s && w.s.icao2 === 'LFSB' && w.s.dateFmt === 1, 'la montre reçoit les nouveaux réglages');
   ok(!av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '1' }).s, 'rien n\'est renvoyé si la montre est déjà à jour');
+  const ap = av.post({ action: 'aviator.aeroport', icao: 'ellx' });
+  ok(ap.ok && ap.trouve && ap.nom && ap.pistes.join() === '6,24', 'aéroport : nom et extrémités de piste');
+  ok(av.post({ action: 'aviator.aeroport', icao: 'ZZZZ' }).trouve === false, 'aéroport inconnu signalé');
   const c = av.post({ action: 'aviator.carte' });
   ok(c.ok && c.points.length === 3 && c.points.every((p) => p.t === '1-4' && isFinite(p.lat)), 'carte : 3 aéroports, nombre en tranches');
 }

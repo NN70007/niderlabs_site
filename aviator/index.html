@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aviator METAR – watch settings</title>
+<meta name="description" content="Set up the Aviator METAR Garmin watch face in large print: airports, runways, crosswind limit, units. No account needed – just the code shown on your watch.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="aviator.css?v=1">
+<script src="commun.js?v=1"></script>
+<script src="aviator.js?v=1" defer></script>
+</head>
+<body>
+<header class="entete">
+  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="./" aria-current="page">Settings</a>
+    <a href="map/">Airports map</a>
+    <span class="statut" id="lie" hidden><span class="pastille"></span>Watch linked · <a href="./" id="quitter">Sign out</a></span>
+    <button type="button" class="theme">Day mode</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Étape 1 : code de la montre -->
+  <div class="col etroit" id="vue-code">
+    <h1>Link your watch</h1>
+    <ol class="etapes">
+      <li>On the watch, tap the screen until <b>SETTINGS</b> appears.</li>
+      <li>Type the 6-digit code it shows. It changes every few minutes.</li>
+    </ol>
+    <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
+      <label class="titre" for="code">WATCH CODE</label>
+      <input class="code" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000" required>
+      <button class="bouton" type="submit">Open my settings</button>
+      <div class="message err" id="err-code" role="alert" hidden></div>
+    </form>
+    <div class="carte" style="flex-direction:row;align-items:flex-start;gap:16px">
+      <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;color:var(--encre-3);margin-top:3px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <p class="aide">No account, no password. The code only works for a few minutes and only for your watch. You can also change every setting in the Connect IQ app on your phone.</p>
+    </div>
+  </div>
+
+  <!-- Étape 2 : réglages -->
+  <form class="col" id="vue-reglages" hidden novalidate>
+    <h1>My watch settings</h1>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Airports</h2>
+      <p class="aide">Tap the airport code on the watch to switch: 1 → 2 → 3 → nearest → 1. Runway AUTO picks the runway most into the wind.</p>
+      <div class="grille" id="aeroports"></div>
+      <label class="case"><input type="checkbox" id="gps"> <span>Add the nearest airport (from the watch's last known position) to the list</span></label>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Wind</h2>
+      <div class="carte">
+        <div class="ligne">
+          <label for="xwLim">Crosswind alert above</label>
+          <input class="nombre" id="xwLim" inputmode="numeric" maxlength="2"><span class="unite" id="xw-unite">kt</span>
+        </div>
+        <p class="aide">The wind digits turn amber on the watch above this limit. 0 = off.</p>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Display</h2>
+      <div class="grille">
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">PRESSURE</legend>
+          <div class="choix"><label><input type="radio" name="pUnit" value="0">hPa</label><label><input type="radio" name="pUnit" value="1">inHg</label></div></fieldset>
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">WIND SPEED</legend>
+          <div class="choix"><label><input type="radio" name="wUnit" value="0">kt</label><label><input type="radio" name="wUnit" value="1">m/s</label></div></fieldset>
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">DATE</legend>
+          <div class="choix"><label><input type="radio" name="dateFmt" value="0" id="d0">03 NOV</label><label><input type="radio" name="dateFmt" value="1" id="d1">NOV 03</label></div></fieldset>
+      </div>
+      <div class="carte">
+        <div class="ligne">
+          <label for="magVar">Magnetic variation (east +, west −)</label>
+          <input class="nombre" id="magVar" inputmode="text" maxlength="3"><span class="unite">°</span>
+        </div>
+        <p class="aide">Only needed if your runway headings and the METAR wind (true north) differ noticeably. 0 is fine in most of Europe.</p>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Before you save</h2>
+      <label class="case"><input type="checkbox" id="carte"> <span>Show my airports, anonymously, on the public <a href="map/" target="_blank" rel="noopener">airports map</a></span></label>
+      <div class="avert"><b>NOT FOR NAVIGATION.</b> Aviator METAR is for situational awareness only. It is not an approved source of aeronautical information and does not replace an official weather briefing. The pilot in command remains solely responsible for flight planning and every operational decision.</div>
+      <label class="case important"><input type="checkbox" id="accepte"> <span>I have read and accept the <a href="terms/" target="_blank" rel="noopener">Terms of Use</a> and the <a href="privacy/" target="_blank" rel="noopener">Privacy Policy</a>, including the NOT FOR NAVIGATION notice.</span></label>
+    </section>
+
+    <button class="bouton" type="submit" id="enregistrer">Save to my watch</button>
+    <div class="message" id="msg" role="status" hidden></div>
+  </form>
+</main>
+
+<footer class="pied">
+  NOT FOR NAVIGATION – for situational awareness only. Weather data: aviationweather.gov (NOAA). ·
+  <a href="terms/">Terms</a> · <a href="privacy/">Privacy</a> · <a href="legal/">Legal notice</a> · © <span data-annee></span> NiderLabs
+</footer>
+</body>
+</html>

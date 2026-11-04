@@ -1,0 +1,83 @@
+/* Aviator METAR — pages publiques (réglages de la montre, carte, textes juridiques).
+   Très grands caractères, fort contraste, mode jour/nuit (suit l'appareil, bouton pour forcer). */
+:root{
+  --fond:#0B0F14;--surface:#141A22;--champ:#0B0F14;--encre:#F5F5F2;--encre-2:#C5CCD4;--encre-3:#A9B1BA;
+  --trait:#232B36;--bord:#3A4552;--accent:#4F8FE8;--sur-accent:#0B0F14;--ambre:#FFB020;--vert:#4CC38A;--rouge:#F26D6D;
+  --titre:"Roboto Condensed",system-ui,sans-serif;--texte:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --fond:#F4F5F7;--surface:#FFFFFF;--champ:#FFFFFF;--encre:#101317;--encre-2:#2E353D;--encre-3:#4E5761;
+  --trait:#D9DDE2;--bord:#A7B0BA;--accent:#1F5FC9;--sur-accent:#FFFFFF;--ambre:#A86400;--vert:#1C7C4E;--rouge:#B42318;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --fond:#F4F5F7;--surface:#FFFFFF;--champ:#FFFFFF;--encre:#101317;--encre-2:#2E353D;--encre-3:#4E5761;
+    --trait:#D9DDE2;--bord:#A7B0BA;--accent:#1F5FC9;--sur-accent:#FFFFFF;--ambre:#A86400;--vert:#1C7C4E;--rouge:#B42318;
+    color-scheme:light;
+  }
+}
+*{box-sizing:border-box}
+fieldset{min-width:0}
+.case>span{flex:1}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fond);color:var(--encre);font-family:var(--texte);font-size:22px;line-height:1.5}
+a{color:var(--accent)}
+[hidden]{display:none!important}
+.entete{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px;padding:20px clamp(16px,4vw,48px);border-bottom:1px solid var(--trait)}
+.marque{display:flex;align-items:center;gap:12px;color:var(--encre);text-decoration:none;font-family:var(--titre);font-weight:700;font-size:28px;letter-spacing:.5px}
+.marque svg{flex:none}
+.nav{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;font-size:19px}
+.nav a{color:var(--encre-3);text-decoration:none;font-weight:600}
+.nav a:hover,.nav a[aria-current]{color:var(--encre)}
+.theme{min-height:48px;padding:0 16px;border-radius:12px;border:2px solid var(--bord);background:transparent;color:var(--encre);font:600 18px var(--texte);cursor:pointer}
+main{display:flex;justify-content:center;padding:44px 16px 64px}
+.col{width:100%;max-width:980px;display:flex;flex-direction:column;gap:36px}
+.etroit{max-width:760px}
+h1{margin:0;font-family:var(--titre);font-weight:700;font-size:clamp(44px,7vw,64px);line-height:1.05}
+h2{margin:0;font-size:22px;font-weight:700;color:var(--encre-3);letter-spacing:1.5px;text-transform:uppercase}
+p{margin:0}
+.chapeau{font-size:24px;color:var(--encre-2)}
+ol.etapes{margin:0;padding-left:32px;display:flex;flex-direction:column;gap:8px;font-size:24px;color:var(--encre-2)}
+ol.etapes b{color:var(--encre)}
+label.titre{font-size:20px;font-weight:600;color:var(--encre-3);letter-spacing:1px}
+.code{width:100%;height:116px;border-radius:18px;border:3px solid var(--accent);background:var(--surface);color:var(--encre);font:700 80px var(--titre);letter-spacing:16px;text-align:center}
+.bouton{min-height:84px;padding:0 28px;border-radius:18px;border:none;background:var(--accent);color:var(--sur-accent);font:700 30px var(--texte);cursor:pointer}
+.bouton:disabled{opacity:.5;cursor:default}
+.bouton.second{background:transparent;color:var(--encre);border:2px solid var(--bord);font-size:22px;min-height:64px}
+.carte{display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:18px;background:var(--surface);border:2px solid var(--trait)}
+.grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.icao{height:84px;width:100%;border-radius:14px;border:2px solid var(--bord);background:var(--champ);color:var(--encre);font:700 50px var(--titre);letter-spacing:6px;text-align:center;text-transform:uppercase}
+.nom-apt{min-height:30px;font-size:19px;color:var(--encre-2);text-align:center}
+select,.nombre{height:72px;width:100%;border-radius:14px;border:2px solid var(--bord);background:var(--champ);color:var(--encre);font:700 28px var(--texte);padding:0 14px}
+.nombre{font:700 46px var(--titre);text-align:center;width:150px}
+.ligne{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.ligne>label{flex:1 1 300px;font-size:24px;font-weight:600}
+.unite{font-size:28px;font-weight:700;color:var(--encre-2)}
+.aide{font-size:19px;color:var(--encre-2)}
+.choix{display:flex;gap:10px}
+.choix label{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:72px;border-radius:14px;border:2px solid var(--bord);font-size:26px;font-weight:700;cursor:pointer}
+.choix input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.choix label:has(input:checked){background:var(--accent);border-color:var(--accent);color:var(--sur-accent)}
+.choix label:has(input:focus-visible){outline:3px solid var(--ambre);outline-offset:2px}
+.case{display:flex;align-items:flex-start;gap:18px;padding:22px 24px;border-radius:18px;background:var(--surface);border:2px solid var(--trait);font-size:22px;cursor:pointer}
+.case input{flex:none;width:34px;height:34px;margin-top:2px;accent-color:var(--accent)}
+.case.important{border-color:var(--ambre)}
+.message{padding:20px 24px;border-radius:16px;font-size:22px;font-weight:600}
+.message.ok{background:color-mix(in srgb,var(--vert) 18%,transparent);border:2px solid var(--vert)}
+.message.err{background:color-mix(in srgb,var(--rouge) 16%,transparent);border:2px solid var(--rouge)}
+.statut{display:flex;align-items:center;gap:10px;font-size:19px;color:var(--encre-3)}
+.pastille{width:14px;height:14px;border-radius:7px;background:var(--vert)}
+.avert{padding:22px 24px;border-radius:16px;border:2px solid var(--ambre);font-size:20px;color:var(--encre-2)}
+.avert b{color:var(--ambre)}
+.texte-long{display:flex;flex-direction:column;gap:18px;font-size:21px;color:var(--encre-2)}
+.texte-long h2{margin-top:14px}
+.texte-long ul{margin:0;padding-left:28px;display:flex;flex-direction:column;gap:6px}
+.pied{padding:24px clamp(16px,4vw,48px);border-top:1px solid var(--trait);font-size:17px;line-height:1.6;color:var(--encre-3)}
+.pied a{color:var(--encre-3)}
+#plan{height:min(70vh,640px);border-radius:18px;border:2px solid var(--trait);background:var(--surface)}
+.legende{display:flex;flex-wrap:wrap;gap:10px 26px;font-size:19px;color:var(--encre-2)}
+.legende span{display:inline-flex;align-items:center;gap:10px}
+.rond{display:inline-block;border-radius:50%;background:var(--accent);opacity:.85}
+@media (max-width:520px){body{font-size:20px}.code{font-size:56px;letter-spacing:8px;height:96px}.bouton{font-size:26px}.nombre{width:120px}}

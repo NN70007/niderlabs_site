@@ -154,7 +154,7 @@ function charger(opts) {
         if (url.startsWith('https://aviationweather.gov/api/data/airport')) {
           const AP = { ELLX: [49.6233, 6.2044, 'Luxembourg/Findel'], LFSB: [47.59, 7.5291, 'Basel/Mulhouse'], LSGS: [46.2196, 7.3267, 'Sion'] };
           const ids = decodeURIComponent(url.split('ids=')[1].split('&')[0]).split(',');
-          const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2] }));
+          const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2], runways: i === 'ELLX' ? [{ id: '06/24' }] : [{ id: '07/25' }, { id: '15/33' }] }));
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
         }
         throw new Error('Adresse non simulée : ' + url);

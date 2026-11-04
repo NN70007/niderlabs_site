@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aviator METAR – airports map</title>
+<meta name="description" content="Where Aviator METAR pilots fly: airports set on Aviator METAR watches over the last 30 days.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../aviator.css?v=1">
+<script src="../commun.js?v=1"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+<script src="carte.js?v=1" defer></script>
+</head>
+<body>
+<header class="entete">
+  <a class="marque" href="../"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="../">Settings</a>
+    <a href="../map/" aria-current="page">Airports map</a>
+    <button type="button" class="theme">Day mode</button>
+  </nav>
+</header>
+
+<main><div class="col">
+  <h1>Where our pilots fly</h1>
+  <p class="chapeau">Airports set on Aviator METAR watches over the last 30 days. Anonymous: no names, no watches, only rounded numbers – and every pilot can opt out in the settings.</p>
+  <div id="plan" role="img" aria-label="World map of airports used by Aviator METAR pilots"></div>
+  <div class="legende" aria-label="Legend">
+    <span><i class="rond" style="width:12px;height:12px"></i>1–4 pilots</span>
+    <span><i class="rond" style="width:20px;height:20px"></i>5 or more</span>
+    <span><i class="rond" style="width:30px;height:30px"></i>10 or more</span>
+    <span id="total"></span>
+  </div>
+</div></main>
+<footer class="pied">
+  NOT FOR NAVIGATION – for situational awareness only. Weather data: aviationweather.gov (NOAA). ·
+  <a href="../terms/">Terms</a> · <a href="../privacy/">Privacy</a> · <a href="../legal/">Legal notice</a> · © <span data-annee></span> NiderLabs
+</footer>
+</body>
+</html>

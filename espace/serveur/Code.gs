@@ -92,6 +92,7 @@ function route_(req) {
   if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code);
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
   if (a === 'aviator.carte') return aviatorCarte_();
+  if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -597,10 +598,34 @@ function aeroportsConnus_(liste) {
   return connus;
 }
 
+/** Nom et pistes d'un aéroport pour la page de réglages (gardé 1 jour en cache). */
+function aviatorAeroport_(icao) {
+  icao = String(icao || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(icao)) throw refus_('Invalid ICAO code (4 letters, e.g. ELLX).', 'donnees');
+  var cache = CacheService.getScriptCache(), deja = cache.get('apt:' + icao);
+  if (deja) return JSON.parse(deja);
+  var res = UrlFetchApp.fetch('https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json', { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Aviator/1.0' } });
+  var a = res.getResponseCode() === 200 ? (JSON.parse(res.getContentText() || '[]')[0] || null) : null;
+  var out;
+  if (!a) out = { ok: true, icao: icao, trouve: false };
+  else {
+    var bouts = [];
+    (a.runways || []).forEach(function (r) {
+      String(r.id || '').split('/').forEach(function (b) { var n = parseInt(b, 10); if (n >= 1 && n <= 36 && bouts.indexOf(n) < 0) bouts.push(n); });
+    });
+    out = { ok: true, icao: icao, trouve: true, nom: texte_(a.name, 80), pistes: bouts };
+  }
+  cache.put('apt:' + icao, JSON.stringify(out), 86400);
+  return out;
+}
+
 /** Carte publique : aéroports réglés sur des montres vues ces CARTE_JOURS derniers jours, nombre arrondi en tranches. */
 function aviatorCarte_() {
   var cache = CacheService.getScriptCache(), deja = cache.get('carte');
   if (deja) return JSON.parse(deja);
+  // Montres inactives depuis 12 mois : supprimées (politique de confidentialité)
+  var vieux = Date.now() - 365 * 86400000;
+  if (lire_('Montres').some(function (m) { return Number(m.Vu) < vieux; })) verrou_(function () { supprimerLignes_('Montres', function (m) { return Number(m.Vu) < vieux; }); });
   var limite = Date.now() - CONFIG.CARTE_JOURS * 86400000, compte = {};
   lire_('Montres').forEach(function (m) {
     if (m.Carte === 'non' || Number(m.Vu) < limite || !m.Reglages) return;
