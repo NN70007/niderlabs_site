@@ -81,3 +81,10 @@ select,.nombre{height:72px;width:100%;border-radius:14px;border:2px solid var(--
 .legende span{display:inline-flex;align-items:center;gap:10px}
 .rond{display:inline-block;border-radius:50%;background:var(--accent);opacity:.85}
 @media (max-width:520px){body{font-size:20px}.code{font-size:56px;letter-spacing:8px;height:96px}.bouton{font-size:26px}.nombre{width:120px}}
+.recherche{height:64px;width:100%;border-radius:14px;border:2px solid var(--bord);background:var(--champ);color:var(--encre);font:600 21px var(--texte);padding:0 16px}
+.recherche::placeholder{color:var(--encre-3)}
+.suggestions{display:flex;flex-direction:column;gap:6px}
+.sugg{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:64px;padding:10px 14px;border-radius:12px;border:2px solid var(--trait);background:var(--champ);color:var(--encre);font:600 20px var(--texte);text-align:left;cursor:pointer}
+.sugg b{font:700 26px var(--titre);letter-spacing:2px;color:var(--accent)}
+.sugg span{font-size:18px;color:var(--encre-2)}
+.sugg:hover,.sugg:focus-visible{border-color:var(--accent);outline:none}
