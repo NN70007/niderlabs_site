@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aviator METAR Pro – pilot briefing</title>
+<meta name="description" content="Aviator METAR Pro (experimental): decoded METAR and TAF for your aerodromes, runway wind, personal minima, night time, and pilot currency reminders on your Garmin watch.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../aviator.css?v=2">
+<link rel="stylesheet" href="pro.css?v=3">
+<script src="../commun.js?v=1"></script>
+<script src="reglages.js?v=1" defer></script>
+<script src="pro.js?v=3" defer></script>
+</head>
+<body>
+<header class="entete">
+  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR <span class="badge-pro">PRO</span></a>
+  <nav class="nav" aria-label="Pages">
+    <a href="../">Standard page</a>
+    <span class="statut" id="lie" hidden><span class="pastille"></span>Watch linked · <a href="./" id="quitter">Sign out</a></span>
+    <button type="button" class="theme">Day mode</button>
+  </nav>
+</header>
+
+<main>
+  <div class="col etroit" id="vue-code">
+    <p class="ruban">Experimental · free during the beta</p>
+    <h1>Your pilot briefing, on the wrist</h1>
+    <p class="chapeau">Decoded METAR and TAF for your three aerodromes, runway wind, your personal minima, the start of night, and your licence and currency reminders – also on the <b>Aviator METAR Pro</b> watch face.</p>
+    <ol class="etapes">
+      <li>On the watch, open the pages and go to <b>SETTINGS</b>.</li>
+      <li>Type the 6-digit code it shows.</li>
+    </ol>
+    <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
+      <label class="titre" for="code">WATCH CODE</label>
+      <input class="code" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000" required>
+      <button class="bouton" type="submit">Open my briefing</button>
+      <div class="message err" id="err-code" role="alert" hidden></div>
+    </form>
+  </div>
+
+  <div class="col" id="vue-pro" hidden>
+    <div class="onglets" role="tablist" aria-label="Pro sections">
+      <button role="tab" id="t-brief" aria-controls="p-brief" aria-selected="true">Briefing</button>
+      <button role="tab" id="t-min" aria-controls="p-min" aria-selected="false">My minima</button>
+      <button role="tab" id="t-cur" aria-controls="p-cur" aria-selected="false">Currency</button>
+      <button role="tab" id="t-set" aria-controls="p-set" aria-selected="false">Watch settings</button>
+    </div>
+
+    <section id="p-brief" role="tabpanel" aria-labelledby="t-brief" class="panneau">
+      <div class="ligne-titre"><h1>Briefing</h1><button type="button" class="bouton second" id="rafraichir">Refresh</button></div>
+      <p class="aide" id="brief-maj"></p>
+      <div class="avert"><b>NOT FOR NAVIGATION.</b> Decoded from public NOAA data for situational awareness only. Always get an official briefing (AIP, NOTAM, official METAR/TAF) before flight.</div>
+      <div id="brief"></div>
+    </section>
+
+    <section id="p-min" role="tabpanel" aria-labelledby="t-min" class="panneau" hidden>
+      <h1>My personal minima</h1>
+      <p class="chapeau">Set the limits you fly with. The briefing marks each aerodrome and each TAF period GO, MARGINAL or NO-GO against them.</p>
+      <div class="grille">
+        <div class="carte"><label class="titre" for="mn-ceil">LOWEST CEILING</label><div class="ligne"><input class="nombre" id="mn-ceil" inputmode="numeric" maxlength="5"><span class="unite">ft</span></div></div>
+        <div class="carte"><label class="titre" for="mn-vis">LOWEST VISIBILITY</label><div class="ligne"><input class="nombre" id="mn-vis" inputmode="numeric" maxlength="5"><span class="unite">m</span></div></div>
+        <div class="carte"><label class="titre" for="mn-wind">MAXIMUM WIND</label><div class="ligne"><input class="nombre" id="mn-wind" inputmode="numeric" maxlength="2"><span class="unite">kt</span></div></div>
+        <div class="carte"><label class="titre" for="mn-xw">MAXIMUM CROSSWIND</label><div class="ligne"><input class="nombre" id="mn-xw" inputmode="numeric" maxlength="2"><span class="unite">kt</span></div></div>
+        <div class="carte"><label class="titre" for="mn-gust">MAXIMUM GUST SPREAD</label><div class="ligne"><input class="nombre" id="mn-gust" inputmode="numeric" maxlength="2"><span class="unite">kt</span></div></div>
+      </div>
+      <p class="aide">MARGINAL = within 20 % of a limit. Your watch crosswind alert stays in Watch settings.</p>
+      <button class="bouton" type="button" id="save-min">Save my minima</button>
+      <div class="message" id="msg-min" role="status" hidden></div>
+    </section>
+
+    <section id="p-cur" role="tabpanel" aria-labelledby="t-cur" class="panneau" hidden>
+      <h1>Currency & expiry dates</h1>
+      <p class="chapeau">Your watch reminds you of what expires, on the <b>PILOT</b> page of the Pro watch face. Based on EASA Part-FCL rules – always check your own licence.</p>
+      <div class="grille" id="cur-cartes"></div>
+      <h2>Expiry dates</h2>
+      <div class="grille">
+        <div class="carte"><label class="titre" for="dt-sep">SEP CLASS RATING</label><input class="date" type="date" id="dt-sep"></div>
+        <div class="carte"><label class="titre" for="dt-med">MEDICAL CERTIFICATE</label><input class="date" type="date" id="dt-med"></div>
+        <div class="carte"><label class="titre" for="dt-lpe">ENGLISH PROFICIENCY</label><input class="date" type="date" id="dt-lpe"></div>
+      </div>
+      <h2>Log a flight</h2>
+      <div class="carte">
+        <div class="grille petite">
+          <div><label class="titre" for="lg-d">DATE</label><input class="date" type="date" id="lg-d"></div>
+          <div><label class="titre" for="lg-h">FLIGHT TIME (h)</label><input class="nombre large" id="lg-h" inputmode="decimal" placeholder="1.2"></div>
+          <div><label class="titre" for="lg-l">LANDINGS</label><input class="nombre large" id="lg-l" inputmode="numeric" placeholder="1"></div>
+          <div><label class="titre" for="lg-n">NIGHT LANDINGS</label><input class="nombre large" id="lg-n" inputmode="numeric" placeholder="0"></div>
+        </div>
+        <label class="case"><input type="checkbox" id="lg-pic" checked><span>I was pilot in command</span></label>
+        <label class="case"><input type="checkbox" id="lg-fi"><span>Flight with an instructor (counts for the SEP revalidation training flight)</span></label>
+        <button class="bouton second" type="button" id="lg-add">Add this flight</button>
+      </div>
+      <div id="lg-liste"></div>
+      <button class="bouton" type="button" id="save-cur">Save and send to my watch</button>
+      <div class="message" id="msg-cur" role="status" hidden></div>
+    </section>
+
+    <section id="p-set" role="tabpanel" aria-labelledby="t-set" class="panneau" hidden>
+<form class="col" id="vue-reglages" style="max-width:none" hidden novalidate>
+    <h2 class="sr">Watch settings</h2>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Airports</h2>
+      <p class="aide">Tap the airport code on the watch to switch: 1 → 2 → 3 → nearest → 1. Runway AUTO picks the runway most into the wind.</p>
+      <div class="grille" id="aeroports"></div>
+      <label class="case"><input type="checkbox" id="gps"> <span>Add the nearest airport (from the watch's last known position) to the list</span></label>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Wind</h2>
+      <div class="carte">
+        <div class="ligne">
+          <label for="xwLim">Crosswind alert above</label>
+          <input class="nombre" id="xwLim" inputmode="numeric" maxlength="2"><span class="unite" id="xw-unite">kt</span>
+        </div>
+        <p class="aide">The wind digits turn amber on the watch above this limit. 0 = off.</p>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Display</h2>
+      <div class="grille">
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">PRESSURE</legend>
+          <div class="choix"><label><input type="radio" name="pUnit" value="0">hPa</label><label><input type="radio" name="pUnit" value="1">inHg</label></div></fieldset>
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">WIND SPEED</legend>
+          <div class="choix"><label><input type="radio" name="wUnit" value="0">kt</label><label><input type="radio" name="wUnit" value="1">m/s</label></div></fieldset>
+        <fieldset class="carte" style="margin:0"><legend class="titre" style="padding:0 6px">DATE</legend>
+          <div class="choix"><label><input type="radio" name="dateFmt" value="0" id="d0">03 NOV</label><label><input type="radio" name="dateFmt" value="1" id="d1">NOV 03</label></div></fieldset>
+      </div>
+      <div class="carte">
+        <div class="ligne">
+          <label for="magVar">Magnetic variation (east +, west −)</label>
+          <input class="nombre" id="magVar" inputmode="text" maxlength="3"><span class="unite">°</span>
+        </div>
+        <p class="aide">Only needed if your runway headings and the METAR wind (true north) differ noticeably. 0 is fine in most of Europe.</p>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:18px">
+      <h2>Before you save</h2>
+      <label class="case"><input type="checkbox" id="carte"> <span>Show my airports, anonymously, on the public <a href="../map/" target="_blank" rel="noopener">airports map</a></span></label>
+      <div class="avert"><b>NOT FOR NAVIGATION.</b> Aviator METAR is for situational awareness only. It is not an approved source of aeronautical information and does not replace an official weather briefing. The pilot in command remains solely responsible for flight planning and every operational decision.</div>
+      <label class="case important"><input type="checkbox" id="accepte"> <span>I have read and accept the <a href="../terms/" target="_blank" rel="noopener">Terms of Use</a> and the <a href="../privacy/" target="_blank" rel="noopener">Privacy Policy</a>, including the NOT FOR NAVIGATION notice.</span></label>
+    </section>
+
+    <button class="bouton" type="submit" id="enregistrer">Save to my watch</button>
+    <div class="message" id="msg" role="status" hidden></div>
+  </form>
+    </section>
+  </div>
+</main>
+
+<footer class="pied">
+  NOT FOR NAVIGATION – for situational awareness only. Weather data: aviationweather.gov (NOAA). Airport list: OurAirports. ·
+  <a href="../terms/">Terms</a> · <a href="../privacy/">Privacy</a> · <a href="../legal/">Legal notice</a> · © <span data-annee></span> NiderLabs
+</footer>
+</body>
+</html>

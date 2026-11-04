@@ -1,0 +1,42 @@
+/* Aviator METAR Pro — compléments à ../aviator.css */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.badge-pro{display:inline-block;margin-left:6px;padding:2px 10px;border-radius:8px;background:var(--ambre);color:#0B0F14;font:700 18px var(--texte);letter-spacing:1px;vertical-align:middle}
+.ruban{align-self:flex-start;padding:6px 14px;border-radius:999px;border:2px solid var(--ambre);color:var(--ambre);font-weight:700;font-size:18px}
+.onglets{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:5;padding:10px 0;background:var(--fond)}
+.onglets button{min-height:60px;padding:0 20px;border-radius:14px;border:2px solid var(--bord);background:transparent;color:var(--encre);font:700 21px var(--texte);cursor:pointer}
+.onglets button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--sur-accent)}
+.panneau{display:flex;flex-direction:column;gap:24px}
+.ligne-titre{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.apt{display:flex;flex-direction:column;gap:18px;padding:24px;border-radius:20px;background:var(--surface);border:2px solid var(--trait)}
+.apt-tete{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.apt-tete .icao-g{font:700 44px var(--titre);letter-spacing:3px}
+.apt-tete .nom{font-size:20px;color:var(--encre-2);flex:1 1 200px}
+.cat{padding:4px 14px;border-radius:999px;border:3px solid;font:700 22px var(--titre);letter-spacing:2px}
+.cat.VFR{border-color:var(--vert);color:var(--vert)}.cat.MVFR{border-color:#3d7bf5;color:#3d7bf5}.cat.IFR{border-color:var(--rouge);color:var(--rouge)}.cat.LIFR{border-color:#c03ad6;color:#c03ad6}
+.verdict{padding:6px 16px;border-radius:12px;font:700 22px var(--texte);color:#0B0F14}
+.verdict.GO{background:var(--vert)}.verdict.MARGINAL{background:var(--ambre)}.verdict.NOGO{background:var(--rouge);color:#fff}
+.faits{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.fait{padding:14px;border-radius:14px;border:2px solid var(--trait)}
+.fait span{display:block;font-size:16px;font-weight:700;color:var(--encre-3);letter-spacing:1px}
+.fait b{display:block;font:700 32px var(--titre);margin-top:2px}
+.fait small{display:block;font-size:17px;color:var(--encre-2)}
+table.pistes,table.taf{width:100%;border-collapse:collapse;font-size:20px}
+table.pistes th,table.pistes td,table.taf th,table.taf td{padding:10px 8px;border-bottom:1px solid var(--trait);text-align:left;vertical-align:top}
+table.pistes th,table.taf th{font-size:16px;color:var(--encre-3);letter-spacing:1px}
+tr.best td{font-weight:700}tr.best td:first-child::after{content:"  BEST";font-size:14px;color:var(--vert);letter-spacing:1px}
+.brut{font:500 17px ui-monospace,Menlo,Consolas,monospace;color:var(--encre-2);white-space:pre-wrap;word-break:break-word;padding:12px;border-radius:12px;background:var(--champ);border:1px solid var(--trait)}
+.raisons{font-size:18px;color:var(--encre-2)}
+input.date{height:64px;width:100%;border-radius:14px;border:2px solid var(--bord);background:var(--champ);color:var(--encre);font:700 24px var(--texte);padding:0 12px}
+.nombre.large{width:100%}
+.grille.petite{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.statut-c{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:18px;border:3px solid var(--trait);background:var(--surface)}
+.statut-c span{font-size:17px;font-weight:700;letter-spacing:1px;color:var(--encre-3)}
+.statut-c b{font:700 30px var(--titre)}
+.statut-c.ok{border-color:var(--vert)}.statut-c.warn{border-color:var(--ambre)}.statut-c.bad{border-color:var(--rouge)}
+.barre{height:14px;border-radius:7px;background:var(--trait);overflow:hidden}.barre i{display:block;height:100%;background:var(--accent)}
+.vol{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--trait);font-size:19px}
+.vol button{min-height:48px;padding:0 14px;border-radius:10px;border:2px solid var(--bord);background:transparent;color:var(--encre);font:600 17px var(--texte);cursor:pointer}
+.defile{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.apt{min-width:0}
+@media (max-width:520px){.apt{padding:16px}.apt-tete .icao-g{font-size:36px}table.pistes,table.taf{font-size:17px}.fait b{font-size:26px}.onglets button{font-size:18px;padding:0 12px}}
+#cur-cartes{align-items:start}
