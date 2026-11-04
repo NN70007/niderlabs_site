@@ -98,7 +98,7 @@
     if (!/^[A-Za-z0-9]{4}$/.test(s.icao)) { msg(m, "Airport 1 needs a 4-letter ICAO code (e.g. ELLX).", false); return; }
     b.disabled = true; b.textContent = "Saving…";
     AVIATOR.appel({ action: "aviator.enregistrer", jeton: jeton, reglages: s, accepte: true }).then(function () {
-      msg(m, "Saved. Your watch picks up the new settings within about 15 minutes, as long as your phone is connected.", true);
+      msg(m, "Saved. Your watch shows UPDATED within 5 minutes (keep your phone nearby). If SETTINGS was not opened on the watch in the last 30 minutes, it can take up to 15 minutes.", true);
     }).catch(function (x) {
       if (x.code === "session") { msg(m, x.message, false); setTimeout(function () { location.reload(); }, 2500); }
       else msg(m, x.message, false);
