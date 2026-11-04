@@ -12,7 +12,7 @@
 .apt-tete .icao-g{font:700 44px var(--titre);letter-spacing:3px}
 .apt-tete .nom{font-size:20px;color:var(--encre-2);flex:1 1 200px}
 .cat{padding:4px 14px;border-radius:999px;border:3px solid;font:700 22px var(--titre);letter-spacing:2px}
-.cat.VFR{border-color:var(--vert);color:var(--vert)}.cat.MVFR{border-color:#3d7bf5;color:#3d7bf5}.cat.IFR{border-color:var(--rouge);color:var(--rouge)}.cat.LIFR{border-color:#c03ad6;color:#c03ad6}
+.cat.VFR{border-color:var(--vert);color:var(--vert)}.cat.MVFR{border-color:var(--ambre);color:var(--ambre)}.cat.IFR{border-color:var(--rouge);color:var(--rouge)}.cat.LIFR{border-color:#c03ad6;color:#c03ad6}
 .verdict{padding:6px 16px;border-radius:12px;font:700 22px var(--texte);color:#0B0F14}
 .verdict.GO{background:var(--vert)}.verdict.MARGINAL{background:var(--ambre)}.verdict.NOGO{background:var(--rouge);color:#fff}
 .faits{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
