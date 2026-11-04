@@ -234,4 +234,31 @@ console.log('Aviator METAR : montres');
   ok(c.ok && c.points.length === 3 && c.points.every((p) => p.t === '1-4' && isFinite(p.lat)), 'carte : 3 aéroports, nombre en tranches');
 }
 
+console.log('Aviator METAR Pro');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  const ID = 'proWatch0123456789', K = 'proKey0123456789ABCDEF';
+  let w = av.get({ a: 'w', id: ID, k: K, v: 'P0.1.0', r: '0' });
+  ok(w.ok && w.p && w.p.tf && w.p.tf.ELLX && w.p.tf.ELLX[0][0] === 'NOW' && /MVFR/.test(w.p.tf.ELLX[0][1]), 'cadran Pro : résumé TAF prêt à afficher');
+  ok(!av.get({ a: 'w', id: 'stdWatch0123456789', k: K, v: '0.6.6', r: '0' }).p, 'cadran standard : pas de données Pro');
+  const o = av.post({ action: 'aviator.ouvrir', code: w.c });
+  let c = av.post({ action: 'pro.charger', jeton: o.jeton });
+  ok(c.ok && c.pro.mn.ceil === 1500 && Array.isArray(c.pro.lg), 'Pro : valeurs par défaut');
+  const d = (j) => new Date(Date.now() - j * 86400000).toISOString().slice(0, 10);
+  const pro = { mn: { ceil: 2000, vis: 5000, wind: 20, xw: 12, gust: 10 }, dt: { sep: d(-200), med: d(-20), lpe: d(10) },
+    lg: [{ d: d(10), h: 1.2, pic: true, ldg: 2 }, { d: d(40), h: 1, pic: true, ldg: 1, nl: 1 }, { d: d(100), h: 1, fi: true, pic: false, ldg: 3 }] };
+  ok(av.post({ action: 'pro.enregistrer', jeton: o.jeton, pro: Object.assign({}, pro, { dt: { sep: '31/12/2027' } }) }).code === 'donnees', 'Pro : date invalide refusée');
+  ok(av.post({ action: 'pro.enregistrer', jeton: o.jeton, pro }).ok, 'Pro : minima, échéances et carnet enregistrés');
+  w = av.get({ a: 'w', id: ID, k: K, v: 'P0.1.0', r: '0' });
+  const cu = Object.fromEntries(w.p.cu.map((x) => [x[0], x]));
+  ok(cu.PAX && /^TO /.test(cu.PAX[1]), 'validité passagers calculée (3 atterrissages en 90 jours)');
+  ok(cu.NIGHT && /^TO /.test(cu.NIGHT[1]), 'validité nuit calculée');
+  ok(cu.MEDICAL && cu.MEDICAL[2] === 1 && cu.SEP && cu.SEP[2] === 0, 'échéances : alerte à moins de 30 jours');
+  ok(w.p.cu.length <= 4, 'au plus 4 lignes pour la montre');
+  const b = av.post({ action: 'pro.briefing', jeton: o.jeton });
+  ok(b.ok && b.metar.ELLX && b.taf.ELLX && b.apt.ELLX && b.apt.ELLX.rwy.length, 'briefing : METAR, TAF et pistes');
+  ok(av.post({ action: 'pro.briefing', jeton: 'faux' }).code === 'session', 'briefing refusé sans session');
+}
+
 console.log('\n' + n + ' vérifications réussies.');

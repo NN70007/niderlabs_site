@@ -50,6 +50,7 @@ function charger(opts) {
       getMaxRows: () => Math.max(1000, data.length),
       setFrozenRows: () => sh,
       getLastRow: () => data.length,
+      getLastColumn: () => (data[0] || []).length,
       getDataRange: () => ({ getValues: () => data.map((r) => r.slice()) }),
       getRange: (r, c, nr, nc) => {
         nr = nr || 1; nc = nc || 1;
@@ -150,6 +151,14 @@ function charger(opts) {
         if (url.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
           const info = googleTokens[decodeURIComponent(url.split('id_token=')[1] || '')];
           return { getResponseCode: () => (info ? 200 : 400), getContentText: () => JSON.stringify(info || { error: 'invalid_token' }) };
+        }
+        if (url.startsWith('https://aviationweather.gov/api/data/taf')) {
+          const now = Math.floor(Date.now() / 1000);
+          const out = [{ icaoId: 'ELLX', rawTAF: 'TAF ELLX ...', fcsts: [{ timeFrom: now - 3600, timeTo: now + 20 * 3600, wdir: 80, wspd: 12, visib: '6+', clouds: [{ cover: 'BKN', base: 2500 }] }, { timeFrom: now - 3600, timeTo: now + 3 * 3600, fcstChange: 'TEMPO', wdir: 80, wspd: 15, wgst: 25, visib: '', clouds: [] }] }];
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
+        }
+        if (url.startsWith('https://aviationweather.gov/api/data/metar')) {
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify([{ icaoId: 'ELLX', rawOb: 'METAR ELLX 041620Z 08012KT CAVOK 09/03 Q1018', obsTime: Math.floor(Date.now() / 1000) - 600, wdir: 80, wspd: 12, altim: 1018 }]) };
         }
         if (url.startsWith('https://aviationweather.gov/api/data/airport')) {
           const AP = { ELLX: [49.6233, 6.2044, 'Luxembourg/Findel'], LFSB: [47.59, 7.5291, 'Basel/Mulhouse'], LSGS: [46.2196, 7.3267, 'Sion'] };

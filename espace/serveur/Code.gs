@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-04-aviator3',
+  VERSION: '2026-11-04-pro1',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -50,7 +50,7 @@ var CONFIG = {
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
   Journal: ['Date', 'Qui', 'Action', 'Detail'],
-  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte'],
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro'],
   Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj']
 };
 
@@ -100,6 +100,10 @@ function route_(req) {
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
+  // Aviator METAR Pro (page expérimentale niderlabs.com/aviator/pro)
+  if (a === 'pro.charger') return proCharger_(req.jeton);
+  if (a === 'pro.enregistrer') return proEnregistrer_(req.jeton, req.pro);
+  if (a === 'pro.briefing') return proBriefing_(req.jeton);
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -516,6 +520,8 @@ function montreAppel_(p) {
   var c = codeMontre_(id);
   var out = { ok: true, c: c.code, ce: Math.round((c.exp - Date.now()) / 1000), st: STATUTS.indexOf(m.Statut) > -1 ? m.Statut : 'beta', rv: Number(m.Rev) || 0 };
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
+  // Cadran Pro (version « P… ») : résumé TAF et rappels pilote, prêts à afficher
+  if (/^P/.test(ver)) { try { out.p = proMontre_(m); } catch (e) { console.error(e && e.stack || e); } }
   return out;
 }
 
@@ -650,6 +656,148 @@ function aviatorCarte_() {
   return out;
 }
 
+/* ======================= Aviator METAR Pro ======================= */
+/* Données Pro par montre (colonne Pro, JSON) :
+   { mn: { ceil, vis, wind, xw, gust } minima personnels (ft, m, kt),
+     dt: { sep, med, lpe, other } dates d'échéance AAAA-MM-JJ,
+     lg: [ { d: AAAA-MM-JJ, h: heures, pic: bool, ldg: n, nl: n atterrissages de nuit, fi: bool vol avec instructeur } ] carnet léger } */
+var PRO_DEF = { mn: { ceil: 1500, vis: 5000, wind: 25, xw: 15, gust: 10 }, dt: { sep: '', med: '', lpe: '' }, lg: [] };
+
+function montreDuJeton_(jeton) {
+  var id = CacheService.getScriptCache().get('mtok:' + hash_(String(jeton || '')));
+  if (!id) throw refus_('Your session has expired. Enter a new code from your watch.', 'session');
+  var m = montre_(id);
+  if (!m) throw refus_('Unknown watch.', 'code');
+  return m;
+}
+function proDe_(m) {
+  var p = {}; try { p = m.Pro ? JSON.parse(m.Pro) : {}; } catch (e) { p = {}; }
+  return { mn: Object.assign({}, PRO_DEF.mn, p.mn || {}), dt: Object.assign({}, PRO_DEF.dt, p.dt || {}), lg: Array.isArray(p.lg) ? p.lg : [] };
+}
+function proCharger_(jeton) {
+  var m = montreDuJeton_(jeton);
+  return { ok: true, pro: proDe_(m), reglages: reglagesDe_(m), statut: m.Statut || 'beta' };
+}
+function proEnregistrer_(jeton, pro) {
+  var m = montreDuJeton_(jeton);
+  if (!pro || typeof pro !== 'object') throw refus_('Invalid data.', 'donnees');
+  var n = function (v, a, b, nom) { v = Number(v); if (!isFinite(v) || v < a || v > b) throw refus_('Invalid value: ' + nom + '.', 'donnees'); return Math.round(v * 10) / 10; };
+  var d = function (v) { v = String(v || '').trim(); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw refus_('Invalid date (YYYY-MM-DD).', 'donnees'); return v; };
+  var mn = pro.mn || {}, dt = pro.dt || {};
+  var lg = (Array.isArray(pro.lg) ? pro.lg : []).slice(-300).map(function (e) {
+    return { d: d(e.d) || '1970-01-01', h: n(e.h || 0, 0, 24, 'flight time'), pic: e.pic !== false, ldg: n(e.ldg || 0, 0, 99, 'landings'), nl: n(e.nl || 0, 0, 99, 'night landings'), fi: e.fi === true };
+  });
+  var p = { mn: { ceil: n(mn.ceil, 0, 10000, 'ceiling'), vis: n(mn.vis, 0, 10000, 'visibility'), wind: n(mn.wind, 0, 99, 'wind'), xw: n(mn.xw, 0, 60, 'crosswind'), gust: n(mn.gust, 0, 60, 'gust spread') },
+            dt: { sep: d(dt.sep), med: d(dt.med), lpe: d(dt.lpe) }, lg: lg };
+  verrou_(function () { majLigne_('Montres', function (x) { return x.Id === m.Id; }, { Pro: JSON.stringify(p) }); });
+  return { ok: true, pro: p };
+}
+
+/** Données publiques aviationweather.gov (NOAA), en cache 10 min par aérodrome. */
+function awc_(type, icaos, extra) {
+  var cache = CacheService.getScriptCache(), out = {}, manque = [];
+  icaos.forEach(function (i) { var c = cache.get('awc:' + type + ':' + i); if (c) out[i] = JSON.parse(c); else manque.push(i); });
+  if (manque.length) {
+    var res = UrlFetchApp.fetch('https://aviationweather.gov/api/data/' + type + '?ids=' + manque.join(',') + '&format=json' + (extra || ''),
+      { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Aviator/1.0' } });
+    var data = []; if (res.getResponseCode() === 200) { try { data = JSON.parse(res.getContentText() || '[]'); } catch (e) { data = []; } }
+    manque.forEach(function (i) {
+      var lst = data.filter(function (x) { return String(x.icaoId || '').toUpperCase() === i; });
+      var v = type === 'metar' ? lst.slice(0, 3) : lst.slice(0, 1);
+      v = v.map(function (x) { var c = Object.assign({}, x); delete c.dbPopTime; delete c.rawOb_; return c; });
+      out[i] = v;
+      try { cache.put('awc:' + type + ':' + i, JSON.stringify(v), 600); } catch (e) { /* trop gros pour le cache : ignoré */ }
+    });
+  }
+  return out;
+}
+function icaosDe_(m) { var r = reglagesDe_(m); return [r.icao, r.icao2, r.icao3].filter(function (x, i, a) { return x && a.indexOf(x) === i; }); }
+
+function proBriefing_(jeton) {
+  var m = montreDuJeton_(jeton), ic = icaosDe_(m);
+  var apt = {};
+  ic.forEach(function (i) { try { apt[i] = aviatorAeroportComplet_(i); } catch (e) { apt[i] = null; } });
+  return { ok: true, icaos: ic, metar: awc_('metar', ic, '&hours=3'), taf: awc_('taf', ic), apt: apt, pro: proDe_(m), reglages: reglagesDe_(m), maj: Date.now() };
+}
+/** Aérodrome avec pistes (extrémités + orientation vraie) et coordonnées, 1 jour en cache. */
+function aviatorAeroportComplet_(icao) {
+  var cache = CacheService.getScriptCache(), deja = cache.get('aptc:' + icao);
+  if (deja) return JSON.parse(deja);
+  var res = UrlFetchApp.fetch('https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json', { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Aviator/1.0' } });
+  var a = res.getResponseCode() === 200 ? (JSON.parse(res.getContentText() || '[]')[0] || null) : null;
+  if (!a) return null;
+  var out = { icao: icao, nom: texte_(a.name, 80), lat: a.lat, lon: a.lon, elev: a.elev, rwy: (a.runways || []).map(function (r) { return { id: String(r.id || ''), al: r.alignment, dim: r.dimension, surf: r.surface }; }) };
+  cache.put('aptc:' + icao, JSON.stringify(out), 86400);
+  return out;
+}
+
+/* ----- Résumés pour le cadran Pro (texte court, majuscules, anglais) ----- */
+function catDe_(ceil, visSm) {
+  if (ceil == null && visSm == null) return '';
+  var c = ceil == null ? 99999 : ceil, v = visSm == null ? 99 : visSm;
+  if (c < 500 || v < 1) return 'LIFR';
+  if (c < 1000 || v < 3) return 'IFR';
+  if (c <= 3000 || v <= 5) return 'MVFR';
+  return 'VFR';
+}
+function visSm_(v) { if (v == null || v === '') return null; if (/\+/.test(String(v))) return 10; var n = parseFloat(v); return isFinite(n) ? n : null; }
+function plafond_(clouds, vv) {
+  var c = null;
+  (clouds || []).forEach(function (x) { if ((x.cover === 'BKN' || x.cover === 'OVC' || x.cover === 'OVX') && isFinite(x.base) && (c == null || x.base < c)) c = x.base; });
+  if (isFinite(vv) && vv != null && (c == null || vv * 100 < c)) c = vv * 100;
+  return c;
+}
+function hz_(t) { return Utilities.formatDate(new Date(t * 1000), 'UTC', 'HH') + 'Z'; }
+function tafLignes_(taf) {
+  if (!taf || !taf.fcsts) return [];
+  var now = Date.now() / 1000, rows = [];
+  taf.fcsts.forEach(function (f) {
+    if (f.timeTo && f.timeTo < now) return;
+    var ch = f.fcstChange || '', pr = f.probability ? 'PROB' + f.probability + ' ' : '';
+    var hdr = ch === 'FM' ? 'FM ' + hz_(f.timeFrom) : ch === 'BECMG' ? 'BECMG ' + hz_(f.timeFrom) : (ch === 'TEMPO' || pr) ? pr + (ch === 'TEMPO' ? 'TEMPO ' : '') + hz_(f.timeFrom) + '-' + hz_(f.timeTo) : (f.timeFrom <= now ? 'NOW' : 'FROM ' + hz_(f.timeFrom));
+    var cat = catDe_(plafond_(f.clouds, f.vertVis), visSm_(f.visib));
+    var w = isFinite(f.wspd) && f.wspd != null ? (isFinite(f.wdir) && f.wdir != null ? ('00' + f.wdir).slice(-3) : 'VRB') + ('0' + f.wspd).slice(-2) + (f.wgst ? 'G' + f.wgst : '') + 'KT' : '';
+    var det = [cat, w, f.wxString || ''].filter(String).join(' ');
+    if (!det) return;
+    rows.push([hdr.trim(), det.slice(0, 22), cat]);
+  });
+  return rows.slice(0, 3);
+}
+function jours_(dateStr) { if (!dateStr) return null; var t = Date.parse(dateStr + 'T23:59:59Z'); return isFinite(t) ? Math.floor((t - Date.now()) / 86400000) : null; }
+var MOIS_ = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function jjmm_(t) { var d = new Date(t); return ('0' + d.getUTCDate()).slice(-2) + ' ' + MOIS_[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2); }
+/** Validité passagers / nuit (FCL.060 : 3 décollages et atterrissages en 90 jours ; nuit : 1 en 90 jours). */
+function recence_(lg) {
+  var ev = []; (lg || []).forEach(function (e) { for (var k = 0; k < (e.ldg || 0); k++) ev.push(Date.parse(e.d + 'T12:00:00Z')); });
+  ev.sort(function (a, b) { return b - a; });
+  var nuit = (lg || []).filter(function (e) { return (e.nl || 0) > 0; }).map(function (e) { return Date.parse(e.d + 'T12:00:00Z'); }).sort(function (a, b) { return b - a; });
+  return { pax: ev.length >= 3 ? ev[2] + 90 * 86400000 : null, night: nuit.length ? nuit[0] + 90 * 86400000 : null };
+}
+/** Prorogation SEP par expérience (FCL.740.A) dans les 12 mois avant l'échéance. */
+function sepProgres_(pro) {
+  var fin = pro.dt.sep ? Date.parse(pro.dt.sep + 'T23:59:59Z') : null;
+  if (!fin) return null;
+  var deb = fin - 365 * 86400000, h = 0, pic = 0, ldg = 0, fi = false;
+  pro.lg.forEach(function (e) { var t = Date.parse(e.d + 'T12:00:00Z'); if (t >= deb && t <= fin) { h += e.h || 0; if (e.pic) pic += e.h || 0; ldg += e.ldg || 0; if (e.fi && (e.h || 0) >= 1) fi = true; } });
+  return { h: Math.round(h * 10) / 10, pic: Math.round(pic * 10) / 10, ldg: ldg, fi: fi, ok: h >= 12 && pic >= 6 && ldg >= 12 && fi };
+}
+function proMontre_(m) {
+  var pro = proDe_(m), ic = icaosDe_(m), taf = awc_('taf', ic), tf = {};
+  ic.forEach(function (i) { var t = (taf[i] || [])[0]; if (t) tf[i] = tafLignes_(t); });
+  var cu = [], now = Date.now(), rc = recence_(pro.lg);
+  var niv = function (t) { return t == null ? 2 : t < now ? 2 : t - now < 30 * 86400000 ? 1 : 0; };
+  if (pro.lg.length) {
+    cu.push(['PAX', rc.pax && rc.pax >= now ? 'TO ' + jjmm_(rc.pax) : 'NOT CURRENT', niv(rc.pax)]);
+    cu.push(['NIGHT', rc.night && rc.night >= now ? 'TO ' + jjmm_(rc.night) : 'NOT CURRENT', rc.night && rc.night >= now ? niv(rc.night) : 1]);
+  }
+  [['SEP', pro.dt.sep], ['MEDICAL', pro.dt.med], ['ENGLISH', pro.dt.lpe]].forEach(function (x) {
+    if (!x[1]) return; var t = Date.parse(x[1] + 'T23:59:59Z'); cu.push([x[0], t < now ? 'EXPIRED' : jjmm_(t), niv(t)]);
+  });
+  var sp = sepProgres_(pro);
+  if (sp && !sp.ok && pro.dt.sep) cu.push(['SEP REVAL', sp.h + '/12H ' + sp.ldg + '/12 LDG', 1]);
+  return { tf: tf, cu: cu.slice(0, 4) };
+}
+
 /* ======================= Feuille : utilitaires ======================= */
 function classeur_(creerSiAbsent) {
   var actif = null;
@@ -673,6 +821,8 @@ function feuille_(nom) {
     sh.getRange(1, 1, Math.max(sh.getMaxRows(), 2), ONGLETS[nom].length).setNumberFormat('@');
   }
   if (!sh) throw refus_("La feuille n'est pas installée (onglet " + nom + ' manquant). Lancez « installer ».', 'installation');
+  // Colonnes ajoutées plus tard (ex. Pro) : en-tête complété au premier besoin
+  if (ONGLETS[nom] && sh.getLastColumn() < ONGLETS[nom].length) sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
   return sh;
 }
 function lire_(nom) {
