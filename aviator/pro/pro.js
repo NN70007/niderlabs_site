@@ -123,12 +123,15 @@
           fait("DENSITY ALT.", da == null ? "–" : da + " ft", apt && apt.elev != null ? "Field " + Math.round(apt.elev * 3.281) + " ft" : "") +
           fait("METAR AGE", age + " min", hmz(new Date(m.obsTime * 1000))) + "</div>";
         if (bs.length && wd != null) {
-          html += '<div class="defile"><table class="pistes"><thead><tr><th>RUNWAY</th><th>HEAD / TAIL</th><th>CROSSWIND</th>' + (wg ? "<th>IN GUSTS</th>" : "") + "</tr></thead><tbody>";
+          html += '<div class="pistes-c">';
           bs.sort(function (a, b) { return composantes(wd, ws, b.hdg).head - composantes(wd, ws, a.hdg).head; }).forEach(function (b, k) {
             var c = composantes(wd, ws, b.hdg), g = wg ? composantes(wd, wg, b.hdg) : null;
-            html += "<tr" + (k === 0 ? ' class="best"' : "") + "><td>" + esc(b.id) + "</td><td>" + (c.head >= 0 ? "Head " + c.head : "Tail " + -c.head) + " kt</td><td>" + Math.abs(c.xw) + " kt " + (c.xw > 0 ? "from right" : c.xw < 0 ? "from left" : "") + "</td>" + (g ? "<td>" + Math.abs(g.xw) + " kt</td>" : "") + "</tr>";
+            var cote = c.xw > 0 ? " R" : c.xw < 0 ? " L" : "";
+            html += '<div class="rwy' + (k === 0 ? " best" : "") + '"><div class="rwy-t">RWY ' + esc(b.id) + (k === 0 ? ' <em>BEST</em>' : "") + "</div>" +
+              '<div class="rwy-v"><div><span>' + (c.head >= 0 ? "HEADWIND" : "TAILWIND") + "</span><b>" + Math.abs(c.head) + ' <i>kt</i></b></div>' +
+              "<div><span>CROSSWIND</span><b>" + Math.abs(c.xw) + ' <i>kt' + cote + "</i></b>" + (g ? "<small>" + Math.abs(g.xw) + " kt in gusts</small>" : "") + "</div></div></div>";
           });
-          html += "</tbody></table></div>";
+          html += "</div>";
         }
       }
       if (apt && apt.lat != null) {

@@ -110,3 +110,17 @@ table.pistes tr:last-child td{border-bottom:0}
   input.date::-webkit-date-and-time-value{line-height:56px}
   table.pistes th,table.pistes td{padding:10px 10px}
 }
+
+/* Pistes en cartes, même taille de valeurs que les autres blocs */
+.pistes-c{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.rwy{padding:14px 16px;border-radius:14px;border:2px solid var(--trait)}
+.rwy.best{border-color:var(--vert)}
+.rwy-t{font:700 26px var(--titre);letter-spacing:1px}
+.rwy-t em{font:700 15px var(--texte);font-style:normal;color:var(--vert);letter-spacing:1px;margin-left:6px;vertical-align:middle}
+.rwy-v{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.rwy-v span{display:block;font-size:16px;font-weight:700;color:var(--encre-3);letter-spacing:1px}
+.rwy-v b{display:block;font:700 32px var(--titre)}
+.rwy-v i{font-style:normal;font-size:.6em;color:var(--encre-2)}
+.rwy-v small{display:block;font-size:17px;color:var(--encre-2)}
+.rwy:not(.best) .rwy-v b{color:var(--encre-2)}
+@media (max-width:600px){.rwy-v b{font-size:26px}.rwy-v span{font-size:13px}.rwy-t{font-size:22px}}
