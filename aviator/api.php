@@ -9,6 +9,8 @@ $p = array();
 foreach (array('a', 'id', 'k', 'v', 'r') as $n) {
   if (isset($_GET[$n])) { $p[$n] = substr(preg_replace('/[^A-Za-z0-9._-]/', '', (string)$_GET[$n]), 0, 64); }
 }
+// i = codes OACI connus de la montre (pour le décalage horaire de chaque aérodrome)
+if (isset($_GET['i'])) { $p['i'] = substr(preg_replace('/[^A-Za-z0-9,]/', '', (string)$_GET['i']), 0, 40); }
 if (!isset($p['a']) || ($p['a'] !== 'w' && $p['a'] !== 'diag')) { http_response_code(400); echo '{"ok":false,"code":"requete"}'; exit; }
 $ch = curl_init($GAS . '?' . http_build_query($p));
 curl_setopt_array($ch, array(

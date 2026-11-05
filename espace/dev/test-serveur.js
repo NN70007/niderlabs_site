@@ -257,6 +257,21 @@ console.log('Aviator METAR : téléphone mémorisé');
   ok(av.post({ action: 'aviator.reprendre', memo: o3.memo }).ok, 'un nouveau téléphone peut être mémorisé ensuite');
 }
 
+console.log('Aviator METAR : fuseau horaire des aérodromes');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  const w = av.get({ a: 'w', id: 'tzWatch0123456789', k: 'tzKey0123456789ABCDEF', v: '0.6.9', r: '0', i: 'KJFK,lppd,xx;y,EGLL' });
+  ok(w.tz && w.tz.ELLX === av.ctx.tzSecondes_('Europe/Luxembourg', new Date()), 'aérodrome des réglages : décalage du jour');
+  ok(w.tz.KJFK === av.ctx.tzSecondes_('America/New_York', new Date()) && w.tz.KJFK < 0, 'KJFK envoyé par la montre : heure de New York');
+  ok(w.tz.LPPD === av.ctx.tzSecondes_('Atlantic/Azores', new Date()), 'Açores : fuseau propre (pas celui de Lisbonne)');
+  ok(!('XX;Y' in w.tz) && Object.keys(w.tz).length === 4, 'code OACI invalide ignoré');
+  const hiver = new Date(Date.UTC(2026, 0, 15)), ete = new Date(Date.UTC(2026, 6, 15));
+  ok(av.ctx.tzSecondes_('Europe/Luxembourg', hiver) === 3600 && av.ctx.tzSecondes_('Europe/Luxembourg', ete) === 7200, 'heure d\'été : +1 h en hiver, +2 h en été');
+  ok(av.ctx.tzSecondes_('America/Phoenix', hiver) === av.ctx.tzSecondes_('America/Phoenix', ete), 'Phoenix : pas d\'heure d\'été');
+  ok(av.ctx.tzZone_('ZZZZ') === null, 'aérodrome inconnu : pas de fuseau');
+}
+
 console.log('Aviator METAR Pro');
 {
   const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
@@ -281,6 +296,7 @@ console.log('Aviator METAR Pro');
   ok(w.p.cu.length <= 4, 'au plus 4 lignes pour la montre');
   const b = av.post({ action: 'pro.briefing', jeton: o.jeton });
   ok(b.ok && b.metar.ELLX && b.taf.ELLX && b.apt.ELLX && b.apt.ELLX.rwy.length, 'briefing : METAR, TAF et pistes');
+  ok(b.tz && b.tz.ELLX === av.ctx.tzSecondes_('Europe/Luxembourg', new Date()), 'briefing : décalage horaire de chaque aérodrome');
   ok(av.post({ action: 'pro.briefing', jeton: 'faux' }).code === 'session', 'briefing refusé sans session');
 }
 

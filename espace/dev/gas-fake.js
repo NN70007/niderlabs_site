@@ -152,6 +152,11 @@ function charger(opts) {
           const info = googleTokens[decodeURIComponent(url.split('id_token=')[1] || '')];
           return { getResponseCode: () => (info ? 200 : 400), getContentText: () => JSON.stringify(info || { error: 'invalid_token' }) };
         }
+        if (url.startsWith('https://niderlabs.com/aviator/tz/')) {
+          const f = path.join(RACINE, 'aviator', 'tz', url.split('/tz/')[1]);
+          const ok = fs.existsSync(f);
+          return { getResponseCode: () => (ok ? 200 : 404), getContentText: () => (ok ? fs.readFileSync(f, 'utf8') : '') };
+        }
         if (url.startsWith('https://aviationweather.gov/api/data/taf')) {
           const now = Math.floor(Date.now() / 1000);
           const out = [{ icaoId: 'ELLX', rawTAF: 'TAF ELLX ...', fcsts: [{ timeFrom: now - 3600, timeTo: now + 20 * 3600, wdir: 80, wspd: 12, visib: '6+', clouds: [{ cover: 'BKN', base: 2500 }] }, { timeFrom: now - 3600, timeTo: now + 3 * 3600, fcstChange: 'TEMPO', wdir: 80, wspd: 15, wgst: 25, visib: '', clouds: [] }] }];
@@ -176,7 +181,15 @@ function charger(opts) {
       base64Decode: (b64) => Array.from(Buffer.from(b64, 'base64')).map((b) => (b > 127 ? b - 256 : b)),
       computeDigest: (alg, s) => Array.from(crypto.createHash('sha256').update(String(s), 'utf8').digest()).map((b) => (b > 127 ? b - 256 : b)),
       getUuid: () => crypto.randomUUID(),
-      formatDate: (d) => d.toISOString().slice(0, 10)
+      formatDate: (d, tz, fmt) => {
+        if (fmt === 'Z') {
+          const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(d).map((x) => [x.type, x.value]));
+          const loc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+          const min = Math.round((loc - Math.floor(d.getTime() / 1000) * 1000) / 60000), a = Math.abs(min);
+          return (min < 0 ? '-' : '+') + String(Math.floor(a / 60)).padStart(2, '0') + String(a % 60).padStart(2, '0');
+        }
+        return d.toISOString().slice(0, 10);
+      }
     },
     ContentService: {
       MimeType: { JSON: 'json' },

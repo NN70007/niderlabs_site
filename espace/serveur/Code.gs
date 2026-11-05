@@ -525,6 +525,40 @@ function montreAppel_(p) {
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
   // Cadran Pro (version « P… ») : résumé TAF et rappels pilote, prêts à afficher
   if (/^P/.test(ver)) { try { out.p = proMontre_(m); } catch (e) { console.error(e && e.stack || e); } }
+  // Décalage horaire du jour (heure d'été comprise) des aérodromes de la montre : repère « L » sur le cadran
+  try {
+    var liste = icaosDe_(m).concat(String(p.i || '').toUpperCase().split(',').filter(function (x) { return /^[A-Z0-9]{4}$/.test(x); }).slice(0, 6));
+    out.tz = tzDecalages_(liste);
+  } catch (e) { console.error(e && e.stack || e); }
+  return out;
+}
+
+/* ----- Fuseau horaire des aérodromes (fichiers aviator/tz/<lettre>.json du site, calculés depuis OurAirports) ----- */
+function tzZone_(icao) {
+  icao = String(icao || '').toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(icao)) return null;
+  var L = icao.charAt(0), cache = CacheService.getScriptCache(), raw = cache.get('tzf:' + L);
+  if (!raw) {
+    var res = UrlFetchApp.fetch('https://niderlabs.com/aviator/tz/' + L + '.json', { muteHttpExceptions: true });
+    raw = res.getResponseCode() === 200 ? res.getContentText() : '{"z":[],"a":{}}';
+    try { cache.put('tzf:' + L, raw, 21600); } catch (e) { /* trop gros pour le cache : relu la prochaine fois */ }
+  }
+  var f = JSON.parse(raw), i = f.a[icao];
+  return i == null ? null : f.z[i];
+}
+/** Décalage UTC en secondes pour un fuseau IANA, à l'instant donné (heure d'été comprise). */
+function tzSecondes_(zone, quand) {
+  var z = Utilities.formatDate(quand || new Date(), zone, 'Z'), m = /^([+-])(\d\d)(\d\d)$/.exec(z);
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 3600 + Number(m[3]) * 60) : null;
+}
+function tzDecalages_(icaos) {
+  var out = {}, now = new Date();
+  icaos.forEach(function (ic) {
+    ic = String(ic || '').toUpperCase();
+    if (!ic || ic in out) return;
+    var z = tzZone_(ic);
+    if (z) { var s = tzSecondes_(z, now); if (s != null) out[ic] = s; }
+  });
   return out;
 }
 
@@ -763,7 +797,8 @@ function proBriefing_(jeton) {
   var m = montreDuJeton_(jeton), ic = icaosDe_(m);
   var apt = {};
   ic.forEach(function (i) { try { apt[i] = aviatorAeroportComplet_(i); } catch (e) { apt[i] = null; } });
-  return { ok: true, icaos: ic, metar: awc_('metar', ic, '&hours=3'), taf: awc_('taf', ic), apt: apt, pro: proDe_(m), reglages: reglagesDe_(m), maj: Date.now() };
+  var tz = {}; try { tz = tzDecalages_(ic); } catch (e) { console.error(e && e.stack || e); }
+  return { ok: true, icaos: ic, metar: awc_('metar', ic, '&hours=3'), taf: awc_('taf', ic), apt: apt, tz: tz, pro: proDe_(m), reglages: reglagesDe_(m), maj: Date.now() };
 }
 /** Aérodrome avec pistes (extrémités + orientation vraie) et coordonnées, 1 jour en cache. */
 function aviatorAeroportComplet_(icao) {
