@@ -15,14 +15,44 @@
     e.target.value = d.length > 3 ? d.slice(0, 3) + " " + d.slice(3) : d;
   });
 
+  var bOuvrir = $("#form-code button"); bOuvrir.setAttribute("data-t", bOuvrir.textContent);
+
+  // ---- « Remember this phone » : jeton gardé dans ce navigateur, 30 jours ----
+  var MEMO = "aviator-memo", viaQR = /[?&]c=\d{6}/.test(location.search);
+  function memoLire() { try { return localStorage.getItem(MEMO); } catch (e) { return null; } }
+  function memoEcrire(v, exp) { try { if (v) { localStorage.setItem(MEMO, v); localStorage.setItem(MEMO + "-exp", String(exp)); } else { localStorage.removeItem(MEMO); localStorage.removeItem(MEMO + "-exp"); } } catch (e) {} }
+  function memoInfo() {
+    var m = memoLire(), box = $("#memo-info");
+    if (!box) return;
+    box.hidden = !m;
+    if (m) {
+      var exp = Number((function () { try { return localStorage.getItem(MEMO + "-exp"); } catch (e) { return 0; } })()) || 0;
+      var d = new Date(exp), mois = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+      $("#memo-txt").textContent = "This phone is remembered" + (exp ? " until " + pad(d.getDate()) + " " + mois[d.getMonth()] + " " + d.getFullYear() : "") + ": no code needed. Lost it? Forget all phones from another device.";
+    }
+  }
+  function ouvert(o) {
+    jeton = o.jeton; reglages = o.reglages;
+    if (window.onAviatorOpen) window.onAviatorOpen(o.jeton, o);
+    afficher(o);
+    memoInfo();
+  }
+  function quitter(tous) {
+    var m = memoLire(), j = jeton;
+    memoEcrire(null); jeton = null;
+    var req = tous ? { action: "aviator.oublier", tous: true, jeton: j } : { action: "aviator.oublier", memo: m };
+    return (m || tous ? AVIATOR.appel(req).catch(function () {}) : Promise.resolve()).then(function () { location.href = location.pathname; });
+  }
+
   $("#form-code").addEventListener("submit", function (e) {
     e.preventDefault();
     var code = $("#code").value.replace(/\D/g, ""), b = e.target.querySelector("button"), err = $("#err-code");
     if (code.length !== 6) { msg(err, "Enter the 6 digits shown on your watch.", false); return; }
     b.disabled = true; b.textContent = "Checking…"; err.hidden = true;
-    AVIATOR.appel({ action: "aviator.ouvrir", code: code }).then(function (o) {
-      jeton = o.jeton; reglages = o.reglages;
-      afficher(o);
+    var garder = !!($("#garder") && $("#garder").checked);
+    AVIATOR.appel({ action: "aviator.ouvrir", code: code, garder: garder }).then(function (o) {
+      if (o.memo) memoEcrire(o.memo, o.memoExp);
+      ouvert(o);
     }).catch(function (x) { msg(err, x.message, false); })
       .then(function () { b.disabled = false; b.textContent = "Open my settings"; });
   });
@@ -157,5 +187,19 @@
     }).then(function () { b.disabled = false; b.textContent = "Save to my watch"; m.scrollIntoView({ block: "center" }); });
   });
 
-  $("#quitter").addEventListener("click", function () { jeton = null; });
+  $("#quitter").addEventListener("click", function (e) { e.preventDefault(); quitter(false); });
+  if ($("#memo-oublier")) $("#memo-oublier").addEventListener("click", function () { quitter(false); });
+  if ($("#memo-tous")) $("#memo-tous").addEventListener("click", function () { quitter(true); });
+
+  // Téléphone mémorisé : ouverture directe, sans code (sauf arrivée par le QR code)
+  (function () {
+    var m = memoLire();
+    if (!m || viaQR) return;
+    var b = $("#form-code button");
+    b.disabled = true; b.textContent = "Opening…";
+    AVIATOR.appel({ action: "aviator.reprendre", memo: m }).then(ouvert).catch(function (x) {
+      if (x.code === "memo") memoEcrire(null);
+      b.disabled = false; b.textContent = b.getAttribute("data-t") || b.textContent;
+    }).then(function () { if (b.textContent === "Opening…") b.textContent = b.getAttribute("data-t"); });
+  })();
 })();

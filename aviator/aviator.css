@@ -120,3 +120,9 @@ select,.nombre{height:72px;width:100%;border-radius:14px;border:2px solid var(--
   .theme{display:flex;align-items:center;justify-content:center}
   .theme::before{content:"";width:20px;height:20px;border-radius:50%;border:2px solid var(--encre);background:linear-gradient(90deg,var(--encre) 50%,transparent 50%)}
 }
+
+/* Bloc « favori + téléphone mémorisé » sous le code */
+.memo{display:flex;flex-direction:column;gap:12px}
+.memo .case{font-size:19px;line-height:1.45}
+.memo .case b{color:var(--encre)}
+#memo-info .ligne .bouton{flex:1 1 220px}

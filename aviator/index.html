@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="aviator.css?v=5">
+<link rel="stylesheet" href="aviator.css?v=6">
 <script src="commun.js?v=1"></script>
-<script src="aviator.js?v=5" defer></script>
+<script src="aviator.js?v=6" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -35,6 +35,10 @@
     <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
       <label class="titre" for="code">WATCH CODE</label>
       <input class="code" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000" required>
+      <div class="memo">
+        <p class="aide"><b>Save this page to your bookmarks</b> (or add it to your home screen) to come back in one tap.</p>
+        <label class="case"><input type="checkbox" id="garder"><span><b>Remember this phone for 30 days</b> – no code needed when you come back. Anyone who uses this phone can then change your watch settings. Tick it only on your own phone.</span></label>
+      </div>
       <button class="bouton" type="submit">Open my settings</button>
       <div class="message err" id="err-code" role="alert" hidden></div>
     </form>
@@ -94,6 +98,13 @@
 
     <button class="bouton" type="submit" id="enregistrer">Save to my watch</button>
     <div class="message" id="msg" role="status" hidden></div>
+    <div class="carte" id="memo-info" hidden>
+      <p class="aide" id="memo-txt"></p>
+      <div class="ligne">
+        <button class="bouton second" type="button" id="memo-oublier">Forget this phone</button>
+        <button class="bouton second" type="button" id="memo-tous">Forget all phones</button>
+      </div>
+    </div>
   </form>
 </main>
 

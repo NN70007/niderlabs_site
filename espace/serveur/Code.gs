@@ -43,6 +43,7 @@ var CONFIG = {
   // Aviator METAR (montres)
   MONTRE_CODE_MINUTES: 15,
   MONTRE_SESSION_MINUTES: 120,
+  MONTRE_MEMO_JOURS: 30, // « Remember this phone »
   MONTRE_ESSAIS_PAR_MINUTE: 30,
   CARTE_JOURS: 30
 };
@@ -96,7 +97,9 @@ function route_(req) {
   if (a === 'auth.demanderCode') return demanderCode_(req.email);
   if (a === 'auth.verifierCode') return verifierCode_(req.email, req.code);
   // Aviator METAR : page publique niderlabs.com/aviator (pas de compte, code affiché sur la montre)
-  if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code);
+  if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code, req.garder === true);
+  if (a === 'aviator.reprendre') return aviatorReprendre_(req.memo);
+  if (a === 'aviator.oublier') return aviatorOublier_(req.memo, req.jeton, req.tous === true);
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
@@ -543,7 +546,7 @@ function codeMontre_(id) {
   return { code: code, exp: exp };
 }
 
-function aviatorOuvrir_(code) {
+function aviatorOuvrir_(code, garder) {
   code = String(code || '').replace(/\D/g, '');
   if (code.length !== 6) throw refus_('Enter the 6-digit code shown on your watch.', 'code');
   var cache = CacheService.getScriptCache();
@@ -554,9 +557,52 @@ function aviatorOuvrir_(code) {
   if (!id) throw refus_('Unknown or expired code. Check the code on your watch (it changes every few minutes).', 'code');
   var m = montre_(id);
   if (!m) throw refus_('Unknown watch.', 'code');
+  var o = sessionMontre_(m);
+  if (garder) { var mm = memoCreer_(m.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
+  return o;
+}
+
+/** Session web (2 h) pour une montre : jeton en cache, réglages renvoyés à la page. */
+function sessionMontre_(m) {
   var jeton = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-  cache.put('mtok:' + hash_(jeton), id, CONFIG.MONTRE_SESSION_MINUTES * 60);
+  CacheService.getScriptCache().put('mtok:' + hash_(jeton), m.Id, CONFIG.MONTRE_SESSION_MINUTES * 60);
   return { ok: true, jeton: jeton, reglages: reglagesDe_(m), statut: m.Statut || 'beta', accepte: !!m.Accepte, carte: m.Carte !== 'non' };
+}
+
+/* « Remember this phone » : jeton longue durée gardé dans le navigateur, empreinte seule côté serveur.
+   Génération par montre : « Forget all phones » l'incrémente et invalide tous les téléphones mémorisés. */
+function memoGen_(id) { return Number(PropertiesService.getScriptProperties().getProperty('mgen:' + id) || 0); }
+function memoCreer_(id) {
+  var memo = 'm' + Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  var exp = Date.now() + CONFIG.MONTRE_MEMO_JOURS * 86400000;
+  PropertiesService.getScriptProperties().setProperty('mrem:' + hash_(memo), JSON.stringify({ id: id, exp: exp, g: memoGen_(id) }));
+  return { memo: memo, exp: exp };
+}
+function memoLire_(memo) {
+  memo = String(memo || '');
+  if (!/^m[0-9a-f]{64}$/.test(memo)) return null;
+  var props = PropertiesService.getScriptProperties(), k = 'mrem:' + hash_(memo), raw = props.getProperty(k);
+  if (!raw) return null;
+  var r; try { r = JSON.parse(raw); } catch (e) { r = null; }
+  if (!r || r.exp < Date.now() || r.g !== memoGen_(r.id)) { props.deleteProperty(k); return null; }
+  return r;
+}
+function aviatorReprendre_(memo) {
+  var r = memoLire_(memo);
+  if (!r) throw refus_('This phone is no longer remembered. Enter the code shown on your watch.', 'memo');
+  var m = montre_(r.id);
+  if (!m) throw refus_('Unknown watch.', 'memo');
+  var o = sessionMontre_(m); o.memoExp = r.exp;
+  return o;
+}
+function aviatorOublier_(memo, jeton, tous) {
+  if (tous) {
+    var m = montreDuJeton_(jeton);
+    PropertiesService.getScriptProperties().setProperty('mgen:' + m.Id, String(memoGen_(m.Id) + 1));
+    return { ok: true };
+  }
+  if (memo) PropertiesService.getScriptProperties().deleteProperty('mrem:' + hash_(String(memo)));
+  return { ok: true };
 }
 
 function reglagesDe_(m) {

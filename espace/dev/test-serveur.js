@@ -234,6 +234,29 @@ console.log('Aviator METAR : montres');
   ok(c.ok && c.points.length === 3 && c.points.every((p) => p.t === '1-4' && isFinite(p.lat)), 'carte : 3 aéroports, nombre en tranches');
 }
 
+console.log('Aviator METAR : téléphone mémorisé');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  const w = av.get({ a: 'w', id: 'memoWatch01234567', k: 'memoKey0123456789ABCDEF', v: '0.6.8', r: '0' });
+  const sans = av.post({ action: 'aviator.ouvrir', code: w.c });
+  ok(sans.ok && !sans.memo, 'sans la case : aucun jeton longue durée');
+  const o = av.post({ action: 'aviator.ouvrir', code: w.c, garder: true });
+  ok(o.ok && /^m[0-9a-f]{64}$/.test(o.memo) && o.memoExp > Date.now() + 29 * 86400000, 'case cochée : jeton mémorisé 30 jours');
+  ok(!JSON.stringify(av.props).includes(o.memo), 'le jeton mémorisé n\'est jamais stocké en clair');
+  const r = av.post({ action: 'aviator.reprendre', memo: o.memo });
+  ok(r.ok && r.jeton && r.reglages.icao === 'ELLX', 'reprise sans code : réglages de la montre');
+  ok(av.post({ action: 'aviator.reprendre', memo: 'm' + '0'.repeat(64) }).code === 'memo', 'jeton inventé refusé');
+  ok(av.post({ action: 'aviator.reprendre', memo: 'x' }).code === 'memo', 'jeton mal formé refusé');
+  const o2 = av.post({ action: 'aviator.ouvrir', code: w.c, garder: true });
+  ok(av.post({ action: 'aviator.oublier', memo: o2.memo }).ok && av.post({ action: 'aviator.reprendre', memo: o2.memo }).code === 'memo', 'oublier ce téléphone');
+  ok(av.post({ action: 'aviator.reprendre', memo: o.memo }).ok, 'les autres téléphones restent mémorisés');
+  ok(av.post({ action: 'aviator.oublier', tous: true, jeton: 'faux' }).code === 'session', 'oublier tous : session requise');
+  ok(av.post({ action: 'aviator.oublier', tous: true, jeton: r.jeton }).ok && av.post({ action: 'aviator.reprendre', memo: o.memo }).code === 'memo', 'oublier tous les téléphones');
+  const o3 = av.post({ action: 'aviator.ouvrir', code: w.c, garder: true });
+  ok(av.post({ action: 'aviator.reprendre', memo: o3.memo }).ok, 'un nouveau téléphone peut être mémorisé ensuite');
+}
+
 console.log('Aviator METAR Pro');
 {
   const av = charger({ props: { SITE_NOM: 'NiderLabs' } });

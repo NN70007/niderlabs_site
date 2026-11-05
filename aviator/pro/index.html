@@ -9,10 +9,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../aviator.css?v=5">
-<link rel="stylesheet" href="pro.css?v=8">
+<link rel="stylesheet" href="../aviator.css?v=6">
+<link rel="stylesheet" href="pro.css?v=9">
 <script src="../commun.js?v=1"></script>
-<script src="reglages.js?v=3" defer></script>
+<script src="reglages.js?v=4" defer></script>
 <script src="pro.js?v=3" defer></script>
 </head>
 <body>
@@ -37,6 +37,10 @@
     <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
       <label class="titre" for="code">WATCH CODE</label>
       <input class="code" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000" required>
+      <div class="memo">
+        <p class="aide"><b>Save this page to your bookmarks</b> (or add it to your home screen) to come back in one tap.</p>
+        <label class="case"><input type="checkbox" id="garder"><span><b>Remember this phone for 30 days</b> – no code needed when you come back. Anyone who uses this phone can then change your watch settings and see your logbook and licence dates. Tick it only on your own phone.</span></label>
+      </div>
       <button class="bouton" type="submit">Open my briefing</button>
       <div class="message err" id="err-code" role="alert" hidden></div>
     </form>
@@ -84,11 +88,11 @@
       </div>
       <h2>Log a flight</h2>
       <div class="carte">
-        <div class="grille petite">
-          <div><label class="titre" for="lg-d">DATE</label><input class="date" type="date" id="lg-d"></div>
-          <div><label class="titre" for="lg-h">FLIGHT TIME (h)</label><input class="nombre large" id="lg-h" inputmode="decimal" placeholder="1.2"></div>
+        <div class="lg-grille">
+          <div class="lg-date"><label class="titre" for="lg-d">DATE</label><input class="date" type="date" id="lg-d"></div>
+          <div><label class="titre" for="lg-h"><span class="long">FLIGHT TIME (h)</span><span class="court">HOURS</span></label><input class="nombre large" id="lg-h" inputmode="decimal" placeholder="1.2"></div>
           <div><label class="titre" for="lg-l">LANDINGS</label><input class="nombre large" id="lg-l" inputmode="numeric" placeholder="1"></div>
-          <div><label class="titre" for="lg-n">NIGHT LANDINGS</label><input class="nombre large" id="lg-n" inputmode="numeric" placeholder="0"></div>
+          <div><label class="titre" for="lg-n">NIGHT <span class="long">LANDINGS</span><span class="court">LDG</span></label><input class="nombre large" id="lg-n" inputmode="numeric" placeholder="0"></div>
         </div>
         <label class="case"><input type="checkbox" id="lg-pic" checked><span>I was pilot in command</span></label>
         <label class="case"><input type="checkbox" id="lg-fi"><span>Flight with an instructor (counts for the SEP revalidation training flight)</span></label>
@@ -149,6 +153,13 @@
 
     <button class="bouton" type="submit" id="enregistrer">Save to my watch</button>
     <div class="message" id="msg" role="status" hidden></div>
+    <div class="carte" id="memo-info" hidden>
+      <p class="aide" id="memo-txt"></p>
+      <div class="ligne">
+        <button class="bouton second" type="button" id="memo-oublier">Forget this phone</button>
+        <button class="bouton second" type="button" id="memo-tous">Forget all phones</button>
+      </div>
+    </div>
   </form>
     </section>
   </div>

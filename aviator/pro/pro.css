@@ -78,3 +78,21 @@ input.date{height:64px;width:100%;border-radius:14px;border:2px solid var(--bord
 @media (max-width:600px){.marque{padding-right:52px}}
 @media (max-width:360px){.marque{font-size:19px}.badge-pro{font-size:12px}}
 @media (max-width:360px){.marque{font-size:18px;gap:6px}.marque svg{width:22px;height:22px}.onglets button{font-size:14px}}
+
+/* Formulaire « Log a flight » */
+.lg-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lg-grille>div{display:flex;flex-direction:column;justify-content:flex-end;gap:8px;min-width:0}
+.lg-grille .lg-date{grid-column:1/-1}
+.lg-grille label.titre{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-grille .nombre{height:64px;font-size:34px}
+input.date{display:block;min-width:0;-webkit-appearance:none;appearance:none;text-align:left}
+.court{display:none}
+@media (max-width:600px){
+  .lg-grille{gap:10px}
+  .lg-grille label.titre{font-size:15px;letter-spacing:.5px}
+  .lg-grille .unite-p{display:none}
+  .lg-grille .long{display:none}.lg-grille .court{display:inline}
+  .lg-grille .nombre{height:60px;font-size:32px;padding:0 4px}
+  input.date{height:60px;font-size:21px}
+  .memo .case{font-size:17px}
+}
