@@ -96,3 +96,17 @@ input.date{display:block;min-width:0;-webkit-appearance:none;appearance:none;tex
   input.date{height:60px;font-size:21px}
   .memo .case{font-size:17px}
 }
+
+/* Dates : valeur à gauche et centrée verticalement aussi sur iPhone */
+input.date{height:64px;line-height:60px;padding:0 16px}
+input.date::-webkit-date-and-time-value{line-height:60px}
+/* Pistes : tableau dans une carte, comme les autres blocs */
+table.pistes{border:2px solid var(--trait);border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden}
+table.pistes th{background:color-mix(in srgb,var(--trait) 45%,transparent)}
+table.pistes th,table.pistes td{padding:12px 14px}
+table.pistes tr:last-child td{border-bottom:0}
+@media (max-width:600px){
+  input.date{height:60px;line-height:56px;padding:0 14px}
+  input.date::-webkit-date-and-time-value{line-height:56px}
+  table.pistes th,table.pistes td{padding:10px 10px}
+}

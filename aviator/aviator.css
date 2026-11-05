@@ -126,3 +126,11 @@ select,.nombre{height:72px;width:100%;border-radius:14px;border:2px solid var(--
 .memo .case{font-size:19px;line-height:1.45}
 .memo .case b{color:var(--encre)}
 #memo-info .ligne .bouton{flex:1 1 220px}
+
+/* ---- iOS Safari : listes déroulantes et dates au même style que le reste ---- */
+select{-webkit-appearance:none;appearance:none;padding-right:48px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%238A939C' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 16px center;background-size:20px}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;text-align:left;line-height:normal}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-datetime-edit{padding:0}
