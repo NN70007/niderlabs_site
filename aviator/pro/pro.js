@@ -7,6 +7,9 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function msg(el, txt, ok) { el.textContent = txt; el.className = "message " + (ok ? "ok" : "err"); el.hidden = !txt; }
   function hm(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  // heure locale de l'aérodrome (décalage UTC en secondes envoyé par le serveur, heure d'été comprise)
+  function hmA(d, off) { if (off == null) return hm(d); var x = new Date(d.getTime() + off * 1000); return pad(x.getUTCHours()) + ":" + pad(x.getUTCMinutes()); }
+  function utcTxt(off) { var m = Math.round(off / 60), a = Math.abs(m); return "UTC" + (m < 0 ? "−" : "+") + Math.floor(a / 60) + (a % 60 ? ":" + pad(a % 60) : ""); }
   function hmz(d) { return pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "Z"; }
   var MOIS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   function jour(t) { var d = new Date(t); return pad(d.getUTCDate()) + " " + MOIS[d.getUTCMonth()] + " " + d.getUTCFullYear(); }
@@ -102,6 +105,8 @@
     var roles = ["DEPARTURE", "DESTINATION", "ALTERNATE"];
     o.icaos.forEach(function (ic, idx) {
       var m = (o.metar[ic] || [])[0], t = (o.taf[ic] || [])[0], apt = o.apt[ic], bs = bouts(apt);
+      var off = o.tz && typeof o.tz[ic] === "number" ? o.tz[ic] : null;
+      var autre = off != null && off !== -new Date().getTimezoneOffset() * 60;
       html += '<article class="apt"><div class="apt-tete"><span class="icao-g">' + esc(ic) + '</span><span class="nom">' + esc(roles[idx] || "") + (apt ? " · " + esc(apt.nom) : "") + "</span>";
       if (!m) { html += '</div><p class="aide">No recent METAR for this aerodrome.</p>'; }
       else {
@@ -139,9 +144,11 @@
         var lv = soleil(apt.lat, apt.lon, d, z, true), co = soleil(apt.lat, apt.lon, d, z, false), fin = soleil(apt.lat, apt.lon, d, cz, false), deb = soleil(apt.lat, apt.lon, d, cz, true);
         if (co && fin) {
           var reste = Math.round((fin - Date.now()) / 60000);
-          html += '<div class="faits">' + fait("SUNRISE", lv ? hm(lv) : "–", lv ? hmz(lv) : "") + fait("SUNSET", hm(co), hmz(co)) +
-            fait("NIGHT BEGINS", hm(fin), hmz(fin) + " · end of civil twilight") +
-            fait("DAYLIGHT LEFT", reste > 0 ? Math.floor(reste / 60) + " h " + pad(reste % 60) : "NIGHT", reste > 0 ? "until night (EASA)" : "first light " + (deb ? hm(deb) : "–")) + "</div>";
+          var h = function (x) { return hmA(x, off); }, lcl = autre ? " · local" : "";
+          if (autre) html += '<p class="aide">Times below are local at ' + esc(ic) + " (" + utcTxt(off) + ") – now " + h(new Date()) + " there.</p>";
+          html += '<div class="faits">' + fait("SUNRISE", lv ? h(lv) : "–", lv ? hmz(lv) + lcl : "") + fait("SUNSET", h(co), hmz(co) + lcl) +
+            fait("NIGHT BEGINS", h(fin), hmz(fin) + " · end of civil twilight") +
+            fait("DAYLIGHT LEFT", reste > 0 ? Math.floor(reste / 60) + " h " + pad(reste % 60) : "NIGHT", reste > 0 ? "until night (EASA)" : "first light " + (deb ? h(deb) : "–")) + "</div>";
         }
       }
       if (t) {

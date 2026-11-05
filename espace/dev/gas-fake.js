@@ -166,7 +166,7 @@ function charger(opts) {
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify([{ icaoId: 'ELLX', rawOb: 'METAR ELLX 041620Z 08012KT CAVOK 09/03 Q1018', obsTime: Math.floor(Date.now() / 1000) - 600, wdir: 80, wspd: 12, altim: 1018 }]) };
         }
         if (url.startsWith('https://aviationweather.gov/api/data/airport')) {
-          const AP = { ELLX: [49.6233, 6.2044, 'Luxembourg/Findel'], LFSB: [47.59, 7.5291, 'Basel/Mulhouse'], LSGS: [46.2196, 7.3267, 'Sion'] };
+          const AP = { ELLX: [49.6233, 6.2044, 'Luxembourg/Findel'], LFSB: [47.59, 7.5291, 'Basel/Mulhouse'], LSGS: [46.2196, 7.3267, 'Sion'], KJFK: [40.6398, -73.7789, 'New York JFK'] };
           const ids = decodeURIComponent(url.split('ids=')[1].split('&')[0]).split(',');
           const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2], runways: i === 'ELLX' ? [{ id: '06/24' }] : [{ id: '07/25' }, { id: '15/33' }] }));
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
