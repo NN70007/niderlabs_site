@@ -40,3 +40,41 @@ input.date{height:64px;width:100%;border-radius:14px;border:2px solid var(--bord
 .apt{min-width:0}
 @media (max-width:520px){.apt{padding:16px}.apt-tete .icao-g{font-size:36px}table.pistes,table.taf{font-size:17px}.fait b{font-size:26px}.onglets button{font-size:18px;padding:0 12px}}
 #cur-cartes{align-items:start}
+
+/* ---- Téléphone : 4 onglets sur une ligne, TAF en cartes ---- */
+.onglets .court{display:none}
+@media (max-width:600px){
+  .badge-pro{font-size:14px;padding:1px 7px;margin-left:2px}
+  .ruban{font-size:15px;padding:4px 12px}
+  .onglets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 -16px;padding:10px 16px;border-bottom:1px solid var(--trait)}
+  .onglets button{min-height:52px;padding:0 4px;font-size:16px;border-radius:12px}
+  .onglets .long{display:none}.onglets .court{display:inline}
+  .ligne-titre h1{font-size:36px}
+  .apt{padding:16px;gap:14px;border-radius:16px}
+  .faits{grid-template-columns:1fr 1fr;gap:8px}
+  .fait{padding:10px 12px}
+  .fait span{font-size:13px}
+  table.pistes th{white-space:nowrap}
+  table.taf,table.taf tbody{display:block}
+  table.taf thead{display:none}
+  table.taf tr{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px 0;border-bottom:1px solid var(--trait)}
+  table.taf td{display:block;padding:0;border:0}
+  table.taf td:nth-child(1){grid-column:1;grid-row:1;font-weight:700;color:var(--encre-2);align-self:center}
+  table.taf td:nth-child(3){grid-column:2;grid-row:1}
+  table.taf td:nth-child(2){grid-column:1/3;grid-row:2}
+  .verdict{white-space:nowrap;font-size:18px;padding:4px 12px}
+  .cat{font-size:19px;padding:2px 10px}
+  .statut-c{padding:16px}
+  .statut-c b{font-size:26px}
+  .vol{font-size:17px}
+}
+@media (max-width:600px){
+  .marque{white-space:nowrap;font-size:21px;padding-right:110px}
+  table.pistes{font-size:15px}
+  table.pistes th{font-size:12px;letter-spacing:.5px}
+  table.pistes th,table.pistes td{padding:8px 4px}
+  tr.best td:first-child::after{font-size:11px}
+}
+@media (max-width:600px){.marque{padding-right:52px}}
+@media (max-width:360px){.marque{font-size:19px}.badge-pro{font-size:12px}}
+@media (max-width:360px){.marque{font-size:18px;gap:6px}.marque svg{width:22px;height:22px}.onglets button{font-size:14px}}

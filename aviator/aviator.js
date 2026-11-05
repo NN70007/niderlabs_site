@@ -36,7 +36,7 @@
       d.innerHTML = '<label class="titre" for="icao' + i + '">' + ROLES[i] + '</label>' +
         '<input class="icao" id="icao' + i + '" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="' + (i ? "—" : "ELLX") + '" value="' + esc(r["icao" + s] || "") + '">' +
         '<div class="nom-apt" id="nom' + i + '"></div>' +
-        '<input class="recherche" id="q' + i + '" type="search" autocomplete="off" spellcheck="false" placeholder="or type a city or airport name" aria-label="Search ' + ROLES[i].toLowerCase() + ' by city or name">' +
+        '<input class="recherche" id="q' + i + '" type="search" autocomplete="off" spellcheck="false" placeholder="Search a city or airport" aria-label="Search ' + ROLES[i].toLowerCase() + ' by city or name">' +
         '<div class="suggestions" id="sg' + i + '" role="listbox" hidden></div>' +
         '<label class="titre" for="rwy' + i + '">RUNWAY</label>' +
         '<select id="rwy' + i + '"><option value="0">AUTO (into wind)</option></select>';
