@@ -15,3 +15,18 @@
 .vol .infos b{font:700 30px var(--titre)}
 .vol .suppr{align-self:flex-start}
 @media (max-width:600px){.vol .num{font-size:34px}.vol .route{font-size:26px}.date{height:76px;font-size:26px}}
+/* 0.2 : frise, carte, boutons de trajet */
+.frise{position:relative;margin:8px 4px 4px;height:124px}
+.frise .rail{position:absolute;left:0;right:0;top:56px;height:6px;border-radius:3px;background:var(--trait)}
+.frise .fait{position:absolute;left:0;top:56px;height:6px;border-radius:3px;background:var(--accent)}
+.frise .pt{position:absolute;top:50px;width:18px;height:18px;margin-left:-9px;border-radius:9px;background:var(--surface);border:3px solid var(--bord)}
+.frise .lb.lh{top:0}
+.frise .lb.lb2{top:74px}
+.frise .pt.ok{background:var(--accent);border-color:var(--accent)}
+.frise .lb{position:absolute;transform:translateX(-50%);text-align:center;font-size:14px;font-weight:600;color:var(--encre-3);white-space:nowrap;line-height:1.2}
+.frise .lb b{display:block;font:700 20px var(--titre);color:var(--encre)}
+.carte-vol{height:260px;border-radius:14px;border:2px solid var(--trait)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.actions .bouton{flex:1 1 200px;min-height:60px;font-size:20px}
+.depart{font:700 26px var(--titre);color:var(--ambre)}
+.actions a.bouton{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--encre)}

@@ -90,7 +90,13 @@
         d.innerHTML = '<div class="haut"><span class="num">' + esc(v.n) + '</span><span class="route">' + esc(v.o) + " → " + esc(v.a) + '</span><span class="etat ' + e[1] + '">' + e[0] + "</span></div>" +
           '<p class="aide">' + esc(jour(depT, v.oz)) + " · " + esc(v.oc || v.o) + " → " + esc(v.ac2 || v.a) + (v.al ? " · " + esc(v.al) : "") + "</p>" +
           '<div class="infos">' + info("DEPARTS", hm(depT, v.oz)) + info("ARRIVES", arrT ? hm(arrT, v.az) : "") + info("GATE", (v.gp ? v.g + " (was " + v.gp + ")" : v.g)) +
-          info("TERMINAL", v.t) + info("SEAT", v.s) + info("CHECK-IN", v.ck) + info("BELT", v.b) + info("AIRCRAFT", v.md) + "</div>";
+          info("TERMINAL", v.t) + info("SEAT", v.s) + info("CHECK-IN", v.ck) + info("BELT", v.b) + info("AIRCRAFT", v.md) +
+          info("ARR. GATE", v.ag) + info("ARR. TERMINAL", v.ta) + "</div>" +
+          (v.ld ? '<p class="aide"><b style="color:var(--ambre)">Likely delay +' + v.ld + ' min</b>: the aircraft that will fly you lands late.</p>' : "") +
+          (v.lv ? '<p class="depart">Leave home at ' + hm(v.lv, -new Date().getTimezoneOffset() * 60) + "</p>" : "") +
+          frise(v) + '<div class="carte-vol" id="map-' + esc(v.n.replace(/\W/g, "") + v.d) + '"></div>' +
+          '<div class="actions">' + (v.ola != null ? '<a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber to ' + esc(v.o) + "</a>" : "") +
+          '<button class="bouton second" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button></div>';
       }
       var b = document.createElement("button");
       b.type = "button"; b.className = "bouton second suppr"; b.textContent = "Remove";
@@ -101,7 +107,54 @@
       });
       d.appendChild(b);
       box.appendChild(d);
+      var cp = d.querySelector("[data-copier]");
+      if (cp) cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier"), cp); });
+      if (!v.inconnu) carteVol(v);
     });
+  }
+
+  // ---- Frise : bag drop, embarquement, portes, départ (heures estimées) ----
+  function frise(v) {
+    var dep = v.ed || v.sd, now = Date.now() / 1000;
+    var pts = [["BAG DROP", dep - 2700], ["BOARDING", dep - 2400], ["DOORS", dep - 900], ["DEPARTS", dep]];
+    if (v.tk) pts.push(["TAKE-OFF", v.tk]);
+    var t0 = pts[0][1], t1 = pts[pts.length - 1][1], pos = function (t) { return Math.max(0, Math.min(100, (t - t0) / (t1 - t0) * 100)); };
+    var h = '<div class="frise"><div class="rail"></div><div class="fait" style="width:' + pos(now).toFixed(1) + '%"></div>';
+    pts.forEach(function (p, i) {
+      var x = pos(p[1]), al = x < 14 ? "left:0;transform:none;text-align:left" : (x > 86 ? "right:0;left:auto;transform:none;text-align:right" : "left:" + x + "%");
+      h += '<div class="pt' + (now >= p[1] ? " ok" : "") + '" style="left:' + x + '%"></div><div class="lb ' + (i % 2 ? "lh" : "lb2") + '" style="' + al + '">' + p[0] + "<br><b>" + hm(p[1], v.oz) + "</b></div>";
+    });
+    return h + '</div><p class="aide">Bag drop, boarding and doors are estimated from the departure time. Follow the airport screens.</p>';
+  }
+
+  // ---- Carte : route et position estimée de l'avion ----
+  function carteVol(v) {
+    var el = document.getElementById("map-" + v.n.replace(/\W/g, "") + v.d);
+    if (!el || v.ola == null || v.ala == null || !window.L) { if (el) el.remove(); return; }
+    var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/" + (AVIATOR.sombre() ? "dark_all" : "light_all") + "/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap © CARTO", maxZoom: 10 }).addTo(m);
+    var a = [v.ola, v.olo], b = [v.ala, v.alo], ligne = [];
+    for (var i = 0; i <= 40; i++) { var f = i / 40; ligne.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]); }
+    L.polyline(ligne, { color: "#4F8FE8", weight: 3, dashArray: "6 6" }).addTo(m);
+    L.circleMarker(a, { radius: 6, color: "#4F8FE8", fillOpacity: 1 }).addTo(m).bindTooltip(v.o, { permanent: true, direction: "left" });
+    L.circleMarker(b, { radius: 6, color: "#4F8FE8", fillOpacity: 1 }).addTo(m).bindTooltip(v.a, { permanent: true, direction: "right" });
+    var now = Date.now() / 1000, d0 = v.tk || v.ed || v.sd, d1 = v.ea || v.sa;
+    if (d0 && d1 && now > d0 && now < d1) {
+      var f = (now - d0) / (d1 - d0), p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+      L.circleMarker(p, { radius: 9, color: "#FFFFFF", fillColor: "#4F8FE8", fillOpacity: 1, weight: 3 }).addTo(m).bindTooltip("Estimated position", { direction: "top" });
+    }
+    m.fitBounds([a, b], { padding: [30, 30] });
+  }
+
+  function uber(v) {
+    return "https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff%5Blatitude%5D=" + v.ola + "&dropoff%5Blongitude%5D=" + v.olo +
+      "&dropoff%5Bnickname%5D=" + encodeURIComponent((v.oc || v.o) + " Airport" + (v.t ? " T" + v.t : ""));
+  }
+  function adresseAeroport(v) { return (v.oc || v.o) + " Airport (" + v.o + ")" + (v.t ? ", Terminal " + v.t : ""); }
+  function copier(txt, btn) {
+    var fin = function () { var t = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(function () { btn.textContent = t; }, 1800); };
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fin).catch(function () { prompt("Copy:", txt); });
+    else prompt("Copy:", txt);
   }
   function erreur(x) {
     var m = $("#msg");
@@ -110,7 +163,7 @@
   }
   function charger() {
     $("#liste").innerHTML = '<p class="aide">Loading…</p>';
-    AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(function (o) { afficherVols(o); maison(o.h); }).catch(erreur);
+    AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(function (o) { afficherVols(o); maison(o.h); trajetAfficher(o.tr); alertesEtat(o.alertes); }).catch(erreur);
   }
 
   // ---- Fuseau maison ----
@@ -265,6 +318,83 @@
     };
     img.src = url;
     e.target.value = "";
+  });
+
+  // ---- Alertes (Web Push) ----
+  var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent), installee = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  function b64(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); var r = atob(s + "===".slice((s.length + 3) % 4)), o = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) o[i] = r.charCodeAt(i); return o; }
+  function alertesEtat(n) {
+    var ok = "serviceWorker" in navigator && "PushManager" in window, e = $("#alertes-etat"), b = $("#alertes");
+    $("#alertes-ios").hidden = !(iOS && !installee);
+    if (!ok) { b.disabled = true; e.textContent = iOS && !installee ? "" : "This browser cannot receive alerts."; return; }
+    b.disabled = iOS && !installee;
+    e.textContent = n ? "Alerts are on for " + n + " device" + (n > 1 ? "s" : "") + "." : "";
+    if (n) b.textContent = "Turn on alerts on this phone too";
+  }
+  $("#alertes").addEventListener("click", function () {
+    var b = $("#alertes"); b.disabled = true;
+    Notification.requestPermission().then(function (p) {
+      if (p !== "granted") throw { message: "Notifications are blocked for this site. Allow them in your browser settings." };
+      return Promise.all([navigator.serviceWorker.register("sw.js", { scope: "./" }), AVIATOR.appel({ action: "boarding.cle" })]);
+    }).then(function (r) {
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(r[1].cle) }); });
+      });
+    }).then(function (sub) {
+      return AVIATOR.appel({ action: "boarding.abonner", jeton: jeton, sub: sub.toJSON() });
+    }).then(function (o) { alertesEtat(o.alertes); msg($("#msg"), "Alerts are on. A test notification is on its way.", true); })
+      .catch(function (x) { erreur(x); }).then(function () { b.disabled = false; });
+  });
+
+  // ---- Trajet vers l'aéroport ----
+  var depart = null;
+  function trajetAfficher(tr) {
+    if (!tr) return;
+    depart = { la: tr.la, lo: tr.lo, lab: tr.lab };
+    $("#adr-choisie").textContent = "Starting point: " + (tr.lab || tr.la + ", " + tr.lo);
+    var r = document.querySelector('input[name="mode"][value="' + tr.mode + '"]'); if (r) r.checked = true;
+    if (tr.min) $("#minutes").value = tr.min;
+    $("#avance").value = tr.av || 90;
+    majMode();
+  }
+  function majMode() { var m = document.querySelector('input[name="mode"]:checked'); $("#ligne-min").hidden = !(m && m.value === "min"); }
+  document.querySelectorAll('input[name="mode"]').forEach(function (x) { x.addEventListener("change", majMode); });
+  var nAdr = 0, tAdr = null;
+  $("#adresse").addEventListener("input", function () {
+    clearTimeout(tAdr);
+    var q = $("#adresse").value.trim(), box = $("#adr-sg");
+    if (q.length < 4) { box.hidden = true; return; }
+    tAdr = setTimeout(function () {
+      var mine = ++nAdr;
+      fetch("https://nominatim.openstreetmap.org/search?format=json&limit=5&q=" + encodeURIComponent(q), { headers: { "Accept-Language": "en" } })
+        .then(function (r) { return r.json(); }).then(function (l) {
+          if (mine !== nAdr) return;
+          box.innerHTML = "";
+          l.forEach(function (a) {
+            var bt = document.createElement("button"); bt.type = "button"; bt.className = "sugg";
+            bt.innerHTML = "<span>" + esc(a.display_name) + "</span>";
+            bt.addEventListener("click", function () {
+              depart = { la: Number(a.lat), lo: Number(a.lon), lab: a.display_name.split(",").slice(0, 3).join(",") };
+              $("#adr-choisie").textContent = "Starting point: " + depart.lab; box.hidden = true; $("#adresse").value = "";
+            });
+            box.appendChild(bt);
+          });
+          box.hidden = !l.length;
+        }).catch(function () { box.hidden = true; });
+    }, 450);
+  });
+  $("#ici").addEventListener("click", function () {
+    if (!navigator.geolocation) { msg($("#msg"), "Position is not available on this device.", false); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      depart = { la: p.coords.latitude, lo: p.coords.longitude, lab: "My position" };
+      $("#adr-choisie").textContent = "Starting point: my position (" + p.coords.latitude.toFixed(3) + ", " + p.coords.longitude.toFixed(3) + ")";
+    }, function () { msg($("#msg"), "Position refused or unavailable.", false); }, { enableHighAccuracy: false, timeout: 15000 });
+  });
+  $("#trajet").addEventListener("click", function () {
+    if (!depart) { msg($("#msg"), "Choose a starting point first (address or your position).", false); return; }
+    var mode = document.querySelector('input[name="mode"]:checked').value;
+    AVIATOR.appel({ action: "boarding.trajet", jeton: jeton, tr: { la: depart.la, lo: depart.lo, lab: depart.lab, mode: mode, min: Number($("#minutes").value) || 0, av: Number($("#avance").value) || 90 } })
+      .then(function () { msg($("#msg"), "Saved. Your watch shows when to leave, from 30 hours before departure.", true); charger(); }).catch(erreur);
   });
 
   $("#quitter").addEventListener("click", function (e) { e.preventDefault(); quitter(false); });

@@ -10,9 +10,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../aviator/aviator.css?v=7">
-<link rel="stylesheet" href="boarding.css?v=1">
+<link rel="stylesheet" href="boarding.css?v=4">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F14">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script src="../aviator/commun.js?v=1"></script>
-<script src="boarding.js?v=1" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+<script src="boarding.js?v=5" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -89,6 +94,42 @@
     <section class="pile">
       <h2>Followed flights</h2>
       <div id="liste" class="pile"></div>
+    </section>
+
+    <section class="pile">
+      <h2>Alerts on this phone</h2>
+      <div class="carte">
+        <p class="aide">Gate change, delay, cancellation, boarding and baggage belt: your phone is notified, and your Garmin watch vibrates with the phone notification.</p>
+        <button class="bouton" type="button" id="alertes">Turn on alerts</button>
+        <p class="aide" id="alertes-ios" hidden><b>iPhone:</b> first add this page to your home screen (Share → Add to Home Screen), open it from there, then tap “Turn on alerts”.</p>
+        <p class="aide" id="alertes-etat"></p>
+      </div>
+    </section>
+
+    <section class="pile">
+      <h2>Getting to the airport</h2>
+      <div class="carte">
+        <p class="aide">Your watch tells you when to leave. Set where you start from and how you travel.</p>
+        <label class="titre" for="adresse">STARTING POINT</label>
+        <div class="ligne">
+          <input class="recherche" id="adresse" type="search" autocomplete="street-address" placeholder="Address, e.g. Place d'Armes, Luxembourg" style="flex:1 1 260px">
+          <button class="bouton second" type="button" id="ici">Use my position</button>
+        </div>
+        <div class="suggestions" id="adr-sg" hidden></div>
+        <p class="aide" id="adr-choisie"></p>
+        <label class="titre">HOW YOU GO</label>
+        <div class="choix"><label><input type="radio" name="mode" value="car" checked>Car / taxi</label><label><input type="radio" name="mode" value="min">Other</label></div>
+        <div class="ligne" id="ligne-min" hidden>
+          <label for="minutes">Door-to-terminal time (public transport, walking…)</label>
+          <input class="nombre" id="minutes" inputmode="numeric" maxlength="3" value="45"><span class="unite">min</span>
+        </div>
+        <div class="ligne">
+          <label for="avance">Be at the airport before departure</label>
+          <input class="nombre" id="avance" inputmode="numeric" maxlength="3" value="90"><span class="unite">min</span>
+        </div>
+        <button class="bouton" type="button" id="trajet">Save</button>
+        <p class="aide">Car times are computed with OpenStreetMap routing, plus a margin for traffic and parking. For public transport, check your journey in your usual app and type the total time.</p>
+      </div>
     </section>
 
     <section class="pile">
