@@ -1126,7 +1126,8 @@ function volStatut_(n, d, o, forcer) {
   var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   var now = Math.round(Date.now() / 1000);
-  if (rec && !forcer && now - rec.t < volFraicheur_(rec.f)) return rec;
+  var ancien = rec && rec.f && rec.f.ola === undefined; // enregistré avant la 0.2 : sans coordonnées d'aéroport
+  if (rec && !forcer && !ancien && now - rec.t < volFraicheur_(rec.f)) return rec;
   if (!budgetAdb_()) return rec;
   var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
   if (r.code === 200 || r.code === 204) {
@@ -1204,9 +1205,13 @@ function boardingListe_(b, pourMontre) {
       var ld = Math.round((x.in.ea + esc * 60 - (f.ed || f.sd)) / 60);
       if (ld >= 10 && ld > x.dl + 5) x.ld = ld;
     }
-    if (b.tr && now < (f.ed || f.sd) && (f.ed || f.sd) - now < 30 * 3600) {
-      var tm = trajetMinutes_(b.tr, f);
-      if (tm) { x.tm = tm; x.lv = (f.ed || f.sd) - (b.tr.av + tm) * 60; }
+    if (b.tr && now < (f.ed || f.sd) && (!pourMontre || (f.ed || f.sd) - now < 30 * 3600)) {
+      if (f.ola == null) x.tw = 'noairport';
+      else if (distKm_(b.tr.la, b.tr.lo, f.ola, f.olo) > 250) x.tw = 'far';
+      else {
+        var tm = trajetMinutes_(b.tr, f);
+        if (tm) { x.tm = tm; x.av = b.tr.av; x.lv = (f.ed || f.sd) - (b.tr.av + tm) * 60; } else x.tw = 'route';
+      }
     }
     out.push(x);
   });
@@ -1387,5 +1392,5 @@ function boardingTrajet_(jeton, tr) {
   if (mode === 'min' && (!isFinite(mn) || mn < 5 || mn > 600)) throw refus_('Travel time: 5 to 600 min.', 'donnees');
   b.tr = { la: Math.round(la * 1000) / 1000, lo: Math.round(lo * 1000) / 1000, lab: texte_(tr.lab, 80), mode: mode, min: mode === 'min' ? Math.round(mn) : 0, av: Math.round(av) };
   boardingEcrire_(m.Id, b);
-  return { ok: true, tr: b.tr };
+  return { ok: true, tr: b.tr, vols: boardingListe_(b, false) };
 }

@@ -86,17 +86,24 @@
       if (v.inconnu) {
         d.innerHTML = '<div class="haut"><span class="num">' + esc(v.n) + '</span><span class="route">' + esc(v.d) + '</span></div><p class="aide">Waiting for flight data…</p>';
       } else {
-        var e = etat(v), arrT = v.ea || v.sa, depT = v.ed || v.sd;
+        var e = etat(v), arrT = v.ea || v.sa, depT = v.ed || v.sd, id = v.n.replace(/\W/g, "") + v.d;
         d.innerHTML = '<div class="haut"><span class="num">' + esc(v.n) + '</span><span class="route">' + esc(v.o) + " → " + esc(v.a) + '</span><span class="etat ' + e[1] + '">' + e[0] + "</span></div>" +
           '<p class="aide">' + esc(jour(depT, v.oz)) + " · " + esc(v.oc || v.o) + " → " + esc(v.ac2 || v.a) + (v.al ? " · " + esc(v.al) : "") + "</p>" +
-          '<div class="infos">' + info("DEPARTS", hm(depT, v.oz)) + info("ARRIVES", arrT ? hm(arrT, v.az) : "") + info("GATE", (v.gp ? v.g + " (was " + v.gp + ")" : v.g)) +
+          (v.ld ? '<p class="alerte">Likely delay +' + v.ld + ' min · the aircraft that will fly you lands late</p>' : "") +
+          '<div class="onglets" role="tablist"><button type="button" role="tab" aria-selected="true" data-o="info">Flight</button><button type="button" role="tab" data-o="jour">My day</button><button type="button" role="tab" data-o="carte">Map</button></div>' +
+          '<div class="panneau" data-p="info"><div class="infos">' + info("DEPARTS", hm(depT, v.oz)) + info("ARRIVES", arrT ? hm(arrT, v.az) : "") + info("GATE", (v.gp ? v.g + " (was " + v.gp + ")" : v.g)) +
           info("TERMINAL", v.t) + info("SEAT", v.s) + info("CHECK-IN", v.ck) + info("BELT", v.b) + info("AIRCRAFT", v.md) +
-          info("ARR. GATE", v.ag) + info("ARR. TERMINAL", v.ta) + "</div>" +
-          (v.ld ? '<p class="aide"><b style="color:var(--ambre)">Likely delay +' + v.ld + ' min</b>: the aircraft that will fly you lands late.</p>' : "") +
-          (v.lv ? '<p class="depart">Leave home at ' + hm(v.lv, -new Date().getTimezoneOffset() * 60) + "</p>" : "") +
-          frise(v) + '<div class="carte-vol" id="map-' + esc(v.n.replace(/\W/g, "") + v.d) + '"></div>' +
-          '<div class="actions">' + (v.ola != null ? '<a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber to ' + esc(v.o) + "</a>" : "") +
-          '<button class="bouton second" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button></div>';
+          info("ARR. GATE", v.ag) + info("ARR. TERMINAL", v.ta) + "</div></div>" +
+          '<div class="panneau" data-p="jour" hidden>' + journee(v) + "</div>" +
+          '<div class="panneau" data-p="carte" hidden><div class="carte-vol" id="map-' + esc(id) + '"></div><p class="aide">Flight route' + ((v.tk || v.ed || v.sd) < Date.now() / 1000 && (v.ea || v.sa) > Date.now() / 1000 ? ", with the estimated position of the aircraft" : "") + ".</p></div>";
+        var tabs = d.querySelectorAll(".onglets button"), faite = false;
+        tabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            tabs.forEach(function (x) { x.setAttribute("aria-selected", x === t ? "true" : "false"); });
+            d.querySelectorAll(".panneau").forEach(function (p) { p.hidden = p.getAttribute("data-p") !== t.getAttribute("data-o"); });
+            if (t.getAttribute("data-o") === "carte" && !faite) { faite = true; carteVol(v); }
+          });
+        });
       }
       var b = document.createElement("button");
       b.type = "button"; b.className = "bouton second suppr"; b.textContent = "Remove";
@@ -109,41 +116,63 @@
       box.appendChild(d);
       var cp = d.querySelector("[data-copier]");
       if (cp) cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier"), cp); });
-      if (!v.inconnu) carteVol(v);
     });
   }
 
-  // ---- Frise : bag drop, embarquement, portes, départ (heures estimées) ----
-  function frise(v) {
-    var dep = v.ed || v.sd, now = Date.now() / 1000;
-    var pts = [["BAG DROP", dep - 2700], ["BOARDING", dep - 2400], ["DOORS", dep - 900], ["DEPARTS", dep]];
-    if (v.tk) pts.push(["TAKE-OFF", v.tk]);
-    var t0 = pts[0][1], t1 = pts[pts.length - 1][1], pos = function (t) { return Math.max(0, Math.min(100, (t - t0) / (t1 - t0) * 100)); };
-    var h = '<div class="frise"><div class="rail"></div><div class="fait" style="width:' + pos(now).toFixed(1) + '%"></div>';
-    pts.forEach(function (p, i) {
-      var x = pos(p[1]), al = x < 14 ? "left:0;transform:none;text-align:left" : (x > 86 ? "right:0;left:auto;transform:none;text-align:right" : "left:" + x + "%");
-      h += '<div class="pt' + (now >= p[1] ? " ok" : "") + '" style="left:' + x + '%"></div><div class="lb ' + (i % 2 ? "lh" : "lb2") + '" style="' + al + '">' + p[0] + "<br><b>" + hm(p[1], v.oz) + "</b></div>";
-    });
-    return h + '</div><p class="aide">Bag drop, boarding and doors are estimated from the departure time. Follow the airport screens.</p>';
+  // ---- « My day » : deux étapes, aller à l'aéroport puis à la porte (heures estimées) ----
+  function journee(v) {
+    var dep = v.ed || v.sd, now = Date.now() / 1000, loc = -new Date().getTimezoneOffset() * 60;
+    var aller = [];
+    if (v.lv) {
+      aller.push(["Leave home", v.lv, loc, (v.tm ? v.tm + " min to the airport" : "")]);
+      aller.push(["At the airport", v.lv + v.tm * 60, v.oz, (v.av ? v.av + " min before departure" : "")]);
+    }
+    aller.push(["Bag drop closes", dep - 2700, v.oz, v.ck ? "Check-in desk " + v.ck : ""]);
+    var porte = [["Boarding", dep - 2400, v.oz, v.g ? "Gate " + v.g : ""], ["Doors close", dep - 900, v.oz, ""], ["Departure", dep, v.oz, v.tk ? "Took off " + hm(v.tk, v.oz) : ""]];
+    var prochain = null;
+    aller.concat(porte).forEach(function (p) { if (!prochain && p[1] > now) prochain = p; });
+    var ligne = function (p) {
+      var c = p[1] <= now ? "fait" : (p === prochain ? "suivant" : "");
+      return '<li class="' + c + '"><span class="h">' + hm(p[1], p[2]) + '</span><span class="pt"></span><span class="t">' + esc(p[0]) + (p[3] ? "<small>" + esc(p[3]) + "</small>" : "") + "</span></li>";
+    };
+    var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "Car route not found – set your own travel time below." }[v.tw];
+    var h = '<div class="jour"><h3>Getting to ' + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>" +
+      (!v.lv ? '<p class="aide">' + (raison || 'Set your starting point under “Getting to the airport” to know when to leave.') + "</p>" : "") +
+      '<div class="actions">' + (v.ola != null ? '<a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber to ' + esc(v.o) + "</a>" : "") +
+      '<button class="bouton second" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button></div>' +
+      "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + "</ol>" +
+      '<p class="aide">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
+    return h;
   }
 
   // ---- Carte : route et position estimée de l'avion ----
   function carteVol(v) {
     var el = document.getElementById("map-" + v.n.replace(/\W/g, "") + v.d);
-    if (!el || v.ola == null || v.ala == null || !window.L) { if (el) el.remove(); return; }
-    var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/" + (AVIATOR.sombre() ? "dark_all" : "light_all") + "/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap © CARTO", maxZoom: 10 }).addTo(m);
-    var a = [v.ola, v.olo], b = [v.ala, v.alo], ligne = [];
-    for (var i = 0; i <= 40; i++) { var f = i / 40; ligne.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]); }
-    L.polyline(ligne, { color: "#4F8FE8", weight: 3, dashArray: "6 6" }).addTo(m);
-    L.circleMarker(a, { radius: 6, color: "#4F8FE8", fillOpacity: 1 }).addTo(m).bindTooltip(v.o, { permanent: true, direction: "left" });
-    L.circleMarker(b, { radius: 6, color: "#4F8FE8", fillOpacity: 1 }).addTo(m).bindTooltip(v.a, { permanent: true, direction: "right" });
+    if (!el || v.ola == null || v.ala == null || !window.L) { if (el) el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return; }
+    var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/" + (AVIATOR.sombre() ? "dark_nolabels" : "light_nolabels") + "/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap © CARTO", maxZoom: 9 }).addTo(m);
+    // grand cercle (route réelle d'un avion), en degrés
+    var R = Math.PI / 180, la1 = v.ola * R, lo1 = v.olo * R, la2 = v.ala * R, lo2 = v.alo * R;
+    var dd = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((la2 - la1) / 2), 2) + Math.cos(la1) * Math.cos(la2) * Math.pow(Math.sin((lo2 - lo1) / 2), 2)));
+    var pt = function (f) {
+      if (dd < 1e-6) return [v.ola, v.olo];
+      var A = Math.sin((1 - f) * dd) / Math.sin(dd), B = Math.sin(f * dd) / Math.sin(dd);
+      var x = A * Math.cos(la1) * Math.cos(lo1) + B * Math.cos(la2) * Math.cos(lo2), y = A * Math.cos(la1) * Math.sin(lo1) + B * Math.cos(la2) * Math.sin(lo2), z = A * Math.sin(la1) + B * Math.sin(la2);
+      return [Math.atan2(z, Math.sqrt(x * x + y * y)) / R, Math.atan2(y, x) / R];
+    };
+    var ligne = []; for (var i = 0; i <= 64; i++) ligne.push(pt(i / 64));
     var now = Date.now() / 1000, d0 = v.tk || v.ed || v.sd, d1 = v.ea || v.sa;
-    if (d0 && d1 && now > d0 && now < d1) {
-      var f = (now - d0) / (d1 - d0), p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
-      L.circleMarker(p, { radius: 9, color: "#FFFFFF", fillColor: "#4F8FE8", fillOpacity: 1, weight: 3 }).addTo(m).bindTooltip("Estimated position", { direction: "top" });
+    var f = d0 && d1 ? Math.max(0, Math.min(1, (now - d0) / (d1 - d0))) : 0;
+    L.polyline(ligne, { color: "#8A939C", weight: 2, opacity: .7, dashArray: "4 6" }).addTo(m);
+    if (f > 0) L.polyline(ligne.slice(0, Math.round(f * 64) + 1), { color: "#4F8FE8", weight: 4 }).addTo(m);
+    var etiquette = function (p, t) { return L.marker(p, { icon: L.divIcon({ className: "", html: '<span class="apt-pin">' + esc(t) + "</span>", iconSize: null }), interactive: false }).addTo(m); };
+    etiquette([v.ola, v.olo], v.o); etiquette([v.ala, v.alo], v.a);
+    if (f > 0 && f < 1) {
+      var p = pt(f), q = pt(Math.min(1, f + 0.01)), cap = Math.atan2(q[1] - p[1], q[0] - p[0]) / R;
+      L.marker(p, { icon: L.divIcon({ className: "", html: '<span class="avion" style="transform:rotate(' + (cap - 90).toFixed(0) + 'deg)">✈</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), interactive: false }).addTo(m);
     }
-    m.fitBounds([a, b], { padding: [30, 30] });
+    m.fitBounds(L.latLngBounds(ligne), { padding: [36, 36] });
+    setTimeout(function () { m.invalidateSize(); m.fitBounds(L.latLngBounds(ligne), { padding: [36, 36] }); }, 60);
   }
 
   function uber(v) {
@@ -394,7 +423,13 @@
     if (!depart) { msg($("#msg"), "Choose a starting point first (address or your position).", false); return; }
     var mode = document.querySelector('input[name="mode"]:checked').value;
     AVIATOR.appel({ action: "boarding.trajet", jeton: jeton, tr: { la: depart.la, lo: depart.lo, lab: depart.lab, mode: mode, min: Number($("#minutes").value) || 0, av: Number($("#avance").value) || 90 } })
-      .then(function () { msg($("#msg"), "Saved. Your watch shows when to leave, from 30 hours before departure.", true); charger(); }).catch(erreur);
+      .then(function (o) {
+        var v = (o.vols || []).filter(function (x) { return x.lv; })[0], loc = -new Date().getTimezoneOffset() * 60;
+        var w = (o.vols || []).filter(function (x) { return x.tw === "far"; })[0];
+        msg($("#msg"), v ? "Saved. " + v.n + ": " + v.tm + " min to " + v.o + " – leave home at " + hm(v.lv, loc) + ". Your watch shows it from 30 hours before departure." :
+          (w ? "Saved, but your starting point is far from " + w.o + " (more than 250 km): no leave-home time for this flight." : "Saved."), !!v || !w);
+        if (o.vols) afficherVols(o);
+      }).catch(erreur);
   });
 
   $("#quitter").addEventListener("click", function (e) { e.preventDefault(); quitter(false); });
