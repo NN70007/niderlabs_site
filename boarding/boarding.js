@@ -252,7 +252,8 @@
     var el = document.getElementById("map-" + v.n.replace(/\W/g, "") + v.d);
     if (!el || v.ola == null || v.ala == null || !window.L) { if (el) el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return; }
     var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/" + (AVIATOR.sombre() ? "dark_nolabels" : "light_nolabels") + "/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap © CARTO", maxZoom: 9 }).addTo(m);
+    // fond OpenStreetMap (sans clé) ; assombri par un filtre CSS en mode nuit
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 9, className: AVIATOR.sombre() ? "tuiles-nuit" : "" }).addTo(m);
     var R = Math.PI / 180, la1 = v.ola * R, lo1 = v.olo * R, la2 = v.ala * R, lo2 = v.alo * R;
     var dd = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((la2 - la1) / 2), 2) + Math.cos(la1) * Math.cos(la2) * Math.pow(Math.sin((lo2 - lo1) / 2), 2)));
     var pt = function (f) {
