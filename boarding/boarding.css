@@ -182,3 +182,5 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 @media (min-width:700px){h1{font-size:38px}.accroche h1{font-size:46px}}
 @media (max-width:360px){.cases{grid-template-columns:repeat(2,1fr)}.trajetv .code3{font-size:34px}}
 .tuiles-nuit{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}
+.jour-date{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:2px 0 10px;padding:10px 14px;border-radius:12px;background:var(--champ);border:1px solid var(--trait);font:700 22px var(--titre);letter-spacing:.5px}
+.jour-date span{font-size:18px;color:var(--encre-3)}

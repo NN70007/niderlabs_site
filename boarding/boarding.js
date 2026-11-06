@@ -214,7 +214,8 @@
   function journee(v) {
     var dep = v.ed || v.sd, t = now(), aller = [];
     if (v.lv) {
-      aller.push(["Leave home", v.lv, v.oz, v.tm ? v.tm + " min to the airport" : ""]);
+      var veille = jourTxt(v.lv, v.oz) !== jourTxt(dep, v.oz);
+      aller.push(["Leave home" + (veille ? " · " + jourTxt(v.lv, v.oz) : ""), v.lv, v.oz, v.tm ? v.tm + " min to the airport" : ""]);
       aller.push(["At the airport", v.lv + v.tm * 60, v.oz, v.av ? v.av + " min before departure" : ""]);
     }
     aller.push(["Bag drop closes", dep - 2700, v.oz, v.ck ? "Check-in desk " + v.ck : ""]);
@@ -225,7 +226,8 @@
       return '<li class="' + (p[1] <= t ? "fait" : p === prochain ? "suivant" : "") + '"><span class="h">' + hm(p[1], p[2]) + '</span><span class="pt"></span><span class="t">' + esc(p[0]) + (p[3] ? "<small>" + esc(p[3]) + "</small>" : "") + "</span></li>";
     };
     var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "No car route found – set your own travel time in Travel." }[v.tw];
-    var h = '<div class="jour"><h3>Getting to ' + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
+    var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + '<span>DEPARTS ' + hm(dep, v.oz) + "</span></p>" +
+      "<h3>Getting to " + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
     if (!v.lv) h += '<p class="aide">' + (raison || "Set your starting point in <b>Travel</b> to know when to leave home.") + "</p>";
     if (v.ola != null && dep > t) {
       h += '<div class="uber"><div class="ligne"><a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber now</a>' +
