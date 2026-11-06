@@ -992,7 +992,7 @@ function volAppel_(chemin) {
 }
 // Diagnostic : présence de la clé et un seul appel test (résultat gardé 10 min pour ne pas consommer d'unités)
 function volDiag_() {
-  var cache = CacheService.getScriptCache(), c = cache.get('vdiag');
+  var cache = CacheService.getScriptCache(), c = cache.get('vdiag2');
   if (c) { var o = JSON.parse(c); o.cache = true; return o; }
   var cle = volCle_();
   var out = { ok: true, cle: !!cle, onglet: false };
@@ -1006,9 +1006,19 @@ function volDiag_() {
       var f = r.data[0];
       out.exemple = { vol: f.number, statut: f.status, de: f.departure && f.departure.airport && f.departure.airport.iata,
         vers: f.arrival && f.arrival.airport && f.arrival.airport.iata, porte: f.departure && f.departure.gate || null,
-        terminal: f.departure && f.departure.terminal || null, avion: f.aircraft && f.aircraft.model || null };
+        terminal: f.departure && f.departure.terminal || null, avion: f.aircraft && f.aircraft.model || null,
+        immat: f.aircraft && f.aircraft.reg || null };
+      // Rotations du même avion aujourd'hui : c'est ce qui dit si l'avion est déjà arrivé
+      if (out.exemple.immat) {
+        var r2 = volAppel_('/flights/reg/' + encodeURIComponent(out.exemple.immat) + '/' + jour);
+        out.http_immat = r2.code;
+        out.rotations = (Array.isArray(r2.data) ? r2.data : []).map(function (g) {
+          return { vol: g.number, de: g.departure && g.departure.airport && g.departure.airport.iata,
+            vers: g.arrival && g.arrival.airport && g.arrival.airport.iata, statut: g.status };
+        });
+      }
     }
   }
-  cache.put('vdiag', JSON.stringify(out), 600);
+  cache.put('vdiag2', JSON.stringify(out), 600);
   return out;
 }
