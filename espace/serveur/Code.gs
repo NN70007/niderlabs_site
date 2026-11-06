@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-06-boarding2',
+  VERSION: '2026-11-06-boarding3',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -51,8 +51,10 @@ var CONFIG = {
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
   Journal: ['Date', 'Qui', 'Action', 'Detail'],
-  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols'],
-  Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj']
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte'],
+  Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj'],
+  // Boarding : comptes du site public (adresse e-mail seule)
+  Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols']
 };
 
 /* ======================= Points d'entrée ======================= */
@@ -77,6 +79,11 @@ function doGet(e) {
   // Cadran vol : vérifie la clé AeroDataBox (onglet config) SANS jamais la renvoyer
   if (p.a === 'vdiag') {
     try { return json_(volDiag_()); }
+    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
+  }
+  // Boarding : passage régulier (GitHub Actions toutes les 10 min) — statuts des vols suivis avec alertes, rappels
+  if (p.a === 'tick') {
+    try { return json_(boardingTick_()); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'w') {
@@ -129,6 +136,14 @@ function route_(req) {
   if (a === 'boarding.trajet') return boardingTrajet_(req.jeton, req.tr);
   if (a === 'boarding.cle') return boardingCle_();
   if (a === 'boarding.abonner') return boardingAbonner_(req.jeton, req.sub, req.oui);
+  // Boarding : comptes par e-mail (code à 6 chiffres), montres liées en option
+  if (a === 'boarding.code') return compteCode_(req.email);
+  if (a === 'boarding.entrer') return compteEntrer_(req.email, req.code, req.garder === true);
+  if (a === 'boarding.reprendre') return boardingReprendre_(req.memo);
+  if (a === 'boarding.sortir') return boardingSortir_(req.memo, req.jeton);
+  if (a === 'boarding.lier') return compteLier_(req.jeton, req.code);
+  if (a === 'boarding.delier') return compteDelier_(req.jeton, String(req.ref || ''));
+  if (a === 'boarding.effacer') return compteEffacer_(req.jeton, req.confirme === true);
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -922,7 +937,7 @@ function classeur_(creerSiAbsent) {
 function feuille_(nom) {
   var ss = classeur_(false), sh = ss.getSheetByName(nom);
   // Onglets ajoutés après l'installation (Aviator METAR) : créés au premier besoin, sans relancer « installer »
-  if (!sh && (nom === 'Montres' || nom === 'Aeroports')) {
+  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes')) {
     sh = ss.insertSheet(nom);
     sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
     sh.setFrozenRows(1);
@@ -1056,6 +1071,7 @@ function boardingDe_(m) {
   var o = { h: typeof b.h === 'string' ? b.h : CONFIG.FUSEAU, v: Array.isArray(b.v) ? b.v : [] };
   if (Array.isArray(b.ps)) o.ps = b.ps;
   if (b.tr && typeof b.tr === 'object') o.tr = b.tr;
+  if (b.rp && typeof b.rp === 'object') o.rp = b.rp;
   return o;
 }
 function boardingNumero_(s) {
@@ -1204,6 +1220,9 @@ function boardingListe_(b, pourMontre) {
     var arr = f.ea || f.sa || (f.ed || f.sd) + 3 * 3600;
     if (now > arr + 3 * 3600) return; // terminé depuis plus de 3 h
     var x = Object.assign({}, f, { s: v.s || '', d: v.d });
+    if (v.bp) x.bp = 1;
+    var dep0 = f.ed || f.sd;
+    if (!v.bp && !/^Canceled/.test(f.st) && dep0 - now < 30 * 3600 && dep0 - now > 2 * 3600) x.ci = 1; // « CHECK IN ONLINE »
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
@@ -1234,6 +1253,7 @@ function boardingListe_(b, pourMontre) {
     if (x.tk) o.tk = x.tk;
     if (x.ag) o.ag = x.ag;
     if (x.ta) o.ta = x.ta;
+    if (x.ci) o.ci = 1;
     if (x.md) o.md = String(x.md).toUpperCase().replace(/^(AIRBUS|BOEING|EMBRAER|BOMBARDIER|ATR) /, '').slice(0, 12);
     if (x.in) o.in = x.in.ici ? { h: 1 } : { o: x.in.o, st: x.in.st, ea: x.in.ea };
     if (x.wx) o.wx = x.wx;
@@ -1243,18 +1263,234 @@ function boardingListe_(b, pourMontre) {
   return out;
 }
 function boardingMontre_(m) {
-  var b = boardingDe_(m);
+  var u = m.Compte ? compte_(m.Compte) : null;
+  var b = boardingDe_(u || m);
   return { h: tzSecondes_(b.h, new Date()), hn: villeDe_(b.h), f: boardingListe_(b, true) };
 }
-function boardingEcrire_(id, b) {
-  verrou_(function () { majLigne_('Montres', function (x) { return x.Id === id; }, { Vols: JSON.stringify(b) }); });
+/* ----- Boarding : propriétaire des vols — un compte (e-mail) ou une montre seule ----- */
+// p = { t: 'U' (compte) | 'M' (montre), id, row, montre?: id de la montre quand on est passé par son code }
+function compte_(id) { return lire_('Comptes').filter(function (r) { return r.Id === id; })[0] || null; }
+function proprioDuJeton_(jeton) {
+  var uid = CacheService.getScriptCache().get('utok:' + hash_(String(jeton || '')));
+  if (uid) {
+    var u = compte_(uid);
+    if (!u) throw refus_('Your session has expired. Please sign in again.', 'session');
+    return { t: 'U', id: u.Id, row: u };
+  }
+  var m = montreDuJeton_(jeton);
+  // montre liée à un compte : ses vols sont ceux du compte
+  if (m.Compte) { var c = compte_(m.Compte); if (c) return { t: 'U', id: c.Id, row: c, montre: m.Id }; }
+  return { t: 'M', id: m.Id, row: m };
+}
+function proprioEcrire_(p, b) {
+  var o = { Vols: JSON.stringify(b) };
+  verrou_(function () { majLigne_(p.t === 'U' ? 'Comptes' : 'Montres', function (x) { return x.Id === p.id; }, o); });
+  p.row.Vols = o.Vols;
+}
+/** Tous ceux qui suivent des vols : les comptes, et les montres qui ne sont liées à aucun compte. */
+function proprios_() {
+  var l = [];
+  lire_('Comptes').forEach(function (u) { if (u.Vols) l.push({ t: 'U', id: u.Id, row: u }); });
+  lire_('Montres').forEach(function (m) { if (m.Vols && !m.Compte) l.push({ t: 'M', id: m.Id, row: m }); });
+  return l;
+}
+function touche_(p) {
+  // « Vu » au plus une fois par heure
+  if (Date.now() - Number(p.row.Vu || 0) > 3600000) verrou_(function () { majLigne_('Comptes', function (x) { return x.Id === p.id; }, { Vu: String(Date.now()) }); });
+}
+
+/* ----- Boarding : comptes par e-mail. Seule l'adresse est gardée ; le code (6 chiffres, 10 min) n'est gardé qu'en empreinte. ----- */
+var COMPTE = { SESSION_S: 21600, CODES_HEURE_ADRESSE: 5, CODES_HEURE_TOTAL: 120, MONTRES_MAX: 4 };
+function emailValide_(email) {
+  email = norm_(email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 120) throw refus_('Please enter a valid e-mail address.', 'email');
+  return email;
+}
+function compteCode_(email) {
+  email = emailValide_(email);
+  var cache = CacheService.getScriptCache();
+  var nAdr = Number(cache.get('botpn:' + email) || 0), nTot = Number(cache.get('botpn:*') || 0);
+  if (nAdr >= COMPTE.CODES_HEURE_ADRESSE || nTot >= COMPTE.CODES_HEURE_TOTAL) throw refus_('Too many codes requested. Please try again in an hour.', 'limite');
+  if (MailApp.getRemainingDailyQuota() < 5) throw refus_('We cannot send e-mails right now. Please try again tomorrow.', 'limite');
+  cache.put('botpn:' + email, String(nAdr + 1), 3600);
+  cache.put('botpn:*', String(nTot + 1), 3600);
+  var code = String(100000 + parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 900000);
+  cache.put('botp:' + email, JSON.stringify({ h: hash_(code + '|' + email), essais: 0 }), CONFIG.CODE_MINUTES * 60);
+  MailApp.sendEmail({ to: email, subject: code + ' is your Boarding code', name: 'Boarding',
+    body: 'Your Boarding sign-in code is: ' + code + '\n\nIt is valid for ' + CONFIG.CODE_MINUTES + ' minutes. If you did not ask for it, you can ignore this e-mail.\n\nBoarding · https://niderlabs.com/boarding/' });
+  return { ok: true };
+}
+function compteEntrer_(email, code, garder) {
+  email = emailValide_(email);
+  code = String(code || '').replace(/\D/g, '');
+  var cache = CacheService.getScriptCache();
+  verrou_(function () {
+    var raw = cache.get('botp:' + email);
+    if (!raw) throw refus_('This code has expired. Ask for a new one.', 'code');
+    var o = JSON.parse(raw);
+    if (o.essais >= CONFIG.CODE_ESSAIS_MAX) { cache.remove('botp:' + email); throw refus_('Too many attempts. Ask for a new code.', 'code'); }
+    if (hash_(code + '|' + email) !== o.h) {
+      o.essais++;
+      cache.put('botp:' + email, JSON.stringify(o), CONFIG.CODE_MINUTES * 60);
+      throw refus_('Wrong code. Check the e-mail and try again.', 'code');
+    }
+    cache.remove('botp:' + email);
+  });
+  var nouveau = false;
+  var u = verrou_(function () {
+    var r = lire_('Comptes').filter(function (x) { return x.Email === email; })[0];
+    if (r) return r;
+    nouveau = true;
+    var now = String(Date.now());
+    r = { Id: 'U' + Utilities.getUuid().replace(/-/g, '').slice(0, 20), Email: email, Cree: now, Vu: now, Vols: '' };
+    ajouter_('Comptes', r);
+    return r;
+  });
+  var o = sessionCompte_(u);
+  o.nouveau = nouveau;
+  if (garder) { var mm = memoCreer_(u.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
+  return o;
+}
+function sessionCompte_(u) {
+  var jeton = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  CacheService.getScriptCache().put('utok:' + hash_(jeton), u.Id, COMPTE.SESSION_S);
+  return { ok: true, jeton: jeton, email: u.Email };
+}
+/** « Remember this phone » : un compte (U…) ou une montre seule. */
+function boardingReprendre_(memo) {
+  var r = memoLire_(memo);
+  if (!r) throw refus_('Please sign in again.', 'memo');
+  if (/^U/.test(r.id)) {
+    var u = compte_(r.id);
+    if (!u) throw refus_('Please sign in again.', 'memo');
+    var o = sessionCompte_(u); o.memoExp = r.exp; return o;
+  }
+  var m = montre_(r.id);
+  if (!m) throw refus_('Please sign in again.', 'memo');
+  var s = sessionMontre_(m); s.memoExp = r.exp; s.montre = true;
+  return s;
+}
+function boardingSortir_(memo, jeton) {
+  if (memo) PropertiesService.getScriptProperties().deleteProperty('mrem:' + hash_(String(memo)));
+  if (jeton) { var c = CacheService.getScriptCache(), h = hash_(String(jeton)); c.remove('utok:' + h); c.remove('mtok:' + h); }
+  return { ok: true };
+}
+function refMontre_(id) { return hash_('ref|' + id).slice(0, 12); }
+function montresDuCompte_(uid) {
+  return lire_('Montres').filter(function (m) { return m.Compte === uid; }).map(function (m) {
+    return { ref: refMontre_(m.Id), fin: String(m.Id).slice(-4).toUpperCase(), v: m.Version || '', vu: Number(m.Vu) || 0 };
+  });
+}
+function compteDuJeton_(jeton) {
+  var p = proprioDuJeton_(jeton);
+  if (p.t !== 'U' || p.montre) throw refus_('Sign in with your e-mail to manage watches.', 'session');
+  return p;
+}
+/** Lie une montre (code à 6 chiffres affiché dessus) : ses vols, alertes et point de départ rejoignent le compte. */
+function compteLier_(jeton, code) {
+  var p = compteDuJeton_(jeton);
+  code = String(code || '').replace(/\D/g, '');
+  if (code.length !== 6) throw refus_('Enter the 6-digit code shown on your watch.', 'code');
+  var cache = CacheService.getScriptCache();
+  var minute = 'mtry:' + Math.floor(Date.now() / 60000), n = Number(cache.get(minute) || 0);
+  if (n >= CONFIG.MONTRE_ESSAIS_PAR_MINUTE) throw refus_('Too many attempts. Please wait a minute and try again.', 'limite');
+  cache.put(minute, String(n + 1), 120);
+  var id = cache.get('mcode:' + code);
+  var m = id ? montre_(id) : null;
+  if (!m) throw refus_('Unknown or expired code. Check the code on your watch (it changes every few minutes).', 'code');
+  if (m.Compte !== p.id && montresDuCompte_(p.id).length >= COMPTE.MONTRES_MAX) throw refus_('You can link up to ' + COMPTE.MONTRES_MAX + ' watches.', 'limite');
+  var b = boardingDe_(p.row), bm = boardingDe_(m);
+  if (m.Compte !== p.id) {
+    bm.v.forEach(function (v) {
+      var d = b.v.filter(function (x) { return x.n === v.n && x.d === v.d; })[0];
+      if (!d && b.v.length < BOARDING.VOLS_MAX) b.v.push(v);
+      else if (d && v.s) { var l = String(d.s || '').split(' ').filter(String); String(v.s).split(' ').forEach(function (z) { if (z && l.indexOf(z) < 0 && l.length < 4) l.push(z); }); d.s = l.join(' '); }
+    });
+    b.v.sort(function (x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; });
+    (bm.ps || []).forEach(function (s) { b.ps = (b.ps || []).filter(function (x) { return x.endpoint !== s.endpoint; }); b.ps.push(s); });
+    if (b.ps) b.ps = b.ps.slice(-6);
+    if (!b.tr && bm.tr) b.tr = bm.tr;
+    if (!p.row.Vols && bm.h) b.h = bm.h;
+    proprioEcrire_(p, b);
+    verrou_(function () { majLigne_('Montres', function (x) { return x.Id === m.Id; }, { Compte: p.id, Vols: '' }); });
+  }
+  return { ok: true, montres: montresDuCompte_(p.id), vols: boardingListe_(b, false), enregistres: b.v };
+}
+function compteDelier_(jeton, ref) {
+  var p = compteDuJeton_(jeton);
+  var m = lire_('Montres').filter(function (x) { return x.Compte === p.id && refMontre_(x.Id) === ref; })[0];
+  if (!m) throw refus_('Watch not found.', 'introuvable');
+  verrou_(function () { majLigne_('Montres', function (x) { return x.Id === m.Id; }, { Compte: '' }); });
+  return { ok: true, montres: montresDuCompte_(p.id) };
+}
+/** Supprime le compte : adresse et vols effacés, montres déliées, téléphones mémorisés oubliés. */
+function compteEffacer_(jeton, confirme) {
+  var p = compteDuJeton_(jeton);
+  if (!confirme) throw refus_('Please confirm.', 'donnees');
+  verrou_(function () {
+    lire_('Montres').forEach(function (m) { if (m.Compte === p.id) majLigne_('Montres', function (x) { return x.Id === m.Id; }, { Compte: '' }); });
+    supprimerLignes_('Comptes', function (x) { return x.Id === p.id; });
+  });
+  PropertiesService.getScriptProperties().setProperty('mgen:' + p.id, String(memoGen_(p.id) + 1));
+  CacheService.getScriptCache().remove('utok:' + hash_(String(jeton)));
+  return { ok: true };
+}
+
+/* ----- Boarding : passage régulier (toutes les 10 min, GitHub Actions → relais → a=tick) -----
+   1. rafraîchit les vols suivis par quelqu'un qui a activé les alertes (même rythme que pour les montres ; une requête par vol) ;
+   2. rappels : « Check in online » la veille (si aucune carte d'embarquement scannée), « Leave in 30 min ». */
+function boardingTick_() {
+  var cache = CacheService.getScriptCache();
+  if (cache.get('btick')) return { ok: true, attente: true };
+  cache.put('btick', '1', 240);
+  var vus = {}, nv = 0;
+  proprios_().forEach(function (p) {
+    var b = boardingDe_(p.row);
+    if (!(b.ps || []).length) return;
+    b.v.forEach(function (v) { var k = v.n + ':' + v.d; if (!vus[k]) { vus[k] = 1; nv++; try { volStatut_(v.n, v.d, v.o, false); } catch (e) { console.error(e); } } });
+  });
+  // relu après les rafraîchissements (les alertes ont pu retirer des abonnements)
+  var nr = 0, now = Date.now() / 1000;
+  proprios_().forEach(function (p) {
+    var b = boardingDe_(p.row);
+    if (!(b.ps || []).length) return;
+    var rp = b.rp || {}, garde = {}, change = false;
+    b.v.forEach(function (v) {
+      var k = v.n + '|' + v.d; garde[k] = rp[k] || {};
+      var rec = volStatut_(v.n, v.d, v.o, false), f = rec && rec.f;
+      if (!f || !f.sd || /^Canceled/.test(f.st)) return;
+      var dep = f.ed || f.sd, r = garde[k], nom = f.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2');
+      var hm = function (t) { return Utilities.formatDate(new Date((t + (f.oz || 0)) * 1000), 'UTC', 'EEE HH:mm').toUpperCase(); };
+      if (!v.bp && !r.ck && dep - now < 24 * 3600 && dep - now > 2 * 3600) {
+        r.ck = 1; change = true; nr++;
+        if (pousser_(b, 'Check in online · ' + nom, nom + ' to ' + (f.ac2 || f.a) + ' departs ' + hm(dep) + '. Online check-in is usually open now.')) change = true;
+      }
+      if (b.tr && !r.lv && now < dep) {
+        var tm = trajetMinutes_(b.tr, f);
+        if (tm) {
+          var lv = dep - (b.tr.av + tm) * 60, reste = Math.round((lv - now) / 60);
+          if (reste <= 32 && reste > -5) {
+            r.lv = 1; change = true; nr++;
+            if (pousser_(b, 'Leave ' + (reste > 1 ? 'in ' + reste + ' min' : 'now') + ' · ' + nom,
+              'Leave home at ' + hm(lv).slice(4) + ' (' + tm + ' min to the airport, ' + b.tr.av + ' min before departure).')) change = true;
+          }
+        }
+      }
+    });
+    if (JSON.stringify(garde) !== JSON.stringify(rp)) change = true;
+    if (change) { b.rp = garde; proprioEcrire_(p, b); }
+  });
+  return { ok: true, vols: nv, rappels: nr };
 }
 function boardingCharger_(jeton) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
-  return { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v, tr: b.tr || null, alertes: (b.ps || []).length };
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  var o = { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v, tr: b.tr || null, alertes: (b.ps || []).length };
+  if (p.t === 'U' && !p.montre) { o.compte = { email: p.row.Email, montres: montresDuCompte_(p.id) }; touche_(p); }
+  else o.montre = true;
+  return o;
 }
 function boardingAjouter_(jeton, vol) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
   vol = vol || {};
   var n = boardingNumero_(vol.n), d = boardingDate_(vol.d);
   if (!n) throw refus_('Invalid flight number (e.g. LG8803).', 'donnees');
@@ -1268,24 +1504,25 @@ function boardingAjouter_(jeton, vol) {
   var rec = volStatut_(n, d, o, !deja);
   if (!rec || !rec.f) throw refus_('Flight ' + n + ' not found on ' + d + '. Check the number and the local departure date.', 'introuvable');
   // plusieurs cartes d'embarquement pour le même vol (famille) : sièges ajoutés, 4 au plus
+  if (deja && vol.bp === true) deja.bp = 1;
   if (deja) { if (s) { var l = String(deja.s || '').split(' ').filter(String); if (l.indexOf(s) < 0 && l.length < 4) l.push(s); deja.s = l.join(' '); } }
-  else b.v.push({ n: n, d: d, s: s, o: rec.f.o });
+  else { var nv = { n: n, d: d, s: s, o: rec.f.o }; if (vol.bp === true) nv.bp = 1; b.v.push(nv); }
   b.v.sort(function (x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; });
-  boardingEcrire_(m.Id, b);
+  proprioEcrire_(p, b);
   return { ok: true, vol: Object.assign({ s: s, d: d }, rec.f), vols: boardingListe_(b, false), enregistres: b.v };
 }
 function boardingSupprimer_(jeton, n, d) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
   b.v = b.v.filter(function (x) { return !(x.n === n && x.d === d); });
-  boardingEcrire_(m.Id, b);
+  proprioEcrire_(p, b);
   return { ok: true, vols: boardingListe_(b, false), enregistres: b.v };
 }
 function boardingMaison_(jeton, tz) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
   tz = texte_(tz, 60);
   if (!/^[A-Za-z_]+(\/[A-Za-z0-9_+\-]+){1,2}$/.test(tz) || tzSecondes_(tz, new Date()) == null) throw refus_('Unknown time zone.', 'donnees');
   b.h = tz;
-  boardingEcrire_(m.Id, b);
+  proprioEcrire_(p, b);
   return { ok: true, h: tz };
 }
 
@@ -1332,12 +1569,12 @@ function abonnementValide_(s) {
   return { endpoint: ep, keys: { p256dh: p, auth: a } };
 }
 function boardingAbonner_(jeton, sub, oui) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
   var s = abonnementValide_(sub);
   if (oui !== false && !s) throw refus_('This browser could not turn on alerts.', 'donnees');
   b.ps = (b.ps || []).filter(function (x) { return !s || x.endpoint !== s.endpoint; });
   if (oui !== false) { b.ps.push(s); b.ps = b.ps.slice(-4); }
-  boardingEcrire_(m.Id, b);
+  proprioEcrire_(p, b);
   if (oui !== false) { try { pushEnvoyer_([s], 'Boarding', 'Alerts are on. You will be told about gate changes, delays and your baggage belt.'); } catch (e) { console.error(e); } }
   return { ok: true, alertes: (b.ps || []).length };
 }
@@ -1353,19 +1590,19 @@ function pushEnvoyer_(subs, titre, texte) {
   try { return JSON.parse(r.getContentText()).res || []; } catch (e) { return []; }
 }
 function boardingAlerter_(n, d, f, ev) {
-  var cibles = [];
-  lire_('Montres').forEach(function (m) {
-    if (!m.Vols) return;
-    var b = boardingDe_(m);
+  proprios_().forEach(function (p) {
+    var b = boardingDe_(p.row);
     if (!(b.ps || []).length || !b.v.some(function (x) { return x.n === n && x.d === d; })) return;
-    cibles.push({ id: m.Id, b: b });
+    if (pousser_(b, 'Boarding · ' + f.n, ev.join(' '))) proprioEcrire_(p, b);
   });
-  cibles.forEach(function (c) {
-    var res = pushEnvoyer_(c.b.ps, 'Boarding · ' + f.n, ev.join(' '));
-    // abonnements expirés (404/410) : retirés
-    var morts = res.filter(function (x) { return x.code === 404 || x.code === 410; }).map(function (x) { return x.endpoint; });
-    if (morts.length) { c.b.ps = c.b.ps.filter(function (x) { return morts.indexOf(x.endpoint) < 0; }); boardingEcrire_(c.id, c.b); }
-  });
+}
+/** Envoie une notification à tous les téléphones abonnés ; retire les abonnements expirés (404/410). Vrai si b a changé. */
+function pousser_(b, titre, texte) {
+  var res = pushEnvoyer_(b.ps || [], titre, texte);
+  var morts = res.filter(function (x) { return x.code === 404 || x.code === 410; }).map(function (x) { return x.endpoint; });
+  if (!morts.length) return false;
+  b.ps = b.ps.filter(function (x) { return morts.indexOf(x.endpoint) < 0; });
+  return true;
 }
 
 /* ----- Boarding : heure de départ de la maison ----- */
@@ -1391,8 +1628,8 @@ function trajetMinutes_(tr, f) {
   } catch (e) { return null; }
 }
 function boardingTrajet_(jeton, tr) {
-  var m = montreDuJeton_(jeton), b = boardingDe_(m);
-  if (tr === null) { delete b.tr; boardingEcrire_(m.Id, b); return { ok: true, tr: null }; }
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  if (tr === null) { delete b.tr; proprioEcrire_(p, b); return { ok: true, tr: null }; }
   tr = tr || {};
   var la = Number(tr.la), lo = Number(tr.lo), av = Number(tr.av || 90), mn = Number(tr.min || 0);
   if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) throw refus_('Invalid starting point.', 'donnees');
@@ -1400,6 +1637,6 @@ function boardingTrajet_(jeton, tr) {
   var mode = tr.mode === 'min' ? 'min' : 'car';
   if (mode === 'min' && (!isFinite(mn) || mn < 5 || mn > 600)) throw refus_('Travel time: 5 to 600 min.', 'donnees');
   b.tr = { la: Math.round(la * 1000) / 1000, lo: Math.round(lo * 1000) / 1000, lab: texte_(tr.lab, 80), mode: mode, min: mode === 'min' ? Math.round(mn) : 0, av: Math.round(av) };
-  boardingEcrire_(m.Id, b);
+  proprioEcrire_(p, b);
   return { ok: true, tr: b.tr, vols: boardingListe_(b, false) };
 }

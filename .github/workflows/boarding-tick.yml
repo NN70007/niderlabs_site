@@ -1,0 +1,21 @@
+# Boarding — passage régulier du serveur (toutes les 10 minutes).
+# Apps Script n'a pas de déclencheur horaire ici : ce travail appelle le relais niderlabs.com/aviator/api.php?a=tick,
+# qui rafraîchit les vols suivis avec alertes et envoie les rappels (« Check in online » la veille, « Leave in 30 min »).
+# Sans danger s'il est appelé plus souvent : le serveur ignore les appels à moins de 4 minutes d'intervalle.
+name: Boarding tick
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Appel du serveur
+        run: curl -fsS --max-time 90 'https://niderlabs.com/aviator/api.php?a=tick' || true

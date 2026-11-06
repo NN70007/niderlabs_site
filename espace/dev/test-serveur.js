@@ -401,4 +401,81 @@ console.log('Boarding (cadran vol)');
   global.ADB_INBOUND_LATE = false;
 }
 
+console.log('Boarding : comptes par e-mail, montres liées, rappels');
+{
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test' } });
+  bo.run('installer');
+  const today = new Date().toISOString().slice(0, 10);
+  const E = 'Passager@Example.com', e = 'passager@example.com';
+  ok(bo.post({ action: 'boarding.code', email: 'pas-une-adresse' }).code === 'email', 'adresse invalide refusée');
+  ok(bo.post({ action: 'boarding.code', email: E }).ok && /^\d{6}$/.test(bo.lastCode(e)), 'code envoyé par e-mail (adresse normalisée)');
+  ok(!JSON.stringify(bo.cache).includes(bo.lastCode(e)), 'le code n\'est gardé qu\'en empreinte');
+  ok(bo.post({ action: 'boarding.entrer', email: E, code: '000000' }).code === 'code', 'mauvais code refusé');
+  let s = bo.post({ action: 'boarding.entrer', email: E, code: bo.lastCode(e), garder: true });
+  ok(s.ok && s.jeton && s.nouveau === true && s.email === e && /^m[0-9a-f]{64}$/.test(s.memo), 'compte créé à la première connexion, téléphone mémorisé');
+  ok(bo.post({ action: 'boarding.entrer', email: E, code: bo.lastCode(e) }).code === 'code', 'un code ne sert qu\'une fois');
+  bo.post({ action: 'boarding.code', email: e });
+  const s2 = bo.post({ action: 'boarding.entrer', email: e, code: bo.lastCode(e) });
+  ok(s2.ok && s2.nouveau === false, 'deuxième connexion : même compte');
+  const lignes = bo.ctx.lire_('Comptes');
+  ok(lignes.length === 1 && lignes[0].Email === e, 'une seule ligne par adresse');
+  let c = bo.post({ action: 'boarding.charger', jeton: s.jeton });
+  ok(c.ok && c.compte && c.compte.email === e && c.compte.montres.length === 0 && c.vols.length === 0, 'compte vide chargé');
+  let r = bo.post({ action: 'boarding.ajouter', jeton: s.jeton, vol: { n: 'LG8803', d: today, s: '14A', bp: true } });
+  ok(r.ok && r.enregistres[0].bp === 1, 'vol ajouté au compte (carte d\'embarquement scannée notée)');
+  // montre seule avec son propre vol, puis liée au compte
+  const ID = 'brdWatchLink012345', K = 'brdKey0123456789ABCDEF';
+  let w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.1', r: '0' });
+  const om = bo.post({ action: 'aviator.ouvrir', code: w.c });
+  bo.post({ action: 'boarding.ajouter', jeton: om.jeton, vol: { n: 'LG8803', d: today, s: '14B' } });
+  ok(bo.post({ action: 'boarding.lier', jeton: om.jeton, code: w.c }).code === 'session', 'lier une montre demande la connexion par e-mail');
+  ok(bo.post({ action: 'boarding.lier', jeton: s.jeton, code: '123' }).code === 'code', 'code de montre invalide refusé');
+  r = bo.post({ action: 'boarding.lier', jeton: s.jeton, code: w.c });
+  ok(r.ok && r.montres.length === 1 && r.montres[0].fin === '2345' && !JSON.stringify(r).includes(ID), 'montre liée (identifiant jamais renvoyé)');
+  ok(r.enregistres.length === 1 && r.enregistres[0].s === '14A 14B', 'vols de la montre fusionnés dans le compte');
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.1', r: '0' });
+  ok(w.b.f.length === 1 && w.b.f[0].s === '14A 14B', 'la montre affiche les vols du compte');
+  c = bo.post({ action: 'boarding.charger', jeton: om.jeton });
+  ok(c.ok && c.montre === true && c.vols.length === 1 && !c.compte, 'le code de la montre ouvre les vols du compte, sans les réglages du compte');
+  // un autre compte ne voit rien
+  bo.post({ action: 'boarding.code', email: 'autre@example.com' });
+  const s3 = bo.post({ action: 'boarding.entrer', email: 'autre@example.com', code: bo.lastCode('autre@example.com') });
+  ok(bo.post({ action: 'boarding.charger', jeton: s3.jeton }).vols.length === 0, 'comptes séparés');
+  ok(bo.post({ action: 'boarding.delier', jeton: s3.jeton, ref: r.montres[0].ref }).code === 'introuvable', 'on ne délie pas la montre d\'un autre');
+  // reprise par « Remember this phone »
+  const rp = bo.post({ action: 'boarding.reprendre', memo: s.memo });
+  ok(rp.ok && rp.email === e && bo.post({ action: 'boarding.charger', jeton: rp.jeton }).ok, 'téléphone mémorisé : session reprise');
+  // rappels : « Check in online » la veille, « Leave in 30 min »
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/compte123456789', keys: { p256dh: 'B' + 'q'.repeat(86), auth: 'a'.repeat(22) } };
+  bo.post({ action: 'boarding.abonner', jeton: s.jeton, sub });
+  const k = 'bv:LG8803:' + today, now = Math.floor(Date.now() / 1000);
+  const decale = (dep) => { const x = JSON.parse(bo.props[k]); const dt = dep - (x.f.ed || x.f.sd); ['sd', 'ed', 'sa', 'ea'].forEach((z) => { if (x.f[z]) x.f[z] += dt; }); x.t = now; bo.props[k] = JSON.stringify(x); };
+  const tick = () => { delete bo.cache.btick; return bo.get({ a: 'tick' }); };
+  decale(now + 20 * 3600);
+  let n0 = bo.pushAppels.length, t = tick();
+  ok(t.ok && bo.pushAppels.length === n0, 'pas de rappel d\'enregistrement quand la carte d\'embarquement est scannée');
+  ok(bo.get({ a: 'tick' }).attente === true, 'deux passages rapprochés : le second est ignoré');
+  const u = JSON.parse(bo.ctx.lire_('Comptes')[0].Vols); u.v[0].bp = 0; bo.ctx.majLigne_('Comptes', () => true, { Vols: JSON.stringify(u) });
+  ok(bo.post({ action: 'boarding.charger', jeton: s.jeton }).vols[0].ci === 1, 'page et montre : « CHECK IN ONLINE » la veille');
+  n0 = bo.pushAppels.length; tick();
+  const env = bo.pushAppels.slice(n0).map((x) => JSON.parse(x.body.payload));
+  ok(env.length === 1 && /Check in online/.test(env[0].title) && /LG 8803/.test(env[0].title), 'rappel « Check in online » envoyé la veille');
+  n0 = bo.pushAppels.length; tick();
+  ok(bo.pushAppels.length === n0, 'rappel d\'enregistrement envoyé une seule fois');
+  bo.post({ action: 'boarding.trajet', jeton: s.jeton, tr: { la: 49.61, lo: 6.13, lab: 'Home', mode: 'min', min: 40, av: 120 } });
+  decale(now + (160 + 25) * 60);
+  n0 = bo.pushAppels.length; tick();
+  const env2 = bo.pushAppels.slice(n0).map((x) => JSON.parse(x.body.payload));
+  ok(env2.length === 1 && /^Leave in 2[45] min/.test(env2[0].title), 'rappel « Leave in 25 min » (' + (env2[0] && env2[0].title) + ')');
+  n0 = bo.pushAppels.length; tick();
+  ok(bo.pushAppels.length === n0, 'rappel de départ envoyé une seule fois');
+  // délier, puis supprimer le compte
+  r = bo.post({ action: 'boarding.delier', jeton: s.jeton, ref: r.montres[0].ref });
+  ok(r.ok && r.montres.length === 0, 'montre déliée');
+  ok(bo.post({ action: 'boarding.effacer', jeton: s.jeton }).code === 'donnees', 'suppression du compte : confirmation demandée');
+  ok(bo.post({ action: 'boarding.effacer', jeton: s.jeton, confirme: true }).ok, 'compte supprimé');
+  ok(bo.post({ action: 'boarding.charger', jeton: s.jeton }).code === 'session' && bo.post({ action: 'boarding.reprendre', memo: s.memo }).code === 'memo', 'après suppression : session et téléphone mémorisé refusés');
+  ok(!bo.ctx.lire_('Comptes').some((x) => x.Email === e), 'adresse e-mail effacée');
+}
+
 console.log('\n' + n + ' vérifications réussies.');
