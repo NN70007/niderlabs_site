@@ -65,6 +65,11 @@ function doGet(e) {
       return { v: m.Version, vu_min: Math.round((now - Number(m.Vu)) / 60000), cree_min: Math.round((now - Number(m.Cree)) / 60000), rev: m.Rev, test: /^TEST/.test(m.Id) };
     }) });
   }
+  // Cadran vol : vérifie la clé AeroDataBox (onglet config) SANS jamais la renvoyer
+  if (p.a === 'vdiag') {
+    try { return json_(volDiag_()); }
+    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
+  }
   if (p.a === 'w') {
     try { return json_(montreAppel_(p)); }
     catch (err) {
@@ -959,4 +964,51 @@ function sur_(v) { v = v instanceof Date ? Utilities.formatDate(v, CONFIG.FUSEAU
 function hash_(s) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8);
   return bytes.map(function (b) { return ((b + 256) % 256).toString(16).padStart(2, '0'); }).join('');
+}
+
+/* ======================= Cadran vol (passagers) : données AeroDataBox ======================= */
+// Clé lue dans l'onglet « config » (A: nom, B: valeur) ou, à défaut, dans les propriétés du script.
+// Elle n'est jamais renvoyée ni journalisée.
+function volCle_() {
+  var k = PropertiesService.getScriptProperties().getProperty('AERODATABOX_KEY');
+  if (k) return String(k).trim();
+  var sh = null;
+  try { sh = classeur_(false).getSheetByName('config'); } catch (e) { sh = null; }
+  if (!sh) return '';
+  var v = sh.getDataRange().getValues();
+  for (var i = 0; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === 'AERODATABOX_KEY') return String(v[i][1] || '').trim();
+  return '';
+}
+function volAppel_(chemin) {
+  var cle = volCle_();
+  if (!cle) return { code: 0, data: null };
+  var r = UrlFetchApp.fetch('https://aerodatabox.p.rapidapi.com' + chemin, {
+    headers: { 'X-RapidAPI-Key': cle, 'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com' },
+    muteHttpExceptions: true
+  });
+  var code = r.getResponseCode(), data = null;
+  if (code === 200) { try { data = JSON.parse(r.getContentText()); } catch (e) { data = null; } }
+  return { code: code, data: data };
+}
+// Diagnostic : présence de la clé et un seul appel test (résultat gardé 10 min pour ne pas consommer d'unités)
+function volDiag_() {
+  var cache = CacheService.getScriptCache(), c = cache.get('vdiag');
+  if (c) { var o = JSON.parse(c); o.cache = true; return o; }
+  var cle = volCle_();
+  var out = { ok: true, cle: !!cle, onglet: false };
+  try { out.onglet = !!classeur_(false).getSheetByName('config'); } catch (e) { out.onglet = false; }
+  if (cle) {
+    var jour = Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
+    var r = volAppel_('/flights/number/LH400/' + jour);
+    out.http = r.code;
+    out.vols = Array.isArray(r.data) ? r.data.length : 0;
+    if (Array.isArray(r.data) && r.data[0]) {
+      var f = r.data[0];
+      out.exemple = { vol: f.number, statut: f.status, de: f.departure && f.departure.airport && f.departure.airport.iata,
+        vers: f.arrival && f.arrival.airport && f.arrival.airport.iata, porte: f.departure && f.departure.gate || null,
+        terminal: f.departure && f.departure.terminal || null, avion: f.aircraft && f.aircraft.model || null };
+    }
+  }
+  cache.put('vdiag', JSON.stringify(out), 600);
+  return out;
 }
