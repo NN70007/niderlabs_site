@@ -1,0 +1,17 @@
+/* Boarding — compléments à aviator.css */
+.pile{display:flex;flex-direction:column;gap:18px}
+.pile.petit{gap:10px}
+.date{height:84px;width:100%;border-radius:14px;border:2px solid var(--bord);background:var(--champ);color:var(--encre);font:700 30px var(--texte);padding:0 16px}
+#video{width:100%;max-height:60vh;border-radius:14px;background:#000;object-fit:cover}
+.vol{display:flex;flex-direction:column;gap:10px}
+.vol .haut{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.vol .num{font:700 40px var(--titre);letter-spacing:1px}
+.vol .route{font:700 30px var(--titre);color:var(--encre-2)}
+.vol .etat{display:inline-block;padding:2px 14px;border-radius:20px;font:700 18px var(--texte);color:#0B0F14;background:var(--vert)}
+.vol .etat.ambre{background:var(--ambre)}.vol .etat.rouge{background:var(--rouge)}.vol .etat.bleu{background:var(--accent)}
+.vol .infos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.vol .infos div{display:flex;flex-direction:column}
+.vol .infos span{font-size:16px;font-weight:600;color:var(--encre-3);letter-spacing:1px}
+.vol .infos b{font:700 30px var(--titre)}
+.vol .suppr{align-self:flex-start}
+@media (max-width:600px){.vol .num{font-size:34px}.vol .route{font-size:26px}.date{height:76px;font-size:26px}}

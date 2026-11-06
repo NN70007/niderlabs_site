@@ -1217,14 +1217,16 @@ function boardingAjouter_(jeton, vol) {
   var n = boardingNumero_(vol.n), d = boardingDate_(vol.d);
   if (!n) throw refus_('Invalid flight number (e.g. LG8803).', 'donnees');
   if (!d) throw refus_('Invalid date (from yesterday up to 11 months ahead).', 'donnees');
-  var s = texte_(vol.s, 4).toUpperCase().replace(/[^0-9A-Z]/g, '');
+  var s = texte_(vol.s, 5).toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/^0+/, '');
+  if (s && !/^\d{1,3}[A-Z]$/.test(s)) throw refus_('Invalid seat (e.g. 14A).', 'donnees');
   var o = texte_(vol.o, 3).toUpperCase().replace(/[^A-Z]/g, '');
   var deja = b.v.filter(function (x) { return x.n === n && x.d === d; })[0];
   if (!deja && b.v.length >= BOARDING.VOLS_MAX) throw refus_('You can follow up to ' + BOARDING.VOLS_MAX + ' flights. Remove one first.', 'limite');
   if (!volCle_()) throw refus_('Flight data is not available right now. Please try again later.', 'config');
   var rec = volStatut_(n, d, o, !deja);
   if (!rec || !rec.f) throw refus_('Flight ' + n + ' not found on ' + d + '. Check the number and the local departure date.', 'introuvable');
-  if (deja) { if (s) deja.s = s; }
+  // plusieurs cartes d'embarquement pour le même vol (famille) : sièges ajoutés, 4 au plus
+  if (deja) { if (s) { var l = String(deja.s || '').split(' ').filter(String); if (l.indexOf(s) < 0 && l.length < 4) l.push(s); deja.s = l.join(' '); } }
   else b.v.push({ n: n, d: d, s: s, o: rec.f.o });
   b.v.sort(function (x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; });
   boardingEcrire_(m.Id, b);

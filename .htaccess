@@ -11,6 +11,8 @@ Options -Indexes
   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
   # Aviator METAR Pro : QR code de la montre -> page Pro avec le code
   RewriteRule ^[Pp]/([0-9]{6})/?$ /aviator/pro/?c=$1 [R=302,L]
+  # Boarding : QR code de la montre -> page des vols avec le code
+  RewriteRule ^[Bb]/([0-9]{6})/?$ /boarding/?c=$1 [R=302,L]
 </IfModule>
 
 # Compression des fichiers texte

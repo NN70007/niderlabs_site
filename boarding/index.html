@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boarding – my flights</title>
+<meta name="description" content="Add your flights to the Boarding Garmin watch face: gate, delays, seat, your incoming aircraft. No account needed – just the code shown on your watch.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../aviator/aviator.css?v=7">
+<link rel="stylesheet" href="boarding.css?v=1">
+<script src="../aviator/commun.js?v=1"></script>
+<script src="boarding.js?v=1" defer></script>
+</head>
+<body>
+<header class="entete">
+  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>BOARDING</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="./" aria-current="page">My flights</a>
+    <a href="privacy/">Privacy</a>
+    <span class="statut" id="lie" hidden><span class="pastille"></span>Watch linked · <a href="./" id="quitter">Sign out</a></span>
+    <button type="button" class="theme">Day mode</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Étape 1 : code de la montre -->
+  <div class="col etroit" id="vue-code">
+    <h1>Link your watch</h1>
+    <ol class="etapes">
+      <li>Tap the <b>Boarding</b> watch face: <b>ADD A FLIGHT</b> appears.</li>
+      <li>Scan its QR code with your phone camera, or type the 6-digit code here.</li>
+    </ol>
+    <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
+      <label class="titre" for="code">WATCH CODE</label>
+      <input class="code" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000" required>
+      <div class="memo">
+        <p class="aide"><b>Save this page to your bookmarks</b> (or add it to your home screen) to come back in one tap.</p>
+        <label class="case"><input type="checkbox" id="garder"><span><b>Remember this phone for 30 days</b> – no code needed when you come back. Tick it only on your own phone.</span></label>
+      </div>
+      <button class="bouton" type="submit">Open my flights</button>
+      <div class="message err" id="err-code" role="alert" hidden></div>
+    </form>
+    <div class="carte" style="flex-direction:row;align-items:flex-start;gap:16px">
+      <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;color:var(--encre-3);margin-top:3px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <p class="aide">No account, no password. The code only works for a few minutes and only for your watch.</p>
+    </div>
+  </div>
+
+  <!-- Étape 2 : vols -->
+  <div class="col" id="vue-vols" hidden>
+    <h1>My flights</h1>
+
+    <section class="pile">
+      <h2>Add a flight</h2>
+      <button class="bouton" type="button" id="scanner">Scan my boarding pass</button>
+      <input type="file" id="photo" accept="image/*" hidden>
+      <div class="carte" id="camera" hidden>
+        <video id="video" playsinline muted></video>
+        <p class="aide">Point the camera at the barcode of your boarding pass (paper, airline app or wallet).</p>
+        <div class="ligne">
+          <button class="bouton second" type="button" id="photo-btn">Use a photo or screenshot</button>
+          <button class="bouton second" type="button" id="cam-stop">Cancel</button>
+        </div>
+      </div>
+      <p class="aide">Your boarding pass is read on this phone: only the flight number, date, airports and seat are sent – never your name.</p>
+      <form class="carte" id="form-vol" novalidate>
+        <div class="grille">
+          <div class="pile petit">
+            <label class="titre" for="num">FLIGHT NUMBER</label>
+            <input class="icao" id="num" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="LG8803">
+          </div>
+          <div class="pile petit">
+            <label class="titre" for="date">DEPARTURE DATE (LOCAL)</label>
+            <input class="date" id="date" type="date">
+          </div>
+          <div class="pile petit">
+            <label class="titre" for="siege">SEAT (OPTIONAL)</label>
+            <input class="icao" id="siege" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="14A">
+          </div>
+        </div>
+        <button class="bouton" type="submit" id="ajouter">Add to my watch</button>
+      </form>
+      <div class="message" id="msg" role="status" hidden></div>
+    </section>
+
+    <section class="pile">
+      <h2>Followed flights</h2>
+      <div id="liste" class="pile"></div>
+    </section>
+
+    <section class="pile">
+      <h2>Home</h2>
+      <div class="carte">
+        <label class="titre" for="maison">HOME TIME ZONE</label>
+        <select id="maison"></select>
+        <p class="aide">When you travel, the watch shows the local time in large and the time at home below.</p>
+      </div>
+    </section>
+
+    <div class="avert"><b>Information only.</b> Flight times, gates and belts come from public flight data and may be late or wrong. Always follow the airport screens and your airline's announcements.</div>
+
+    <div class="carte" id="memo-info" hidden>
+      <p class="aide" id="memo-txt"></p>
+      <div class="ligne">
+        <button class="bouton second" type="button" id="memo-oublier">Forget this phone</button>
+        <button class="bouton second" type="button" id="memo-tous">Forget all phones</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="pied">
+  Boarding by NiderLabs · flight data: AeroDataBox · weather: aviationweather.gov (NOAA) ·
+  <a href="privacy/">Privacy</a> · <a href="../aviator/legal/">Legal notice</a> · © <span data-annee></span> NiderLabs
+</footer>
+</body>
+</html>
