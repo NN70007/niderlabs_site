@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-06-boarding1',
+  VERSION: '2026-11-06-boarding2',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -117,6 +117,9 @@ function route_(req) {
   if (a === 'boarding.ajouter') return boardingAjouter_(req.jeton, req.vol);
   if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.maison') return boardingMaison_(req.jeton, req.tz);
+  if (a === 'boarding.trajet') return boardingTrajet_(req.jeton, req.tr);
+  if (a === 'boarding.cle') return boardingCle_();
+  if (a === 'boarding.abonner') return boardingAbonner_(req.jeton, req.sub, req.oui);
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -1002,7 +1005,7 @@ function volAppel_(chemin) {
 }
 // Diagnostic : présence de la clé et un seul appel test (résultat gardé 10 min pour ne pas consommer d'unités)
 function volDiag_() {
-  var cache = CacheService.getScriptCache(), c = cache.get('vdiag3');
+  var cache = CacheService.getScriptCache(), c = cache.get('vdiag4');
   if (c) { var o = JSON.parse(c); o.cache = true; return o; }
   var cle = volCle_();
   var out = { ok: true, cle: !!cle, onglet: false };
@@ -1029,7 +1032,7 @@ function volDiag_() {
       }
     }
   }
-  cache.put('vdiag3', JSON.stringify(out), 600);
+  cache.put('vdiag4', JSON.stringify(out), 600);
   return out;
 }
 
@@ -1041,7 +1044,10 @@ var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 80 };
 
 function boardingDe_(m) {
   var b = {}; try { b = m.Vols ? JSON.parse(m.Vols) : {}; } catch (e) { b = {}; }
-  return { h: typeof b.h === 'string' ? b.h : CONFIG.FUSEAU, v: Array.isArray(b.v) ? b.v : [] };
+  var o = { h: typeof b.h === 'string' ? b.h : CONFIG.FUSEAU, v: Array.isArray(b.v) ? b.v : [] };
+  if (Array.isArray(b.ps)) o.ps = b.ps;
+  if (b.tr && typeof b.tr === 'object') o.tr = b.tr;
+  return o;
 }
 function boardingNumero_(s) {
   s = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1072,6 +1078,7 @@ function adbMeilleur_(mv) {
   if (!mv) return null;
   return adbT_(mv.runwayTime) || adbT_(mv.revisedTime) || adbT_(mv.predictedTime) || adbT_(mv.scheduledTime);
 }
+function adbLoc_(ap, k) { var v = ap && ap.location && Number(ap.location[k]); return isFinite(v) && v !== 0 ? Math.round(v * 10000) / 10000 : null; }
 function iataDe_(ap) { return ap ? String(ap.iata || ap.icao || '').toUpperCase() : ''; }
 function volNorme_(l) {
   var dp = l.departure || {}, ar = l.arrival || {}, ac = l.aircraft || {};
@@ -1082,7 +1089,9 @@ function volNorme_(l) {
     st: String(l.status || 'Unknown'),
     sd: adbT_(dp.scheduledTime), ed: adbMeilleur_(dp), sa: adbT_(ar.scheduledTime), ea: adbMeilleur_(ar),
     oz: adbZ_(dp.scheduledTime), az: adbZ_(ar.scheduledTime),
-    g: dp.gate || '', t: dp.terminal || '', ck: dp.checkInDesk || '', ta: ar.terminal || '', b: ar.baggageBelt || '',
+    g: dp.gate || '', t: dp.terminal || '', ck: dp.checkInDesk || '', ta: ar.terminal || '', ag: ar.gate || '', b: ar.baggageBelt || '',
+    tk: adbT_(dp.runwayTime), ln: adbT_(ar.runwayTime),
+    ola: adbLoc_(dp.airport, 'lat'), olo: adbLoc_(dp.airport, 'lon'), ala: adbLoc_(ar.airport, 'lat'), alo: adbLoc_(ar.airport, 'lon'),
     md: ac.model || '', rg: ac.reg || ''
   };
 }
@@ -1125,7 +1134,10 @@ function volStatut_(n, d, o, forcer) {
     var f = l ? volNorme_(l) : null;
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
+    nv.al = (rec && rec.al) || {};
+    var ev = rec && rec.f && f ? volEvenements_(rec.f, f, nv.al) : [];
     try { props.setProperty(k, JSON.stringify(nv)); } catch (e) { console.error(e); }
+    if (ev.length) { try { boardingAlerter_(n, d, f, ev); } catch (e) { console.error(e && e.stack || e); } }
     return nv;
   }
   return rec;
@@ -1186,6 +1198,16 @@ function boardingListe_(b, pourMontre) {
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
     if (now > (f.ed || f.sd) - 6 * 3600) { try { x.wx = meteoSimple_(f.ai); } catch (e) { x.wx = null; } }
+    // retard probable : l'avion qui arrive se pose trop tard pour repartir à l'heure (escale minimale)
+    if (x.in && !x.in.ici && x.in.st !== 'Arrived' && x.in.ea) {
+      var esc = /A33|A34|A35|A38|B74|B76|B77|B78|787|777|767|747|A350|A330|A380/i.test(f.md || '') ? 60 : 35;
+      var ld = Math.round((x.in.ea + esc * 60 - (f.ed || f.sd)) / 60);
+      if (ld >= 10 && ld > x.dl + 5) x.ld = ld;
+    }
+    if (b.tr && now < (f.ed || f.sd) && (f.ed || f.sd) - now < 30 * 3600) {
+      var tm = trajetMinutes_(b.tr, f);
+      if (tm) { x.tm = tm; x.lv = (f.ed || f.sd) - (b.tr.av + tm) * 60; }
+    }
     out.push(x);
   });
   out.sort(function (a, b) { return (a.sd || 0) - (b.sd || 0); });
@@ -1193,6 +1215,12 @@ function boardingListe_(b, pourMontre) {
     var o = { n: x.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2'), o: x.o, a: x.a, ac: x.ac2 ? x.ac2.toUpperCase().slice(0, 14) : '', st: x.st, sd: x.sd, ed: x.ed, sa: x.sa, ea: x.ea,
       oz: x.oz, az: x.az, g: x.g, t: x.t, b: x.b, s: x.s, dl: x.dl };
     if (x.gp) o.gp = x.gp;
+    if (x.ld) o.ld = x.ld;
+    if (x.lv) o.lv = x.lv;
+    if (x.tk) o.tk = x.tk;
+    if (x.ag) o.ag = x.ag;
+    if (x.ta) o.ta = x.ta;
+    if (x.md) o.md = String(x.md).toUpperCase().replace(/^(AIRBUS|BOEING|EMBRAER|BOMBARDIER|ATR) /, '').slice(0, 12);
     if (x.in) o.in = x.in.ici ? { h: 1 } : { o: x.in.o, st: x.in.st, ea: x.in.ea };
     if (x.wx) o.wx = x.wx;
     if (x.inconnu) o.u = 1;
@@ -1209,7 +1237,7 @@ function boardingEcrire_(id, b) {
 }
 function boardingCharger_(jeton) {
   var m = montreDuJeton_(jeton), b = boardingDe_(m);
-  return { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v };
+  return { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v, tr: b.tr || null, alertes: (b.ps || []).length };
 }
 function boardingAjouter_(jeton, vol) {
   var m = montreDuJeton_(jeton), b = boardingDe_(m);
@@ -1245,4 +1273,119 @@ function boardingMaison_(jeton, tz) {
   b.h = tz;
   boardingEcrire_(m.Id, b);
   return { ok: true, h: tz };
+}
+
+/* ----- Boarding : ce qui mérite une alerte entre deux lectures du même vol ----- */
+// al : dernières valeurs déjà annoncées (pour ne jamais répéter la même alerte)
+function volEvenements_(av, ap, al) {
+  var ev = [], hm = function (t, z) { return Utilities.formatDate(new Date((t + (z || 0)) * 1000), 'UTC', 'HH:mm'); };
+  var n = ap.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2');
+  if (/^Canceled/.test(ap.st) && al.c !== 1) { al.c = 1; ev.push(n + ' is CANCELLED. Contact your airline.'); }
+  if (ap.g && ap.g !== (al.g || av.g || '')) {
+    if (al.g || av.g) ev.push(n + ': GATE CHANGED to ' + ap.g + ' (was ' + (al.g || av.g) + ').');
+    else if (Date.now() / 1000 > (ap.ed || ap.sd) - 4 * 3600) ev.push(n + ': gate ' + ap.g + (ap.t ? ', terminal ' + ap.t : '') + '.');
+    al.g = ap.g;
+  }
+  var dl = ap.ed && ap.sd ? Math.round((ap.ed - ap.sd) / 60) : 0, deja = Number(al.d || 0);
+  if (Math.abs(dl - deja) >= 15 && !/^Canceled/.test(ap.st) && ap.st !== 'Arrived' && !ap.tk) {
+    ev.push(dl > deja ? n + ' DELAYED: departs ' + hm(ap.ed, ap.oz) + ' (+' + dl + ' min).' : n + ': new departure time ' + hm(ap.ed, ap.oz) + '.');
+    al.d = dl;
+  }
+  if (ap.st === 'Boarding' && al.bo !== 1) { al.bo = 1; ev.push(n + ' is BOARDING' + (ap.g ? ' at gate ' + ap.g : '') + '.'); }
+  if (ap.b && ap.b !== al.b) { al.b = ap.b; ev.push(n + ' landed. Baggage belt ' + ap.b + '.'); }
+  return ev;
+}
+
+/* ----- Boarding : notifications sur le téléphone (Web Push), la montre les relaie ----- */
+// Le chiffrement Web Push (courbes elliptiques) est fait par boarding/push.php sur niderlabs.com ;
+// les clés VAPID restent dans les propriétés du script et sont envoyées au relais à chaque envoi.
+var PUSH_URL = 'https://niderlabs.com/boarding/push.php';
+function pushCles_() {
+  var props = PropertiesService.getScriptProperties(), raw = props.getProperty('BOARDING_VAPID');
+  if (raw) { try { return JSON.parse(raw); } catch (e) { /* régénérées */ } }
+  var r = UrlFetchApp.fetch(PUSH_URL + '?a=gen', { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw refus_('Notifications are not available right now.', 'config');
+  var k = JSON.parse(r.getContentText());
+  if (!k.pub || !k.priv) throw refus_('Notifications are not available right now.', 'config');
+  props.setProperty('BOARDING_VAPID', JSON.stringify({ pub: k.pub, priv: k.priv }));
+  return { pub: k.pub, priv: k.priv };
+}
+function boardingCle_() { return { ok: true, cle: pushCles_().pub }; }
+function abonnementValide_(s) {
+  if (!s || typeof s !== 'object' || !s.keys) return null;
+  var ep = String(s.endpoint || ''), p = String(s.keys.p256dh || ''), a = String(s.keys.auth || '');
+  if (!/^https:\/\/[A-Za-z0-9.\-]+(:\d+)?\/\S{8,800}$/.test(ep) || !/^[A-Za-z0-9_\-]{80,100}$/.test(p) || !/^[A-Za-z0-9_\-]{16,30}$/.test(a)) return null;
+  return { endpoint: ep, keys: { p256dh: p, auth: a } };
+}
+function boardingAbonner_(jeton, sub, oui) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  var s = abonnementValide_(sub);
+  if (oui !== false && !s) throw refus_('This browser could not turn on alerts.', 'donnees');
+  b.ps = (b.ps || []).filter(function (x) { return !s || x.endpoint !== s.endpoint; });
+  if (oui !== false) { b.ps.push(s); b.ps = b.ps.slice(-4); }
+  boardingEcrire_(m.Id, b);
+  if (oui !== false) { try { pushEnvoyer_([s], 'Boarding', 'Alerts are on. You will be told about gate changes, delays and your baggage belt.'); } catch (e) { console.error(e); } }
+  return { ok: true, alertes: (b.ps || []).length };
+}
+function pushEnvoyer_(subs, titre, texte) {
+  if (!subs.length) return [];
+  var k = pushCles_();
+  var r = UrlFetchApp.fetch(PUSH_URL + '?a=send', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    payload: JSON.stringify({ vapid: k, subject: 'mailto:labs@nider.com', subs: subs,
+      payload: JSON.stringify({ title: titre, body: texte, url: 'https://niderlabs.com/boarding/' }) })
+  });
+  if (r.getResponseCode() !== 200) { console.error('push ' + r.getResponseCode()); return []; }
+  try { return JSON.parse(r.getContentText()).res || []; } catch (e) { return []; }
+}
+function boardingAlerter_(n, d, f, ev) {
+  var cibles = [];
+  lire_('Montres').forEach(function (m) {
+    if (!m.Vols) return;
+    var b = boardingDe_(m);
+    if (!(b.ps || []).length || !b.v.some(function (x) { return x.n === n && x.d === d; })) return;
+    cibles.push({ id: m.Id, b: b });
+  });
+  cibles.forEach(function (c) {
+    var res = pushEnvoyer_(c.b.ps, 'Boarding · ' + f.n, ev.join(' '));
+    // abonnements expirés (404/410) : retirés
+    var morts = res.filter(function (x) { return x.code === 404 || x.code === 410; }).map(function (x) { return x.endpoint; });
+    if (morts.length) { c.b.ps = c.b.ps.filter(function (x) { return morts.indexOf(x.endpoint) < 0; }); boardingEcrire_(c.id, c.b); }
+  });
+}
+
+/* ----- Boarding : heure de départ de la maison ----- */
+// tr : { la, lo, lab, mode: 'car' | 'min', min, av: minutes d'avance à l'aéroport }
+function distKm_(a, b, c, d) {
+  var r = Math.PI / 180, x = (d - b) * r * Math.cos((a + c) / 2 * r), y = (c - a) * r;
+  return Math.sqrt(x * x + y * y) * 6371;
+}
+function trajetMinutes_(tr, f) {
+  if (!tr || f.ola == null) return null;
+  if (distKm_(tr.la, tr.lo, f.ola, f.olo) > 250) return null; // départ d'un autre endroit : pas de conseil
+  if (tr.mode === 'min') return Number(tr.min) || null;
+  var cache = CacheService.getScriptCache(), k = 'osrm:' + [tr.la, tr.lo, f.ola, f.olo].join(','), c = cache.get(k);
+  if (c) return Number(c);
+  try {
+    var r = UrlFetchApp.fetch('https://router.project-osrm.org/route/v1/driving/' + tr.lo + ',' + tr.la + ';' + f.olo + ',' + f.ola + '?overview=false',
+      { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Boarding/0.2' } });
+    var j = JSON.parse(r.getContentText()), sec = j.routes && j.routes[0] && j.routes[0].duration;
+    if (!sec) return null;
+    var m = Math.round(sec / 60 * 1.15 + 5); // marge circulation et stationnement
+    cache.put(k, String(m), 21600);
+    return m;
+  } catch (e) { return null; }
+}
+function boardingTrajet_(jeton, tr) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  if (tr === null) { delete b.tr; boardingEcrire_(m.Id, b); return { ok: true, tr: null }; }
+  tr = tr || {};
+  var la = Number(tr.la), lo = Number(tr.lo), av = Number(tr.av || 90), mn = Number(tr.min || 0);
+  if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) throw refus_('Invalid starting point.', 'donnees');
+  if (!isFinite(av) || av < 30 || av > 240) throw refus_('Arrival before departure: 30 to 240 min.', 'donnees');
+  var mode = tr.mode === 'min' ? 'min' : 'car';
+  if (mode === 'min' && (!isFinite(mn) || mn < 5 || mn > 600)) throw refus_('Travel time: 5 to 600 min.', 'donnees');
+  b.tr = { la: Math.round(la * 1000) / 1000, lo: Math.round(lo * 1000) / 1000, lab: texte_(tr.lab, 80), mode: mode, min: mode === 'min' ? Math.round(mn) : 0, av: Math.round(av) };
+  boardingEcrire_(m.Id, b);
+  return { ok: true, tr: b.tr };
 }

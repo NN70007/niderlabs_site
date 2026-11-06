@@ -344,6 +344,29 @@ console.log('Boarding (cadran vol)');
   })(bo2.ctx.UrlFetchApp.fetch);
   w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
   ok(w.b.f[0].g === 'A12' && w.b.f[0].gp === 'B32' && w.b.f[0].dl === 25, 'porte changée (ancienne porte signalée) et retard de 25 min');
+  ok(bo.pushAppels.length === 0, 'aucune alerte sans abonnement');
+  // alertes : abonnement, puis changement de porte annoncé une seule fois
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/abcdefghijklmnop', keys: { p256dh: 'B' + 'q'.repeat(86), auth: 'a'.repeat(22) } };
+  ok(bo.post({ action: 'boarding.abonner', jeton: o.jeton, sub: { endpoint: 'http://x', keys: {} } }).code === 'donnees', 'abonnement aux alertes invalide refusé');
+  r = bo.post({ action: 'boarding.abonner', jeton: o.jeton, sub });
+  ok(r.ok && r.alertes === 1 && bo.pushAppels.some((x) => /a=gen/.test(x.url)), 'alertes activées (clés VAPID créées une fois)');
+  ok(/Alerts are on/.test(JSON.parse(bo.pushAppels[bo.pushAppels.length - 1].body.payload).body), 'message de confirmation envoyé au téléphone');
+  ok(JSON.stringify(bo.props).indexOf('BOARDING_VAPID') >= 0 && !JSON.stringify(bo.post({ action: 'boarding.cle' })).includes('PRIVATE'), 'la clé privée n\'est jamais renvoyée');
+  const nPush = bo.pushAppels.length;
+  const rec2 = JSON.parse(bo.props[k]); rec2.t -= 10000; rec2.f.g = 'C7'; delete rec2.al.g; bo.props[k] = JSON.stringify(rec2);
+  bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' });
+  const env = bo.pushAppels.slice(nPush);
+  ok(env.length === 1 && /GATE CHANGED to A12 \(was C7\)/.test(JSON.parse(env[0].body.payload).body), 'changement de porte : une alerte envoyée');
+  const rec3 = JSON.parse(bo.props[k]); rec3.t -= 10000; bo.props[k] = JSON.stringify(rec3);
+  bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' });
+  ok(bo.pushAppels.length === nPush + 1, 'pas de deuxième alerte pour la même porte ni le même retard');
+  // départ de la maison
+  ok(bo.post({ action: 'boarding.trajet', jeton: o.jeton, tr: { la: 999, lo: 0 } }).code === 'donnees', 'point de départ invalide refusé');
+  ok(bo.post({ action: 'boarding.trajet', jeton: o.jeton, tr: { la: 49.61, lo: 6.13, lab: 'Home', mode: 'car', av: 90 } }).ok, 'point de départ enregistré (voiture)');
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' });
+  const fl = w.b.f[0];
+  ok(fl.lv && Math.abs((fl.ed - fl.lv) / 60 - (90 + Math.round(20 * 1.15 + 5))) < 1, 'heure de départ de la maison = départ − 1 h 30 − trajet');
+  ok(fl.md === '737-800', 'type d\'avion court pour la montre');
   ok(bo.post({ action: 'boarding.maison', jeton: o.jeton, tz: 'Pas/Une zone' }).code === 'donnees', 'fuseau maison invalide refusé');
   ok(bo.post({ action: 'boarding.maison', jeton: o.jeton, tz: 'America/New_York' }).ok, 'fuseau maison enregistré');
   w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
@@ -355,6 +378,19 @@ console.log('Boarding (cadran vol)');
   ok(bo.post({ action: 'boarding.charger', jeton: 'faux' }).code === 'session', 'Boarding refusé sans session');
   ok(!bo.get({ a: 'w', id: 'stdWatch0123456789', k: K, v: '0.6.6', r: '0' }).b, 'cadran Aviator : pas de données Boarding');
   ok(!JSON.stringify(bo.get({ a: 'vdiag' })).includes('cle-de-test'), 'le diagnostic ne renvoie jamais la clé');
+}
+{
+  // retard probable : l'avion qui arrive se pose trop tard
+  global.ADB_INBOUND_LATE = true;
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test' } });
+  bo.run('installer');
+  const ID = 'brdWatch0123456780', K = 'brdKey0123456789ABCDEF';
+  const w0 = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' });
+  const o = bo.post({ action: 'aviator.ouvrir', code: w0.c });
+  bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'LG8803', d: new Date().toISOString().slice(0, 10) } });
+  const f = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' }).b.f[0];
+  ok(f.ld >= 10 && f.dl === 0, 'avion entrant en retard : « retard probable » (' + f.ld + ' min) avant l\'annonce');
+  global.ADB_INBOUND_LATE = false;
 }
 
 console.log('\n' + n + ' vérifications réussies.');

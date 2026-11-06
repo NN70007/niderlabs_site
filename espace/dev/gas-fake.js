@@ -19,12 +19,12 @@ function adbHeure(t, off) {
   return { utc: p(new Date(t * 1000)) + 'Z', local: p(new Date((t + off) * 1000)) + (off < 0 ? '-' : '+') + String(Math.floor(h)).padStart(2, '0') + ':00' };
 }
 function adbVol(num, de, vers, dep, arr, st, extra) {
-  const AP = { LUX: ['ELLX', 'Luxembourg', 3600], LIS: ['LPPT', 'Lisbon', 0], MAD: ['LEMD', 'Madrid', 3600] };
+  const AP = { LUX: ['ELLX', 'Luxembourg', 3600, 49.6233, 6.2044], LIS: ['LPPT', 'Lisbon', 0, 38.7742, -9.1342], MAD: ['LEMD', 'Madrid', 3600, 40.4719, -3.5626] };
   const a = AP[de], b = AP[vers];
   return Object.assign({
     number: num, status: st, codeshareStatus: 'IsOperator', airline: { name: 'Luxair' },
-    departure: { airport: { iata: de, icao: a[0], municipalityName: a[1] }, scheduledTime: adbHeure(dep, a[2]), terminal: 'A', gate: 'B32', checkInDesk: '12' },
-    arrival: { airport: { iata: vers, icao: b[0], municipalityName: b[1] }, scheduledTime: adbHeure(arr, b[2]), baggageBelt: '' },
+    departure: { airport: { iata: de, icao: a[0], municipalityName: a[1], location: { lat: a[3], lon: a[4] } }, scheduledTime: adbHeure(dep, a[2]), terminal: 'A', gate: 'B32', checkInDesk: '12' },
+    arrival: { airport: { iata: vers, icao: b[0], municipalityName: b[1], location: { lat: b[3], lon: b[4] } }, scheduledTime: adbHeure(arr, b[2]), baggageBelt: '' },
     aircraft: { reg: 'LX-LGU', model: 'Boeing 737-800' }
   }, extra || {});
 }
@@ -35,7 +35,8 @@ function adbDefaut(url) {
     return [200, [Object.assign({}, v, { number: 'TP 7105', codeshareStatus: 'IsCodeshared' }), v]];
   }
   if (/\/flights\/reg\/LX-LGU\//.test(url)) {
-    return [200, [adbVol('LG 3402', 'MAD', 'LUX', now - 3600, now + 3000, 'EnRoute'),
+    const late = global.ADB_INBOUND_LATE ? 4500 : 0;
+    return [200, [adbVol('LG 3402', 'MAD', 'LUX', now - 3600, now + 3000 + late, 'EnRoute'),
       adbVol('IB 5402', 'MAD', 'LUX', now - 3600, now + 3000, 'Delayed', { codeshareStatus: 'IsCodeshared' }),
       adbVol('LG 8803', 'LUX', 'LIS', now + 7200, now + 7200 + 9000, 'Expected')]];
   }
@@ -53,6 +54,7 @@ function charger(opts) {
   const drive = { dossiers: {}, fichiers: {}, n: 0 };
   const googleTokens = opts.googleTokens || {}; // idToken -> réponse de tokeninfo
   const adbAppels = []; // requêtes AeroDataBox reçues
+  const pushAppels = []; // envois au relais Web Push
 
   function blob(bytes, type, name) {
     const b = Buffer.from(bytes || []);
@@ -203,6 +205,15 @@ function charger(opts) {
           const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2], runways: i === 'ELLX' ? [{ id: '06/24' }] : [{ id: '07/25' }, { id: '15/33' }] }));
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
         }
+        if (url.startsWith('https://niderlabs.com/boarding/push.php')) {
+          pushAppels.push({ url, body: o.payload ? JSON.parse(o.payload) : null });
+          if (/a=gen/.test(url)) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ pub: 'B' + 'x'.repeat(86), priv: '-----BEGIN EC PRIVATE KEY-----\nTEST\n-----END EC PRIVATE KEY-----\n' }) };
+          const subs = JSON.parse(o.payload).subs;
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ ok: true, res: subs.map((x) => ({ endpoint: x.endpoint, code: /gone/.test(x.endpoint) ? 410 : 201 })) }) };
+        }
+        if (url.startsWith('https://router.project-osrm.org/')) {
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ routes: [{ duration: 1200 }] }) };
+        }
         if (url.startsWith('https://aerodatabox.p.rapidapi.com/')) {
           adbAppels.push(url);
           const key = ((o.headers || {})['X-RapidAPI-Key'] || '');
@@ -240,7 +251,7 @@ function charger(opts) {
   vm.runInContext(code, ctx, { filename: 'Code.gs' });
 
   return {
-    ctx, sheets, props, cache, mails, github, depot, drive, adbAppels,
+    ctx, sheets, props, cache, mails, github, depot, drive, adbAppels, pushAppels,
     run: (fnName) => vm.runInContext(fnName + '()', ctx),
     get: (params) => JSON.parse(ctx.doGet(params ? { parameter: params } : undefined).content),
     post: (body) => JSON.parse(ctx.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).content),
