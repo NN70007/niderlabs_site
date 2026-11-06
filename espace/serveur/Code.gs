@@ -62,7 +62,16 @@ function doGet(e) {
   if (p.a === 'diag') {
     var now = Date.now();
     return json_({ ok: true, version: CONFIG.VERSION, montres: lire_('Montres').map(function (m) {
-      return { v: m.Version, vu_min: Math.round((now - Number(m.Vu)) / 60000), cree_min: Math.round((now - Number(m.Cree)) / 60000), rev: m.Rev, test: /^TEST/.test(m.Id) };
+      var o = { v: m.Version, vu_min: Math.round((now - Number(m.Vu)) / 60000), cree_min: Math.round((now - Number(m.Cree)) / 60000), rev: m.Rev, test: /^TEST/.test(m.Id) };
+      // Boarding : état anonyme (nombre de vols, départ réglé, raison quand pas d'heure de départ)
+      if (/^B/.test(m.Version || '') && p.b === '1') {
+        try {
+          var b = boardingDe_(m);
+          o.b = { vols: b.v.length, tr: !!b.tr, mode: b.tr && b.tr.mode, alertes: (b.ps || []).length,
+            l: boardingListe_(b, false).map(function (x) { return { h_avant: x.sd ? Math.round((x.sd - now / 1000) / 3600) : null, lv: !!x.lv, tm: x.tm || null, tw: x.tw || null, apt: x.ola != null }; }) };
+        } catch (e) { o.b = { err: String(e) }; }
+      }
+      return o;
     }) });
   }
   // Cadran vol : vérifie la clé AeroDataBox (onglet config) SANS jamais la renvoyer

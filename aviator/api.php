@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 $GAS = 'https://script.google.com/macros/s/AKfycbwjfALtYam9glF9Rb9pF_5IuImyFI4tler3PUiHPXBy5L3GOR-hItwuS33eI2wRHUQiAg/exec';
 $p = array();
-foreach (array('a', 'id', 'k', 'v', 'r') as $n) {
+foreach (array('a', 'id', 'k', 'v', 'r', 'b') as $n) {
   if (isset($_GET[$n])) { $p[$n] = substr(preg_replace('/[^A-Za-z0-9._-]/', '', (string)$_GET[$n]), 0, 64); }
 }
 // i = codes OACI connus de la montre (pour le décalage horaire de chaque aérodrome)
