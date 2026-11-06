@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-04-pro1',
+  VERSION: '2026-11-06-boarding1',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -51,7 +51,7 @@ var CONFIG = {
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
   Journal: ['Date', 'Qui', 'Action', 'Detail'],
-  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro'],
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols'],
   Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj']
 };
 
@@ -112,6 +112,11 @@ function route_(req) {
   if (a === 'pro.charger') return proCharger_(req.jeton);
   if (a === 'pro.enregistrer') return proEnregistrer_(req.jeton, req.pro);
   if (a === 'pro.briefing') return proBriefing_(req.jeton);
+  // Boarding (niderlabs.com/boarding) : même jumelage par code que Aviator
+  if (a === 'boarding.charger') return boardingCharger_(req.jeton);
+  if (a === 'boarding.ajouter') return boardingAjouter_(req.jeton, req.vol);
+  if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
+  if (a === 'boarding.maison') return boardingMaison_(req.jeton, req.tz);
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -156,6 +161,9 @@ function nettoyerSessions() {
   var props = PropertiesService.getScriptProperties();
   var all = props.getProperties(), now = Date.now(), n = 0;
   Object.keys(all).forEach(function (k) {
+    // Boarding : statuts de vols et d'avions de plus de 3 jours
+    var bv = /^b[vi]:.*:(\d{4}-\d{2}-\d{2})$/.exec(k);
+    if (bv) { if (Date.parse(bv[1] + 'T00:00:00Z') < now - 3 * 86400000) { props.deleteProperty(k); n++; } return; }
     if (k.indexOf('s:') !== 0) return;
     try { if (JSON.parse(all[k]).exp < now) { props.deleteProperty(k); n++; } } catch (e) { props.deleteProperty(k); n++; }
   });
@@ -530,6 +538,8 @@ function montreAppel_(p) {
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
   // Cadran Pro (version « P… ») : résumé TAF et rappels pilote, prêts à afficher
   if (/^P/.test(ver)) { try { out.p = proMontre_(m); } catch (e) { console.error(e && e.stack || e); } }
+  // Cadran Boarding (version « B… ») : vols suivis, prêts à afficher
+  if (/^B/.test(ver)) { try { out.b = boardingMontre_(m); } catch (e) { console.error(e && e.stack || e); } return out; }
   // Décalage horaire du jour (heure d'été comprise) des aérodromes de la montre : repère « L » sur le cadran
   try {
     var liste = icaosDe_(m).concat(String(p.i || '').toUpperCase().split(',').filter(function (x) { return /^[A-Z0-9]{4}$/.test(x); }).slice(0, 6));
@@ -1021,4 +1031,216 @@ function volDiag_() {
   }
   cache.put('vdiag2', JSON.stringify(out), 600);
   return out;
+}
+
+/* ======================= Boarding : cadran vol pour passagers ======================= */
+/* Vols par montre (colonne Vols, JSON) : { h: fuseau maison IANA, v: [ { n: 'LG8803', d: 'AAAA-MM-JJ' (date locale de départ), s: siège, o: IATA départ } ] }
+   Statut d'un vol : AeroDataBox, gardé dans les propriétés du script ('bv:<n>:<d>') et rafraîchi d'autant plus souvent
+   que le départ approche (une seule requête par vol, quel que soit le nombre de montres qui le suivent). */
+var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 80 };
+
+function boardingDe_(m) {
+  var b = {}; try { b = m.Vols ? JSON.parse(m.Vols) : {}; } catch (e) { b = {}; }
+  return { h: typeof b.h === 'string' ? b.h : CONFIG.FUSEAU, v: Array.isArray(b.v) ? b.v : [] };
+}
+function boardingNumero_(s) {
+  s = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  var r = /^([A-Z0-9]{2})0*(\d{1,4}[A-Z]?)$/.exec(s);
+  if (!r || /^\d\d$/.test(r[1])) return null;
+  return r[1] + r[2];
+}
+function boardingDate_(s) {
+  s = String(s || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  var t = Date.parse(s + 'T12:00:00Z');
+  if (!isFinite(t) || t < Date.now() - 2 * 86400000 || t > Date.now() + 330 * 86400000) return null;
+  return s;
+}
+// « 2026-11-06 10:25Z » / « 2026-11-06 11:25+01:00 » -> secondes UTC ; décalage local en secondes
+function adbT_(x) {
+  if (!x) return null;
+  var u = String(x.utc || '').trim().replace(' ', 'T');
+  if (u && !/(Z|[+-]\d\d:?\d\d)$/.test(u)) u += 'Z';
+  var t = Date.parse(u);
+  return isFinite(t) ? Math.round(t / 1000) : null;
+}
+function adbZ_(x) {
+  var m = /([+-])(\d\d):?(\d\d)$/.exec(String((x && x.local) || '').trim());
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 3600 + Number(m[3]) * 60) : null;
+}
+function adbMeilleur_(mv) {
+  if (!mv) return null;
+  return adbT_(mv.runwayTime) || adbT_(mv.revisedTime) || adbT_(mv.predictedTime) || adbT_(mv.scheduledTime);
+}
+function iataDe_(ap) { return ap ? String(ap.iata || ap.icao || '').toUpperCase() : ''; }
+function volNorme_(l) {
+  var dp = l.departure || {}, ar = l.arrival || {}, ac = l.aircraft || {};
+  return {
+    n: String(l.number || '').toUpperCase(), al: (l.airline && l.airline.name) || '',
+    o: iataDe_(dp.airport), oi: String((dp.airport && dp.airport.icao) || '').toUpperCase(), oc: String((dp.airport && (dp.airport.municipalityName || dp.airport.shortName)) || ''),
+    a: iataDe_(ar.airport), ai: String((ar.airport && ar.airport.icao) || '').toUpperCase(), ac2: String((ar.airport && (ar.airport.municipalityName || ar.airport.shortName)) || ''),
+    st: String(l.status || 'Unknown'),
+    sd: adbT_(dp.scheduledTime), ed: adbMeilleur_(dp), sa: adbT_(ar.scheduledTime), ea: adbMeilleur_(ar),
+    oz: adbZ_(dp.scheduledTime), az: adbZ_(ar.scheduledTime),
+    g: dp.gate || '', t: dp.terminal || '', ck: dp.checkInDesk || '', ta: ar.terminal || '', b: ar.baggageBelt || '',
+    md: ac.model || '', rg: ac.reg || ''
+  };
+}
+// Garde le vol réellement opéré (pas les numéros de partage de code), et le bon départ si on le connaît
+function volChoisir_(legs, o) {
+  if (!Array.isArray(legs) || !legs.length) return null;
+  var l = legs.filter(function (x) { return x && x.codeshareStatus !== 'IsCodeshared'; });
+  if (!l.length) l = legs;
+  if (o) { var m = l.filter(function (x) { return iataDe_(x.departure && x.departure.airport) === o; }); if (m.length) l = m; }
+  return l[0];
+}
+function budgetAdb_() {
+  var c = CacheService.getScriptCache(), k = 'adb:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd'), n = Number(c.get(k) || 0);
+  if (n >= BOARDING.APPELS_JOUR) return false;
+  c.put(k, String(n + 1), 90000);
+  return true;
+}
+/** Intervalle de rafraîchissement (secondes) selon l'état du vol. */
+function volFraicheur_(f) {
+  var now = Date.now() / 1000;
+  if (!f || !f.sd) return 6 * 3600;
+  var dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600;
+  if (/^Canceled/.test(f.st)) return 6 * 3600;
+  if (now > arr + 2 * 3600) return 1e9;                       // vol terminé : plus de requête
+  if (now > arr - 1800 || f.st === 'Arrived') return 600;     // atterrissage, tapis à bagages
+  if (now > dep - 3 * 3600) return 360;                       // de 3 h avant le départ à l'arrivée
+  if (dep - now < 12 * 3600) return 2700;
+  if (dep - now < 48 * 3600) return 3 * 3600;
+  return 24 * 3600;
+}
+function volStatut_(n, d, o, forcer) {
+  var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
+  try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
+  var now = Math.round(Date.now() / 1000);
+  if (rec && !forcer && now - rec.t < volFraicheur_(rec.f)) return rec;
+  if (!budgetAdb_()) return rec;
+  var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
+  if (r.code === 200 || r.code === 204) {
+    var l = volChoisir_(r.data, o);
+    var f = l ? volNorme_(l) : null;
+    var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
+    if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
+    try { props.setProperty(k, JSON.stringify(nv)); } catch (e) { console.error(e); }
+    return nv;
+  }
+  return rec;
+}
+/** Avion qui assure le vol : son vol précédent du jour (en vol, au sol…). */
+function volEntrant_(f) {
+  if (!f || !f.rg || !f.sd) return null;
+  var now = Date.now() / 1000, dep = f.ed || f.sd;
+  if (now < dep - 10 * 3600 || now > dep) return null;
+  var jour = Utilities.formatDate(new Date((f.sd + (f.oz || 0)) * 1000), 'UTC', 'yyyy-MM-dd');
+  var props = PropertiesService.getScriptProperties(), k = 'bi:' + f.rg + ':' + jour, rec = null;
+  try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
+  var age = rec ? now - rec.t : 1e9, frais = rec && rec.i && rec.i.st === 'Arrived' ? 3600 : 600;
+  if (!rec || age > frais) {
+    if (budgetAdb_()) {
+      var r = volAppel_('/flights/reg/' + encodeURIComponent(f.rg) + '/' + jour + '?withAircraftImage=false&withLocation=false');
+      if (r.code === 200 || r.code === 204) {
+        var vu = {}, legs = (Array.isArray(r.data) ? r.data : []).filter(function (x) { return x && x.codeshareStatus !== 'IsCodeshared'; }).map(volNorme_)
+          .filter(function (x) { var c = x.o + x.sd; if (vu[c]) return false; vu[c] = 1; return true; })
+          .sort(function (a, b) { return (a.sd || 0) - (b.sd || 0); });
+        var avant = legs.filter(function (x) { return x.a === f.o && x.sd && x.sd < f.sd; }).pop();
+        var i = avant ? { o: avant.o, oc: avant.oc, st: avant.st, ea: avant.ea, sa: avant.sa }
+          : (legs.length && legs[0].n === f.n ? { ici: true } : null);
+        rec = { t: Math.round(now), i: i };
+        try { props.setProperty(k, JSON.stringify(rec)); } catch (e) { console.error(e); }
+      }
+    }
+  }
+  return rec ? rec.i : null;
+}
+/** Météo simple à l'arrivée (METAR) : température et un mot. */
+function meteoSimple_(icao) {
+  if (!/^[A-Z]{4}$/.test(icao || '')) return null;
+  var m = (awc_('metar', [icao])[icao] || [])[0];
+  if (!m) return null;
+  var raw = ' ' + String(m.rawOb || '') + ' ', w = 'CLEAR';
+  if (/ [-+]?(VC)?TS/.test(raw)) w = 'STORM';
+  else if (/ [-+]?\w*SN /.test(raw)) w = 'SNOW';
+  else if (/ [-+]?\w*(RA|SH) /.test(raw)) w = 'RAIN';
+  else if (/ [-+]?DZ /.test(raw)) w = 'DRIZZLE';
+  else if (/ (FG|BR) /.test(raw)) w = 'FOG';
+  else if (/ (BKN|OVC)\d{3}/.test(raw)) w = 'CLOUDY';
+  else if (/ (FEW|SCT)\d{3}/.test(raw)) w = 'FAIR';
+  return { t: isFinite(Number(m.temp)) ? Math.round(Number(m.temp)) : null, w: w };
+}
+function villeDe_(tz) { var p = String(tz || '').split('/'); return p[p.length - 1].replace(/_/g, ' ').toUpperCase(); }
+
+/** Liste prête à afficher (montre et page web) : vols à venir ou en cours, triés. */
+function boardingListe_(b, pourMontre) {
+  var now = Date.now() / 1000, out = [];
+  b.v.forEach(function (v) {
+    var rec = volStatut_(v.n, v.d, v.o, false), f = rec && rec.f;
+    if (!f) { out.push({ n: v.n, d: v.d, s: v.s || '', inconnu: true, sd: Date.parse(v.d + 'T12:00:00Z') / 1000 }); return; }
+    var arr = f.ea || f.sa || (f.ed || f.sd) + 3 * 3600;
+    if (now > arr + 3 * 3600) return; // terminé depuis plus de 3 h
+    var x = Object.assign({}, f, { s: v.s || '', d: v.d });
+    x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
+    if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
+    if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
+    if (now > (f.ed || f.sd) - 6 * 3600) { try { x.wx = meteoSimple_(f.ai); } catch (e) { x.wx = null; } }
+    out.push(x);
+  });
+  out.sort(function (a, b) { return (a.sd || 0) - (b.sd || 0); });
+  if (pourMontre) out = out.slice(0, 3).map(function (x) {
+    var o = { n: x.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2'), o: x.o, a: x.a, ac: x.ac2 ? x.ac2.toUpperCase().slice(0, 14) : '', st: x.st, sd: x.sd, ed: x.ed, sa: x.sa, ea: x.ea,
+      oz: x.oz, az: x.az, g: x.g, t: x.t, b: x.b, s: x.s, dl: x.dl };
+    if (x.gp) o.gp = x.gp;
+    if (x.in) o.in = x.in.ici ? { h: 1 } : { o: x.in.o, st: x.in.st, ea: x.in.ea };
+    if (x.wx) o.wx = x.wx;
+    if (x.inconnu) o.u = 1;
+    return o;
+  });
+  return out;
+}
+function boardingMontre_(m) {
+  var b = boardingDe_(m);
+  return { h: tzSecondes_(b.h, new Date()), hn: villeDe_(b.h), f: boardingListe_(b, true) };
+}
+function boardingEcrire_(id, b) {
+  verrou_(function () { majLigne_('Montres', function (x) { return x.Id === id; }, { Vols: JSON.stringify(b) }); });
+}
+function boardingCharger_(jeton) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  return { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v };
+}
+function boardingAjouter_(jeton, vol) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  vol = vol || {};
+  var n = boardingNumero_(vol.n), d = boardingDate_(vol.d);
+  if (!n) throw refus_('Invalid flight number (e.g. LG8803).', 'donnees');
+  if (!d) throw refus_('Invalid date (from yesterday up to 11 months ahead).', 'donnees');
+  var s = texte_(vol.s, 4).toUpperCase().replace(/[^0-9A-Z]/g, '');
+  var o = texte_(vol.o, 3).toUpperCase().replace(/[^A-Z]/g, '');
+  var deja = b.v.filter(function (x) { return x.n === n && x.d === d; })[0];
+  if (!deja && b.v.length >= BOARDING.VOLS_MAX) throw refus_('You can follow up to ' + BOARDING.VOLS_MAX + ' flights. Remove one first.', 'limite');
+  if (!volCle_()) throw refus_('Flight data is not available right now. Please try again later.', 'config');
+  var rec = volStatut_(n, d, o, !deja);
+  if (!rec || !rec.f) throw refus_('Flight ' + n + ' not found on ' + d + '. Check the number and the local departure date.', 'introuvable');
+  if (deja) { if (s) deja.s = s; }
+  else b.v.push({ n: n, d: d, s: s, o: rec.f.o });
+  b.v.sort(function (x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; });
+  boardingEcrire_(m.Id, b);
+  return { ok: true, vol: Object.assign({ s: s, d: d }, rec.f), vols: boardingListe_(b, false), enregistres: b.v };
+}
+function boardingSupprimer_(jeton, n, d) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  b.v = b.v.filter(function (x) { return !(x.n === n && x.d === d); });
+  boardingEcrire_(m.Id, b);
+  return { ok: true, vols: boardingListe_(b, false), enregistres: b.v };
+}
+function boardingMaison_(jeton, tz) {
+  var m = montreDuJeton_(jeton), b = boardingDe_(m);
+  tz = texte_(tz, 60);
+  if (!/^[A-Za-z_]+(\/[A-Za-z0-9_+\-]+){1,2}$/.test(tz) || tzSecondes_(tz, new Date()) == null) throw refus_('Unknown time zone.', 'donnees');
+  b.h = tz;
+  boardingEcrire_(m.Id, b);
+  return { ok: true, h: tz };
 }

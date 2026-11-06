@@ -300,4 +300,58 @@ console.log('Aviator METAR Pro');
   ok(av.post({ action: 'pro.briefing', jeton: 'faux' }).code === 'session', 'briefing refusé sans session');
 }
 
+console.log('Boarding (cadran vol)');
+{
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test' } });
+  bo.run('installer');
+  const ID = 'brdWatch0123456789', K = 'brdKey0123456789ABCDEF';
+  let w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  ok(w.ok && w.b && Array.isArray(w.b.f) && w.b.f.length === 0 && /^\d{6}$/.test(w.c), 'cadran Boarding : enregistré, aucun vol, code de jumelage');
+  ok(w.b.h === bo.ctx.tzSecondes_('Europe/Luxembourg', new Date()) && w.b.hn === 'LUXEMBOURG', 'maison par défaut : Luxembourg');
+  const o = bo.post({ action: 'aviator.ouvrir', code: w.c });
+  ok(o.ok && o.jeton, 'le code de la montre ouvre la page Boarding');
+  const today = new Date().toISOString().slice(0, 10);
+  ok(bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'X', d: today } }).code === 'donnees', 'numéro de vol invalide refusé');
+  ok(bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'LG8803', d: '2020-01-01' } }).code === 'donnees', 'date passée refusée');
+  ok(bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'ZZ999', d: today } }).code === 'introuvable', 'vol inconnu : refusé clairement');
+  let r = bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'lg 08803', d: today, s: '14a' } });
+  ok(r.ok && r.vol.n === 'LG 8803' && r.vol.o === 'LUX' && r.vol.a === 'LIS' && r.vol.g === 'B32', 'vol ajouté (numéro normalisé, vol opéré et non le partage de code)');
+  ok(r.enregistres.length === 1 && r.enregistres[0].n === 'LG8803' && r.enregistres[0].s === '14A', 'siège gardé');
+  const avant = bo.adbAppels.length;
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  const f = w.b.f[0];
+  ok(f && f.n === 'LG 8803' && f.g === 'B32' && f.s === '14A' && f.oz === 3600 && f.az === 0, 'la montre reçoit le vol : porte, siège, décalages horaires');
+  ok(f.in && f.in.o === 'MAD' && f.in.st === 'EnRoute', 'avion qui arrive : vol précédent opéré (pas le doublon « Delayed »)');
+  const n1 = bo.adbAppels.length;
+  bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  ok(bo.adbAppels.length === n1, 'deuxième appel de la montre : aucune requête AeroDataBox (statut gardé)');
+  ok(n1 - avant <= 1, 'le statut du vol n\'est pas redemandé juste après l\'ajout');
+  // changement de porte
+  const k = 'bv:LG8803:' + today, rec = JSON.parse(bo.props[k]);
+  rec.t -= 10000; bo.props[k] = JSON.stringify(rec);
+  const bo2 = bo; // même serveur, nouvelle réponse AeroDataBox
+  bo2.ctx.UrlFetchApp.fetch = ((orig) => (url, opt) => {
+    if (/flights\/number\/LG8803/.test(url)) {
+      const now = Math.floor(Date.now() / 1000);
+      const body = JSON.parse(orig(url, opt).getContentText());
+      body.forEach((x) => { x.departure.gate = 'A12'; x.departure.revisedTime = { utc: new Date((now + 7200 + 1500) * 1000).toISOString().slice(0, 16).replace('T', ' ') + 'Z' }; });
+      return { getResponseCode: () => 200, getContentText: () => JSON.stringify(body) };
+    }
+    return orig(url, opt);
+  })(bo2.ctx.UrlFetchApp.fetch);
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  ok(w.b.f[0].g === 'A12' && w.b.f[0].gp === 'B32' && w.b.f[0].dl === 25, 'porte changée (ancienne porte signalée) et retard de 25 min');
+  ok(bo.post({ action: 'boarding.maison', jeton: o.jeton, tz: 'Pas/Une zone' }).code === 'donnees', 'fuseau maison invalide refusé');
+  ok(bo.post({ action: 'boarding.maison', jeton: o.jeton, tz: 'America/New_York' }).ok, 'fuseau maison enregistré');
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  ok(w.b.hn === 'NEW YORK' && w.b.h < 0, 'la montre reçoit l\'heure de la maison');
+  const c = bo.post({ action: 'boarding.charger', jeton: o.jeton });
+  ok(c.ok && c.vols.length === 1 && c.h === 'America/New_York', 'la page web relit les vols');
+  r = bo.post({ action: 'boarding.supprimer', jeton: o.jeton, n: 'LG8803', d: today });
+  ok(r.ok && r.enregistres.length === 0, 'vol supprimé');
+  ok(bo.post({ action: 'boarding.charger', jeton: 'faux' }).code === 'session', 'Boarding refusé sans session');
+  ok(!bo.get({ a: 'w', id: 'stdWatch0123456789', k: K, v: '0.6.6', r: '0' }).b, 'cadran Aviator : pas de données Boarding');
+  ok(!JSON.stringify(bo.get({ a: 'vdiag' })).includes('cle-de-test'), 'le diagnostic ne renvoie jamais la clé');
+}
+
 console.log('\n' + n + ' vérifications réussies.');

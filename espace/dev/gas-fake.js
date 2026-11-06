@@ -11,6 +11,37 @@ const crypto = require('crypto');
 
 const RACINE = path.join(__dirname, '..', '..');
 
+/* Faux AeroDataBox : vol LG8803 LUX -> LIS dans 2 h (avec un doublon en partage de code),
+   avion LX-LGU qui arrive de Madrid (en vol). */
+function adbHeure(t, off) {
+  const p = (d) => d.toISOString().slice(0, 16).replace('T', ' ');
+  const h = Math.abs(off) / 3600;
+  return { utc: p(new Date(t * 1000)) + 'Z', local: p(new Date((t + off) * 1000)) + (off < 0 ? '-' : '+') + String(Math.floor(h)).padStart(2, '0') + ':00' };
+}
+function adbVol(num, de, vers, dep, arr, st, extra) {
+  const AP = { LUX: ['ELLX', 'Luxembourg', 3600], LIS: ['LPPT', 'Lisbon', 0], MAD: ['LEMD', 'Madrid', 3600] };
+  const a = AP[de], b = AP[vers];
+  return Object.assign({
+    number: num, status: st, codeshareStatus: 'IsOperator', airline: { name: 'Luxair' },
+    departure: { airport: { iata: de, icao: a[0], municipalityName: a[1] }, scheduledTime: adbHeure(dep, a[2]), terminal: 'A', gate: 'B32', checkInDesk: '12' },
+    arrival: { airport: { iata: vers, icao: b[0], municipalityName: b[1] }, scheduledTime: adbHeure(arr, b[2]), baggageBelt: '' },
+    aircraft: { reg: 'LX-LGU', model: 'Boeing 737-800' }
+  }, extra || {});
+}
+function adbDefaut(url) {
+  const now = Math.floor(Date.now() / 1000);
+  if (/\/flights\/number\/LG8803\//.test(url)) {
+    const v = adbVol('LG 8803', 'LUX', 'LIS', now + 7200, now + 7200 + 9000, 'Expected');
+    return [200, [Object.assign({}, v, { number: 'TP 7105', codeshareStatus: 'IsCodeshared' }), v]];
+  }
+  if (/\/flights\/reg\/LX-LGU\//.test(url)) {
+    return [200, [adbVol('LG 3402', 'MAD', 'LUX', now - 3600, now + 3000, 'EnRoute'),
+      adbVol('IB 5402', 'MAD', 'LUX', now - 3600, now + 3000, 'Delayed', { codeshareStatus: 'IsCodeshared' }),
+      adbVol('LG 8803', 'LUX', 'LIS', now + 7200, now + 7200 + 9000, 'Expected')]];
+  }
+  return [204, null];
+}
+
 function charger(opts) {
   opts = opts || {};
   const sheets = {};
@@ -21,6 +52,7 @@ function charger(opts) {
   const depot = {};     // fichiers écrits : chemin -> { content (base64), sha }
   const drive = { dossiers: {}, fichiers: {}, n: 0 };
   const googleTokens = opts.googleTokens || {}; // idToken -> réponse de tokeninfo
+  const adbAppels = []; // requêtes AeroDataBox reçues
 
   function blob(bytes, type, name) {
     const b = Buffer.from(bytes || []);
@@ -171,6 +203,13 @@ function charger(opts) {
           const out = ids.filter((i) => AP[i]).map((i) => ({ icaoId: i, lat: AP[i][0], lon: AP[i][1], name: AP[i][2], runways: i === 'ELLX' ? [{ id: '06/24' }] : [{ id: '07/25' }, { id: '15/33' }] }));
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
         }
+        if (url.startsWith('https://aerodatabox.p.rapidapi.com/')) {
+          adbAppels.push(url);
+          const key = ((o.headers || {})['X-RapidAPI-Key'] || '');
+          if (!key) return { getResponseCode: () => 401, getContentText: () => '' };
+          const [code, body] = (opts.adb || adbDefaut)(url);
+          return { getResponseCode: () => code, getContentText: () => (body == null ? '' : JSON.stringify(body)) };
+        }
         throw new Error('Adresse non simulée : ' + url);
       }
     },
@@ -201,7 +240,7 @@ function charger(opts) {
   vm.runInContext(code, ctx, { filename: 'Code.gs' });
 
   return {
-    ctx, sheets, props, cache, mails, github, depot, drive,
+    ctx, sheets, props, cache, mails, github, depot, drive, adbAppels,
     run: (fnName) => vm.runInContext(fnName + '()', ctx),
     get: (params) => JSON.parse(ctx.doGet(params ? { parameter: params } : undefined).content),
     post: (body) => JSON.parse(ctx.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).content),
