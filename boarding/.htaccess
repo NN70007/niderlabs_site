@@ -1,0 +1,10 @@
+# Boarding : la page (et l'app épinglée sur l'écran d'accueil) doit toujours charger la dernière version.
+# Le HTML est revérifié à chaque ouverture ; les scripts et styles portent un numéro de version (?v=) et restent en cache.
+<IfModule mod_expires.c>
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|webmanifest)$|^sw\.js$|^manifest\.json$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
