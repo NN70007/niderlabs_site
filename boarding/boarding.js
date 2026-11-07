@@ -415,7 +415,6 @@
     var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + "<span>DEPARTS " + hm(dep, v.oz) + "</span></p>" +
       "<h3>Getting to " + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
     if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>To the airport</b> to know when to leave home.") + "</p>";
-    if (v.ola != null && dep > t) h += '<button class="lien" type="button" data-aller>Uber and transport → To the airport</button>';
     h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + '</ol><p class="aide petit">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
     return h;
   }
@@ -907,7 +906,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "24";
+  var VERSION = "25";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
