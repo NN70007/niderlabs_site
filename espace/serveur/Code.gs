@@ -1162,7 +1162,14 @@ function adsAutour_(la, lo, nm) {
       var j = JSON.parse(r.getContentText());
       out = (j.ac || []).filter(function (x) { return x.hex && (x.lat != null || x.lastPosition); }).map(function (x) {
         var lp = x.lastPosition || {};
-        return { hx: x.hex, rg: x.r || '', t: x.t || '', cs: String(x.flight || '').trim(), la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, gr: x.alt_baro === 'ground', gs: Number(x.gs) || 0, vu: Number(x.seen) || 0 };
+        var a0 = { hx: x.hex, rg: x.r || '', t: x.t || '', cs: String(x.flight || '').trim(), la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, gr: x.alt_baro === 'ground', gs: Number(x.gs) || 0,
+          vu: Number(x.seen) || 0, vp: Number(x.seen_pos != null ? x.seen_pos : lp.seen_pos) || 0, tr: Number(x.track != null ? x.track : x.true_heading) };
+        // avion qui roule : position prolongée selon sa vitesse et son cap depuis le dernier point reçu
+        if (a0.gs > 2 && isFinite(a0.tr) && a0.vp > 1 && a0.vp < 180) {
+          var dkm = a0.gs * 1.852 * a0.vp / 3600, rad = a0.tr * Math.PI / 180;
+          a0.la += dkm * Math.cos(rad) / 111.2; a0.lo += dkm * Math.sin(rad) / (111.2 * Math.cos(a0.la * Math.PI / 180));
+        }
+        return a0;
       });
       return out.length > 0;
     } catch (e) { return false; }
@@ -1179,10 +1186,13 @@ function boardingAbord_(jeton, n, d, la, lo) {
   var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   if (!rec || !rec.f) throw refus_('Flight data not loaded yet. Try again in a minute.', 'introuvable');
-  var cand = adsAutour_(la, lo, 1).map(function (x) { x.km = distKm_(la, lo, x.la, x.lo); return x; })
-    .filter(function (x) { return isFinite(x.km) && x.km < 0.6 && x.vu < 120; })
-    .sort(function (a, b) { return a.km - b.km; });
-  if (!cand.length) return { ok: false, code: 'aucun', error: 'No aircraft found next to you. Its transponder may still be off: try again once the doors are closed.' };
+  // même famille d'avion que le vol (737, A320…) : départage les avions voisins
+  var fam = /737|B3[89]M|B73/i.test(rec.f.md || '') ? /^B3[789]M|^B73/ : /A3[12][019]|A3[12]N|A20N|A21N/i.test(rec.f.md || '') ? /^A3[12]|^A2[01]N/ : null;
+  var tous = adsAutour_(la, lo, 3).map(function (x) { x.km = distKm_(la, lo, x.la, x.lo); return x; })
+    .filter(function (x) { return isFinite(x.km) && x.vu < 240 && (x.gr || x.km < 2); });
+  var cand = tous.map(function (x) { x.sc = x.km - (fam && fam.test(x.t) ? 0.4 : 0) + (x.gr ? 0 : 0.5); return x; })
+    .filter(function (x) { return x.km < 1.5; }).sort(function (a, b) { return a.sc - b.sc; });
+  if (!cand.length) return { ok: false, code: 'aucun', error: 'No aircraft found next to you (' + tous.length + ' around the airport). Its transponder may still be off: try again in a minute.' };
   var c0 = cand[0];
   rec.f.hx = c0.hx; if (c0.rg) rec.f.rg = c0.rg;
   props.setProperty(k, JSON.stringify(rec));
