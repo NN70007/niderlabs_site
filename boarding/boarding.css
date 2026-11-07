@@ -242,3 +242,6 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 .infos details p,.infos details li{font-size:16px;color:var(--encre-2);margin:10px 0 0}
 .infos details ul{padding-left:20px;margin:0}
 .partage-tete{margin:4px 0 12px}
+.onglets-bas button{font-size:12px}
+.bp-code svg{max-width:100%;max-height:62vh;margin:0 auto}
+.bp-code img{display:block}

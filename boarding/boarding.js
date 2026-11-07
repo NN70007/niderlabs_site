@@ -127,7 +127,7 @@
     window.scrollTo(0, 0);
     try { history.replaceState(null, "", "#" + o); } catch (e) {}
   }
-  document.querySelectorAll("#nav button").forEach(function (b) { b.addEventListener("click", function () { onglet(b.getAttribute("data-o")); }); });
+  document.querySelectorAll("#nav button[data-o]").forEach(function (b) { b.addEventListener("click", function () { onglet(b.getAttribute("data-o")); }); });
 
   function ouvert(o) {
     jeton = o.jeton; compte = !o.montre && !!o.email;
@@ -179,7 +179,11 @@
   var BP = "boarding-bp";
   function bpTous() { try { return JSON.parse(lsLire(BP) || "{}") || {}; } catch (e) { return {}; } }
   function bpEcrire(o) { lsEcrire(BP, Object.keys(o).length ? JSON.stringify(o) : null); }
-  function bpGarder(n, d, txt) { var o = bpTous(); o[cleVol(n, d)] = { t: txt, exp: Date.parse(d + "T00:00:00Z") / 1000 + 2 * 86400 }; bpEcrire(o); }
+  function bpGarder(n, d, txt, f, img) {
+    var o = bpTous(), x = { t: txt, f: f || "", exp: Date.parse(d + "T00:00:00Z") / 1000 + 2 * 86400 };
+    if (img && f === "PDF_417") x.img = img;
+    o[cleVol(n, d)] = x; bpEcrire(o);
+  }
   function bpDe(v) { var x = bpTous()[cleVol(v.n, v.d)]; return x && x.t ? x : null; }
   function bpPurger(vols) {
     var o = bpTous(), t = now(), ch = false;
@@ -196,9 +200,8 @@
       });
       return;
     }
-    if (!window.qrcode) return;
-    var q = qrcode(0, "M"); q.addData(x.t, "Byte"); q.make();
-    $("#bp-code").innerHTML = q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+    $("#bp-code").innerHTML = '<p class="bp-note">Loading…</p>';
+    zxing().catch(function () { return null; }).then(function (Z) { $("#bp-code").innerHTML = codeHtml(x, Z); $("#bp-format").textContent = formatTxt(x); });
     $("#bp-vol").textContent = v.n + " · " + v.o + " → " + v.a;
     $("#bp-info").textContent = jourTxt(v.ed || v.sd, v.oz) + " · " + hm(v.ed || v.sd, v.oz) + (v.s ? " · SEAT " + v.s : "");
     $("#bp").hidden = false;
@@ -209,6 +212,36 @@
     };
   }
   $("#bp-fermer").addEventListener("click", function () { $("#bp").hidden = true; recaler(); });
+  // même type de code que la carte de la compagnie (Aztec, QR, Data Matrix) ; PDF417 : l'image d'origine
+  function matriceSvg(m, q) {
+    var w = m.getWidth(), h = m.getHeight(), d = "";
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) if (m.get(x, y)) d += "M" + (x + q) + " " + (y + q) + "h1v1h-1z";
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (w + 2 * q) + " " + (h + 2 * q) + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  }
+  function codeHtml(x, Z) {
+    try {
+      if (Z && x.f === "AZTEC") return matriceSvg(new Z.AztecCodeWriter().encode(x.t, Z.BarcodeFormat.AZTEC, 0, 0, new Map()), 2);
+      if (Z && x.f === "DATA_MATRIX") return matriceSvg(new Z.DataMatrixWriter().encode(x.t, Z.BarcodeFormat.DATA_MATRIX, 0, 0, new Map()), 2);
+      if (x.f === "PDF_417" && x.img) return '<img src="' + x.img + '" alt="Boarding pass barcode" style="width:100%;image-rendering:pixelated">';
+    } catch (e) { /* QR ci-dessous */ }
+    var q = qrcode(0, "M"); q.addData(x.t, "Byte"); q.make();
+    return q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+  }
+  function formatTxt(x) {
+    var n = { AZTEC: "Aztec", DATA_MATRIX: "Data Matrix", QR_CODE: "QR", PDF_417: "PDF417" }[x.f];
+    if (x.f === "PDF_417" && !x.img) return "Shown as a QR code (your airline uses PDF417). If the reader refuses it, use your airline’s pass.";
+    return n ? "Same code type as your airline’s pass (" + n + "). Turn the screen brightness up." : "Shown as a QR code. If the reader refuses it, scan your boarding pass again to get the airline’s code type.";
+  }
+  // barre du bas : la carte d'embarquement du prochain vol, d'un geste
+  function bpProchain() {
+    var t = now(), l = (dernier && dernier.vols) || [];
+    var v = l.filter(function (x) { return !x.inconnu && bpDe(x) && (x.ea || x.sa || (x.ed || x.sd) + 3 * 3600) > t; })[0];
+    if (v) { bpMontrer(v); return; }
+    var w = l.filter(function (x) { return x.bp; })[0];
+    if (w) { bpMontrer(w); return; }
+    toast("No boarding pass on this phone yet. Scan it in Flights.", false);
+  }
+  document.querySelector('#nav button[data-pass]').addEventListener("click", bpProchain);
 
   // ---- vols ----
   function etat(v) {
@@ -453,21 +486,21 @@
   }
 
   function luCode(txt) {
-    var legs = bcbp(txt);
+    var legs = bcbp(txt), f0 = formatLu;
     if (!legs || !legs.length) { toast("This barcode is not a boarding pass. Try again, or type the flight number.", false); return false; }
     arreterCamera();
     var p = Promise.resolve();
     legs.forEach(function (l) {
       var d = dateJulien(l.j);
       if (!d) return;
-      bpGarder(l.n, d, txt); // reste sur ce téléphone
+      bpGarder(l.n, d, txt, formatLu, f0 === "PDF_417" && imageLue ? imageLue() : null); // reste sur ce téléphone
       p = p.then(function () { return ajouter({ n: l.n, d: d, s: l.s, o: l.o, bp: true }); });
     });
     return true;
   }
 
   // ---- lecture des codes : caméra, photo ou capture d'écran entière ----
-  var flux = null, boucle = null, lecteurP = null;
+  var flux = null, boucle = null, lecteurP = null, formatLu = "", imageLue = null;
   function zxing() {
     if (window.ZXing) return Promise.resolve(window.ZXing);
     return new Promise(function (ok, ko) { var s = document.createElement("script"); s.src = "zxing-0.21.3.min.js"; s.onload = function () { ok(window.ZXing); }; s.onerror = ko; document.head.appendChild(s); });
@@ -478,7 +511,8 @@
       var voulu = ["aztec", "pdf417", "qr_code", "data_matrix"].filter(function (x) { return f.indexOf(x) >= 0; });
       if (voulu.indexOf("aztec") < 0 || voulu.indexOf("pdf417") < 0) return null;
       var d = new BarcodeDetector({ formats: voulu });
-      return function (src) { return d.detect(src).then(function (r) { return r.length ? r[0].rawValue : null; }).catch(function () { return null; }); };
+      var FMT = { aztec: "AZTEC", pdf417: "PDF_417", qr_code: "QR_CODE", data_matrix: "DATA_MATRIX" };
+      return function (src) { return d.detect(src).then(function (r) { if (!r.length) return null; formatLu = FMT[r[0].format] || ""; return r[0].rawValue; }).catch(function () { return null; }); };
     }).catch(function () { return null; });
   }
   // lit(canvas) → Promise<texte|null>
@@ -495,8 +529,9 @@
           var x = c.getContext("2d", { willReadFrequently: true }), px = x.getImageData(0, 0, c.width, c.height).data, lum = new Uint8ClampedArray(c.width * c.height);
           for (var i = 0, j = 0; i < px.length; i += 4, j++) { var l = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000; lum[j] = inverse ? 255 - l : l; }
           var src = new Z.RGBLuminanceSource(lum, c.width, c.height);
-          try { return mr.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src))).getText(); } catch (e) { /* suite */ }
-          try { return mr.decode(new Z.BinaryBitmap(new Z.GlobalHistogramBinarizer(src))).getText(); } catch (e) { return null; }
+          var ok = function (res) { formatLu = Z.BarcodeFormat[res.getBarcodeFormat()] || ""; return res.getText(); };
+          try { return ok(mr.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src)))); } catch (e) { /* suite */ }
+          try { return ok(mr.decode(new Z.BinaryBitmap(new Z.GlobalHistogramBinarizer(src)))); } catch (e) { return null; }
         };
       }
       return function (c, inverse) {
@@ -544,6 +579,7 @@
       var essais = [];
       essais.push(function () { return lit(toile(img, 0, 0, W, H, Math.min(W, 2400))); });
       var z = zoneBlanche(img, W, H);
+      imageLue = function () { try { var zz = z || { x: 0, y: 0, w: W, h: H }; return toile(img, zz.x, zz.y, zz.w, zz.h, Math.min(900, zz.w)).toDataURL("image/png"); } catch (e) { return null; } };
       if (z) essais.push(function () { return lit(toile(img, z.x, z.y, z.w, z.h, 1100)); });
       essais.push(function () { return lit(toile(img, W * 0.1, H * 0.25, W * 0.8, H * 0.5, 1200)); });
       essais.push(function () { return lit(toile(img, 0, H * 0.4, W, H * 0.6, 1200)); });
@@ -580,7 +616,7 @@
   }
   $("#scanner").addEventListener("click", function () {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $("#photo").click(); return; }
-    $("#camera").hidden = false; $("#f-vol").hidden = true;
+    $("#camera").hidden = false; $("#f-vol").hidden = true; imageLue = null;
     var v = $("#video");
     lecteur().then(function (lit) {
       return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(function (s) {
@@ -767,7 +803,7 @@
     ["Adding a flight", "<ul><li><b>Scan</b> the barcode of your boarding pass with the camera.</li><li>Or choose a <b>screenshot</b> of it – the whole screen is fine (wallet, airline app).</li><li>Or <b>type</b> the flight number and date – months ahead if you like.</li></ul>"],
     ["Reminders and alerts", "<ul><li><b>CHECK IN ONLINE</b> the day before (not shown once you scanned your boarding pass).</li><li><b>LEAVE HOME</b> at a set time; 30 minutes before, a reminder.</li><li>Alerts for a gate change, delay, cancellation, boarding and the baggage belt.</li></ul><p>Turn alerts on in <b>Account</b>. On iPhone, add Boarding to your home screen first.</p>"],
     ["Terminal first, then the gate", "<p>More than 3 hours before departure you see your <b>terminal</b>. Gates announced earlier often change, so the gate shows up within 3 hours. A gate change is always shown in red.</p>"],
-    ["Your boarding pass", "<p>After a scan, <b>Boarding pass</b> shows a clean QR code you can show at security and at the gate. It is <b>stored only on this phone</b>, never sent to our servers, and deleted after landing.</p><p>Safari and the home-screen app keep separate copies: scan from the one you use. Keep your airline’s pass as a backup.</p>"],
+    ["Your boarding pass", "<p>After a scan, <b>Pass</b> (bottom bar) shows your boarding pass in the same code type as your airline’s (Aztec, QR…), ready for security and the gate. It is <b>stored only on this phone</b>, never sent to our servers, and deleted after landing.</p><p>Safari and the home-screen app keep separate copies: scan from the one you use. Keep your airline’s pass as a backup.</p>"],
     ["Sharing a flight", "<p><b>Share flight</b> creates a link for whoever picks you up: live arrival time, delay, baggage belt and weather – no account needed. No seat, no name, no e-mail. The link stops working a few days after the flight.</p>"],
     ["When to leave home", "<p>In <b>To the airport</b>, set where you leave from and how much time you want at the airport. Car times use OpenStreetMap routing with a margin for traffic and parking. The <b>Uber</b> button opens Uber with the airport as destination; to book ahead, choose Schedule and the time shown.</p>"],
     ["The Garmin watch face", "<p>Install <a href=\"https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50\" target=\"_blank\" rel=\"noopener\">Boarding</a> on your watch, tap it and link it in <b>Account</b>. When your destination is in another time zone, a small <b>L</b> on the dial points to the local time there.</p>"],
