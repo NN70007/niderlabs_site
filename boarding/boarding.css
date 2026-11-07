@@ -259,3 +259,7 @@ details.avion-carte .titre{font:600 13px var(--texte);letter-spacing:1.2px;color
 details.avion-carte .corps{padding-top:4px}
 .carte-vol{position:relative;z-index:0;isolation:isolate}
 .jour li .h.ambre{color:var(--ambre)}
+
+/* carte d'embarquement : la barre du bas reste visible et utilisable */
+#bp.plein{bottom:calc(71px + env(safe-area-inset-bottom));z-index:25;justify-content:flex-start;padding-bottom:16px}
+#bp .bp-code svg{max-height:52vh}

@@ -121,7 +121,9 @@
   // ---- vues et onglets ----
   function voir(v) { ["entrer", "app", "partage"].forEach(function (x) { $("#v-" + x).hidden = v !== x; }); $("#nav").hidden = v !== "app"; }
   var ONGLETS = ["vols", "trajet", "info", "moi"];
+  function bpFermer() { $("#bp").hidden = true; var b = document.querySelector('#nav button[data-pass]'); if (b) b.removeAttribute("aria-current"); }
   function onglet(o) {
+    bpFermer();
     document.querySelectorAll(".onglet").forEach(function (x) { x.hidden = x.id !== "o-" + o; });
     document.querySelectorAll("#nav button").forEach(function (b) { if (b.getAttribute("data-o") === o) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     window.scrollTo(0, 0);
@@ -205,13 +207,15 @@
     $("#bp-vol").textContent = v.n + " · " + v.o + " → " + v.a;
     $("#bp-info").textContent = jourTxt(v.ed || v.sd, v.oz) + " · " + hm(v.ed || v.sd, v.oz) + (v.s ? " · SEAT " + v.s : "");
     $("#bp").hidden = false;
+    $("#bp").scrollTop = 0;
+    document.querySelectorAll("#nav button").forEach(function (b) { if (b.hasAttribute("data-pass")) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     $("#bp-oublier").onclick = function () {
       demander("Delete this boarding pass from this phone?", "Delete").then(function (oui) {
-        if (!oui) return; var o = bpTous(); delete o[cleVol(v.n, v.d)]; bpEcrire(o); $("#bp").hidden = true; if (dernier) afficherVols(dernier);
+        if (!oui) return; var o = bpTous(); delete o[cleVol(v.n, v.d)]; bpEcrire(o); bpFermer(); onglet("vols"); if (dernier) afficherVols(dernier);
       });
     };
   }
-  $("#bp-fermer").addEventListener("click", function () { $("#bp").hidden = true; recaler(); });
+  $("#bp-fermer").addEventListener("click", function () { var h = (location.hash || "").slice(1); onglet(ONGLETS.indexOf(h) > -1 ? h : "vols"); recaler(); });
   // même type de code que la carte de la compagnie (Aztec, QR, Data Matrix) ; PDF417 : l'image d'origine
   function matriceSvg(m, q) {
     var w = m.getWidth(), h = m.getHeight(), d = "";
@@ -234,6 +238,7 @@
   }
   // barre du bas : la carte d'embarquement du prochain vol, d'un geste
   function bpProchain() {
+    if (!$("#bp").hidden) { $("#bp-fermer").click(); return; }
     var t = now(), l = (dernier && dernier.vols) || [];
     var v = l.filter(function (x) { return !x.inconnu && bpDe(x) && (x.ea || x.sa || (x.ed || x.sd) + 3 * 3600) > t; })[0];
     if (v) { bpMontrer(v); return; }
@@ -919,7 +924,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "26";
+  var VERSION = "27";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
