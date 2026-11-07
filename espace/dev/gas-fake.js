@@ -40,6 +40,10 @@ function adbDefaut(url) {
       adbVol('IB 5402', 'MAD', 'LUX', now - 3600, now + 3000, 'Delayed', { codeshareStatus: 'IsCodeshared' }),
       adbVol('LG 8803', 'LUX', 'LIS', now + 7200, now + 7200 + 9000, 'Expected')]];
   }
+  if (/\/aircrafts\/reg\/LX-LGU/.test(url)) {
+    return [200, { reg: 'LX-LGU', typeName: 'Boeing 737-800', ageYears: 6.24, firstFlightDate: '2020-08-01', deliveryDate: '2020-09-15', numSeats: 186, numEngines: 2, engineType: 'Jet', airlineName: 'Luxair',
+      image: { url: 'https://upload.wikimedia.org/x.jpg', webUrl: 'https://commons.wikimedia.org/wiki/File:x.jpg', author: 'A. Spotter', license: 'AttributionShareAlike' } }];
+  }
   return [204, null];
 }
 
@@ -210,6 +214,11 @@ function charger(opts) {
           if (/a=gen/.test(url)) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ pub: 'B' + 'x'.repeat(86), priv: '-----BEGIN EC PRIVATE KEY-----\nTEST\n-----END EC PRIVATE KEY-----\n' }) };
           const subs = JSON.parse(o.payload).subs;
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ ok: true, res: subs.map((x) => ({ endpoint: x.endpoint, code: /gone/.test(x.endpoint) ? 410 : 201 })) }) };
+        }
+        if (url.startsWith('https://api.open-meteo.com/')) {
+          const t0 = Math.floor(Date.now() / 3600000) * 3600 - 3600, n = 24 * 8;
+          const time = Array.from({ length: n }, (_, i) => t0 + i * 3600);
+          return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ hourly: { time, temperature_2m: time.map(() => 14.4), precipitation_probability: time.map(() => 30), weather_code: time.map(() => 61), wind_speed_10m: time.map(() => 18.2) } }) };
         }
         if (url.startsWith('https://router.project-osrm.org/')) {
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ routes: [{ duration: 1200 }] }) };

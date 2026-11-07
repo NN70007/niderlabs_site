@@ -478,4 +478,39 @@ console.log('Boarding : comptes par e-mail, montres liées, rappels');
   ok(!bo.ctx.lire_('Comptes').some((x) => x.Email === e), 'adresse e-mail effacée');
 }
 
+console.log('Boarding : avion, prévision à l\'arrivée, partage du vol');
+{
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test' } });
+  bo.run('installer');
+  const today = new Date().toISOString().slice(0, 10);
+  bo.post({ action: 'boarding.code', email: 'av@example.com' });
+  const s = bo.post({ action: 'boarding.entrer', email: 'av@example.com', code: bo.lastCode('av@example.com') });
+  bo.post({ action: 'boarding.ajouter', jeton: s.jeton, vol: { n: 'LG8803', d: today, s: '14A' } });
+  let c = bo.post({ action: 'boarding.charger', jeton: s.jeton });
+  const v = c.vols[0];
+  ok(v.avion && v.avion.rg === 'LX-LGU' && v.avion.age === 6.2 && v.avion.se === 186 && v.avion.ph && v.avion.ph.by === 'A. Spotter', 'page : immatriculation, âge, sièges et photo créditée');
+  ok(v.fc && v.fc.t === 14 && v.fc.p === 30 && v.fc.w === 'Rain' && v.fc.v === 18, 'page : prévision à l\'heure d\'arrivée');
+  const n1 = bo.adbAppels.filter((u) => /aircrafts/.test(u)).length;
+  bo.post({ action: 'boarding.charger', jeton: s.jeton });
+  ok(bo.adbAppels.filter((u) => /aircrafts/.test(u)).length === n1 && n1 === 1, 'fiche avion demandée une seule fois');
+  const ID = 'brdWatchAvion01234', K = 'brdKey0123456789ABCDEF';
+  let w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.3', r: '0' });
+  const om = bo.post({ action: 'aviator.ouvrir', code: w.c });
+  bo.post({ action: 'boarding.ajouter', jeton: om.jeton, vol: { n: 'LG8803', d: today } });
+  w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.3', r: '0' });
+  ok(w.b.f.length && !w.b.f[0].avion && !w.b.f[0].fc, 'montre : ni photo ni prévision (données légères)');
+  ok(bo.post({ action: 'boarding.partager', jeton: s.jeton, n: 'LG9999', d: today }).code === 'introuvable', 'partage : seulement ses propres vols');
+  const sh = bo.post({ action: 'boarding.partager', jeton: s.jeton, n: 'LG8803', d: today });
+  ok(sh.ok && /^[0-9a-f]{16}$/.test(sh.s), 'lien de partage créé');
+  ok(bo.post({ action: 'boarding.partager', jeton: s.jeton, n: 'LG 8803', d: today }).s === sh.s, 'même lien si on partage à nouveau');
+  const vu = bo.post({ action: 'boarding.voir', s: sh.s });
+  ok(vu.ok && vu.vol.a === 'LIS' && vu.vol.ea && vu.vol.fc, 'lien public : arrivée, retard, prévision');
+  ok(!('s' in vu.vol) && !JSON.stringify(vu).includes('14A') && !JSON.stringify(vu).includes('av@example.com') && !vu.vol.g, 'lien public : ni siège, ni e-mail, ni porte');
+  ok(bo.post({ action: 'boarding.voir', s: 'zz' }).code === 'lien' && bo.post({ action: 'boarding.voir', s: '0123456789abcdef' }).code === 'lien', 'lien inconnu refusé');
+  const k = 'shr:' + sh.s, x = JSON.parse(bo.props[k]); x.exp = 1; bo.props[k] = JSON.stringify(x);
+  ok(bo.post({ action: 'boarding.voir', s: sh.s }).code === 'lien', 'lien expiré refusé');
+  bo.run('nettoyerSessions');
+  ok(!(k in bo.props), 'liens expirés effacés au nettoyage');
+}
+
 console.log('\n' + n + ' vérifications réussies.');

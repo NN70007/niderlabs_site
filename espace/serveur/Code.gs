@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-06-boarding3',
+  VERSION: '2026-11-07-boarding4',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -144,6 +144,9 @@ function route_(req) {
   if (a === 'boarding.lier') return compteLier_(req.jeton, req.code);
   if (a === 'boarding.delier') return compteDelier_(req.jeton, String(req.ref || ''));
   if (a === 'boarding.effacer') return compteEffacer_(req.jeton, req.confirme === true);
+  // Partage d'un vol : lien public en lecture seule (heure d'arrivée, retard, tapis), sans compte
+  if (a === 'boarding.partager') return boardingPartager_(req.jeton, String(req.n || ''), String(req.d || ''));
+  if (a === 'boarding.voir') return boardingVoir_(String(req.s || ''));
 
   // Actions avec session : l'utilisateur est relu dans l'onglet Acces à CHAQUE demande
   var user = userFromToken_(req.token);
@@ -191,6 +194,11 @@ function nettoyerSessions() {
     // Boarding : statuts de vols et d'avions de plus de 3 jours
     var bv = /^b[vi]:.*:(\d{4}-\d{2}-\d{2})$/.exec(k);
     if (bv) { if (Date.parse(bv[1] + 'T00:00:00Z') < now - 3 * 86400000) { props.deleteProperty(k); n++; } return; }
+    // Boarding : liens de partage expirés, fiches d'avions de plus de 60 jours
+    if (k.indexOf('shr:') === 0 || k.indexOf('ac:') === 0) {
+      try { var o = JSON.parse(all[k]); if ((o.exp && o.exp * 1000 < now) || (o.t && o.t * 1000 < now - 60 * 86400000)) { props.deleteProperty(k); n++; } } catch (e) { props.deleteProperty(k); n++; }
+      return;
+    }
     if (k.indexOf('s:') !== 0) return;
     try { if (JSON.parse(all[k]).exp < now) { props.deleteProperty(k); n++; } } catch (e) { props.deleteProperty(k); n++; }
   });
@@ -435,6 +443,11 @@ function accesDeconnecter_(u, cle) {
 function fermerSessions_(ems) {
   var props = PropertiesService.getScriptProperties(), all = props.getProperties(), n = 0;
   Object.keys(all).forEach(function (k) {
+    // Boarding : liens de partage expirés, fiches d'avions de plus de 60 jours
+    if (k.indexOf('shr:') === 0 || k.indexOf('ac:') === 0) {
+      try { var o = JSON.parse(all[k]); if ((o.exp && o.exp * 1000 < now) || (o.t && o.t * 1000 < now - 60 * 86400000)) { props.deleteProperty(k); n++; } } catch (e) { props.deleteProperty(k); n++; }
+      return;
+    }
     if (k.indexOf('s:') !== 0) return;
     try { if (ems.indexOf(JSON.parse(all[k]).email) > -1) { props.deleteProperty(k); n++; } } catch (e) { /* ignorée */ }
   });
@@ -1227,6 +1240,12 @@ function boardingListe_(b, pourMontre) {
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
     if (now > (f.ed || f.sd) - 6 * 3600) { try { x.wx = meteoSimple_(f.ai); } catch (e) { x.wx = null; } }
+    if (!pourMontre) {
+      // page web : prévision à l'heure d'arrivée, et l'avion (immatriculation, âge, photo) quand il est connu
+      var arrT = f.ea || f.sa;
+      if (arrT && arrT > now && arrT - now < 7 * 86400 && f.ala != null) { try { x.fc = meteoPrevue_(f.ala, f.alo, arrT); } catch (e) { console.error(e); } }
+      if (f.rg && (f.ed || f.sd) - now < 4 * 86400) { try { x.avion = avionInfo_(f.rg); } catch (e) { console.error(e); } }
+    }
     // retard probable : l'avion qui arrive se pose trop tard pour repartir à l'heure (escale minimale)
     if (x.in && !x.in.ici && x.in.st !== 'Arrived' && x.in.ea) {
       var esc = /A33|A34|A35|A38|B74|B76|B77|B78|787|777|767|747|A350|A330|A380/i.test(f.md || '') ? 60 : 35;
@@ -1267,6 +1286,85 @@ function boardingMontre_(m) {
   var b = boardingDe_(u || m);
   return { h: tzSecondes_(b.h, new Date()), hn: villeDe_(b.h), f: boardingListe_(b, true) };
 }
+/* ----- Boarding : l'avion (AeroDataBox /aircrafts/reg) — gardé 60 jours par immatriculation, une requête par avion ----- */
+function avionInfo_(reg) {
+  reg = String(reg || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (reg.length < 3) return null;
+  var props = PropertiesService.getScriptProperties(), k = 'ac:' + reg, rec = null;
+  try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
+  var now = Math.round(Date.now() / 1000);
+  if (rec && now - rec.t < (rec.a ? 60 : 7) * 86400) return rec.a;
+  if (!budgetAdb_()) return rec ? rec.a : null;
+  var r = volAppel_('/aircrafts/reg/' + encodeURIComponent(reg) + '?withImage=true&withRegistrations=false');
+  if (r.code === 401 || r.code === 403 || r.code === 0) return rec ? rec.a : null;
+  var d = r.code === 200 && r.data ? r.data : null, a = null;
+  if (d) {
+    a = { rg: d.reg || reg, md: d.typeName || d.model || '', age: isFinite(Number(d.ageYears)) ? Math.round(Number(d.ageYears) * 10) / 10 : null,
+      ff: String(d.firstFlightDate || '').slice(0, 10), dv: String(d.deliveryDate || '').slice(0, 10), se: Number(d.numSeats) || null,
+      en: d.numEngines && d.engineType ? d.numEngines + ' × ' + String(d.engineType).toLowerCase() : '', al: d.airlineName || '' };
+    var im = d.image;
+    // photo seulement avec une licence et un auteur (Wikimedia Commons en général) : affichée avec son crédit
+    if (im && im.url && /^https:\/\//.test(im.url) && im.license) a.ph = { u: im.url, w: /^https:\/\//.test(im.webUrl || '') ? im.webUrl : '', by: String(im.author || '').slice(0, 80), l: String(im.license).slice(0, 60) };
+  }
+  props.setProperty(k, JSON.stringify({ t: now, a: a }));
+  return a;
+}
+
+/* ----- Boarding : prévision météo à l'heure d'arrivée (Open-Meteo, sans clé) ----- */
+function meteoPrevue_(lat, lon, t) {
+  var cache = CacheService.getScriptCache(), k = 'om:' + Number(lat).toFixed(2) + ',' + Number(lon).toFixed(2), raw = cache.get(k), h = null;
+  if (raw) { try { h = JSON.parse(raw); } catch (e) { h = null; } }
+  if (!h) {
+    var r = UrlFetchApp.fetch('https://api.open-meteo.com/v1/forecast?latitude=' + Number(lat).toFixed(3) + '&longitude=' + Number(lon).toFixed(3) +
+      '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=GMT&forecast_days=8&timeformat=unixtime', { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return null;
+    var j = JSON.parse(r.getContentText()), hh = j.hourly || {};
+    h = { t: hh.time || [], c: hh.temperature_2m || [], p: hh.precipitation_probability || [], w: hh.weather_code || [], v: hh.wind_speed_10m || [] };
+    try { cache.put(k, JSON.stringify(h), 3 * 3600); } catch (e) { /* trop grand : pas de cache */ }
+  }
+  var i = -1;
+  for (var n = 0; n < h.t.length; n++) { if (h.t[n] <= t) i = n; else break; }
+  if (i < 0) return null;
+  var code = Number(h.w[i]), mot = code === 0 ? 'Clear' : code <= 2 ? 'Partly cloudy' : code === 3 ? 'Cloudy' : code <= 48 ? 'Fog' : code <= 57 ? 'Drizzle' :
+    code <= 67 ? 'Rain' : code <= 77 ? 'Snow' : code <= 82 ? 'Showers' : code <= 86 ? 'Snow showers' : 'Thunderstorm';
+  return { t: Math.round(Number(h.c[i])), p: h.p[i] == null ? null : Math.round(Number(h.p[i])), v: Math.round(Number(h.v[i])), w: mot };
+}
+
+/* ----- Boarding : partage d'un vol (lien public, lecture seule, expire 1 jour après l'arrivée) ----- */
+function boardingPartager_(jeton, n, d) {
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  n = n.toUpperCase().replace(/\s/g, '');
+  var v = b.v.filter(function (x) { return x.n === n && x.d === d; })[0];
+  if (!v) throw refus_('Flight not found.', 'introuvable');
+  var props = PropertiesService.getScriptProperties();
+  if (v.sh) { var ex = props.getProperty('shr:' + v.sh); if (ex) return { ok: true, s: v.sh }; }
+  var s = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+  var exp = Date.parse(d + 'T00:00:00Z') / 1000 + 4 * 86400;
+  props.setProperty('shr:' + s, JSON.stringify({ n: v.n, d: v.d, o: v.o || '', exp: exp }));
+  v.sh = s;
+  proprioEcrire_(p, b);
+  return { ok: true, s: s };
+}
+function boardingVoir_(s) {
+  if (!/^[0-9a-f]{16}$/.test(s)) throw refus_('This link is not valid.', 'lien');
+  var cache = CacheService.getScriptCache(), minute = 'shv:' + Math.floor(Date.now() / 60000), n0 = Number(cache.get(minute) || 0);
+  if (n0 >= 300) throw refus_('Too many requests. Please try again in a minute.', 'limite');
+  cache.put(minute, String(n0 + 1), 120);
+  var raw = PropertiesService.getScriptProperties().getProperty('shr:' + s), sh = raw ? JSON.parse(raw) : null;
+  if (!sh || Date.now() / 1000 > sh.exp) throw refus_('This link has expired.', 'lien');
+  var rec = volStatut_(sh.n, sh.d, sh.o, false), f = rec && rec.f;
+  if (!f) return { ok: true, vol: { n: sh.n, d: sh.d, inconnu: true } };
+  var o = {};
+  ['n', 'al', 'o', 'oc', 'a', 'ac2', 'st', 'sd', 'ed', 'sa', 'ea', 'oz', 'az', 'tk', 'ln', 'b', 'ta', 'ag', 'md', 'ola', 'olo', 'ala', 'alo'].forEach(function (k) { if (f[k] != null && f[k] !== '') o[k] = f[k]; });
+  o.d = sh.d;
+  o.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
+  o.al2 = f.ea && f.sa ? Math.round((f.ea - f.sa) / 60) : 0;
+  var now = Date.now() / 1000, arrT = f.ea || f.sa;
+  if (arrT && arrT > now - 3 * 3600 && arrT - now < 6 * 3600) { try { o.wx = meteoSimple_(f.ai); } catch (e) { o.wx = null; } }
+  if (arrT && arrT > now && arrT - now < 7 * 86400 && f.ala != null) { try { o.fc = meteoPrevue_(f.ala, f.alo, arrT); } catch (e) { o.fc = null; } }
+  return { ok: true, vol: o };
+}
+
 /* ----- Boarding : propriétaire des vols — un compte (e-mail) ou une montre seule ----- */
 // p = { t: 'U' (compte) | 'M' (montre), id, row, montre?: id de la montre quand on est passé par son code }
 function compte_(id) { return lire_('Comptes').filter(function (r) { return r.Id === id; })[0] || null; }
@@ -1443,6 +1541,8 @@ function boardingTick_() {
   var cache = CacheService.getScriptCache();
   if (cache.get('btick')) return { ok: true, attente: true };
   cache.put('btick', '1', 240);
+  // nettoyage des propriétés une fois par jour (aucun déclencheur horaire dans ce projet)
+  if (!cache.get('bclean')) { cache.put('bclean', '1', 21600); try { nettoyerSessions(); } catch (e) { console.error(e); } }
   var vus = {}, nv = 0;
   proprios_().forEach(function (p) {
     var b = boardingDe_(p.row);
