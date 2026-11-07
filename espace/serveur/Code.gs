@@ -155,6 +155,9 @@ function route_(req) {
   if (a === 'boarding.charger') return boardingCharger_(req.jeton);
   if (a === 'boarding.ajouter') return boardingAjouter_(req.jeton, req.vol);
   // « I'm on board » : la position du téléphone (une seule fois, non conservée) désigne l'avion le plus proche (ADS-B)
+  if (a === 'boarding.signaler') return boardingSignaler_(req.jeton, String(req.n || ''), String(req.d || ''), String(req.k || ''), req.v);
+  if (a === 'boarding.files') return boardingFiles_(req.jeton, req.ap);
+  if (a === 'boarding.file') return boardingFile_(req.jeton, req.ap, String(req.q || ''), req.m);
   if (a === 'boarding.pasmonavion') return boardingPasMonAvion_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.abord') return boardingAbord_(req.jeton, String(req.n || ''), String(req.d || ''), Number(req.la), Number(req.lo));
   if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
@@ -213,7 +216,15 @@ function installer() {
 }
 
 /** Supprime les sessions expirées (appelé à chaque connexion ; déclencheur nocturne facultatif). */
+function nettoyerSignalements_() {
+  var props = PropertiesService.getScriptProperties(), all = props.getProperties(), now = Date.now() / 1000;
+  Object.keys(all).forEach(function (k) {
+    if (!/^(cw|q|gl):/.test(k) || /^gl:/.test(k)) return;
+    try { var l = JSON.parse(all[k]); if (!l.length || now - Math.max.apply(null, l.map(function (r) { return r.t; })) > 6 * 3600) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
+  });
+}
 function nettoyerSessions() {
+  try { nettoyerSignalements_(); } catch (e) { console.error(e); }
   var props = PropertiesService.getScriptProperties();
   var all = props.getProperties(), now = Date.now(), n = 0;
   Object.keys(all).forEach(function (k) {
@@ -1151,6 +1162,8 @@ function alSuivre_(rec, v) {
   if (!f || !f.sd || /^Canceled/.test(f.st)) return;
   var x = rec.alx || {}, dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600, envol = !!(f.tk || f.atk), pose = f.st === 'Arrived' || !!f.ald;
   var porte = x.g || f.g, tapis = x.b || f.b, attente = 0;
+  // deux voyageurs ou plus ont confirmé : pas besoin d'appeler AirLabs pour ça
+  try { var cw = foule_(v.n, v.d); if (!porte && cw.g && cw.g.n >= 2 && !cw.g.c) porte = cw.g.v; if (!tapis && cw.b && cw.b.n >= 2 && !cw.b.c) { tapis = cw.b.v; x.bc = 1; } } catch (e) {}
   var props = PropertiesService.getScriptProperties(), gl = null;
   try { gl = JSON.parse(props.getProperty('gl:' + f.o) || 'null'); } catch (e) {}
   var avance = Math.max(45, Math.min(150, (gl && gl.m || 80) + 15)) * 60;  // heure habituelle d'annonce de la porte à cet aéroport (+15 min)
@@ -1234,6 +1247,82 @@ function boardingPasMonAvion_(jeton, n, d) {
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   if (rec && rec.f && rec.f.hx) { delete rec.f.hx; delete rec.f.atk; rec.f.rg = ''; rec.t = 0; props.setProperty(k, JSON.stringify(rec)); }
   return { ok: true, vols: boardingListe_(b, false), enregistres: b.v };
+}
+/* ---------- Signalements des voyageurs (porte, embarquement, tapis, files d'attente) ---------- */
+var FILES = ['sec', 'fast', 'eu', 'neu', 'us', 'vis'];
+function idVoyageur_(p) { return String(hash_('v:' + p.t + ':' + p.id)).slice(0, 12); }
+function listeLire_(k) { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(k) || '[]'); } catch (e) { return []; } }
+function listeEcrire_(k, l, garde) {
+  var now = Date.now() / 1000; l = l.filter(function (r) { return now - r.t < garde; }).slice(-80);
+  if (l.length) PropertiesService.getScriptProperties().setProperty(k, JSON.stringify(l)); else PropertiesService.getScriptProperties().deleteProperty(k);
+}
+/** Avis des voyageurs sur un vol : valeur la plus confirmée (voyageurs distincts) et contestation récente. */
+function foule_(n, d) {
+  var l = listeLire_('cw:' + n + ':' + d), now = Date.now() / 1000, out = {};
+  ['g', 'b'].forEach(function (k) {
+    var par = {};
+    l.filter(function (r) { return r.k === k && now - r.t < 5400; }).forEach(function (r) { var o = par[r.v] = par[r.v] || { v: r.v, u: {}, t: 0 }; o.u[r.u] = 1; o.t = Math.max(o.t, r.t); });
+    var vals = Object.keys(par).map(function (v) { var o = par[v]; return { v: v, n: Object.keys(o.u).length, t: o.t }; }).sort(function (a, b) { return b.n - a.n || b.t - a.t; });
+    if (vals.length) out[k] = { v: vals[0].v, n: vals[0].n, t: vals[0].t, c: vals.length > 1 && vals[1].t > vals[0].t ? vals[1].v : '' };
+  });
+  var bd = {}, tb = 0; l.filter(function (r) { return r.k === 'bd' && now - r.t < 3600; }).forEach(function (r) { bd[r.u] = 1; tb = Math.max(tb, r.t); });
+  if (tb) out.bd = { n: Object.keys(bd).length, t: tb };
+  return out;
+}
+/** Nombre de voyageurs Boarding par vol (carte gardée 10 min), affiché seulement à partir de 3. */
+function paxCarte_() {
+  var c = CacheService.getScriptCache(), m = c.get('paxmap');
+  if (m) return JSON.parse(m);
+  var o = {};
+  try { proprios_().forEach(function (p) { boardingDe_(p.row).v.forEach(function (v) { var k = v.n + ':' + v.d; o[k] = (o[k] || 0) + 1; }); }); } catch (e) { console.error(e); }
+  try { c.put('paxmap', JSON.stringify(o), 600); } catch (e) {}
+  return o;
+}
+function boardingSignaler_(jeton, n, d, k, val) {
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  n = n.toUpperCase().replace(/\s/g, '');
+  if (!b.v.some(function (x) { return x.n === n && x.d === d; })) throw refus_('Flight not found.', 'introuvable');
+  if (['g', 'b', 'bd'].indexOf(k) < 0) throw refus_('Unknown report.', 'donnees');
+  val = k === 'bd' ? '1' : String(val || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+  if (!val) throw refus_(k === 'g' ? 'Type the gate shown on the screens.' : 'Type the belt number.', 'donnees');
+  var u = idVoyageur_(p), now = Math.round(Date.now() / 1000), key = 'cw:' + n + ':' + d, lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    var l = listeLire_(key).filter(function (r) { return !(r.u === u && r.k === k); });  // un avis par voyageur et par sujet (le dernier compte)
+    l.push({ k: k, v: val, t: now, u: u });
+    listeEcrire_(key, l, 6 * 3600);
+  } finally { lock.releaseLock(); }
+  return { ok: true, vols: boardingListe_(b, false), enregistres: b.v };
+}
+/** Attente aux files d'un aéroport : médiane des 60 dernières minutes, par file. */
+function filesAeroport_(ap) {
+  var l = listeLire_('q:' + ap), now = Date.now() / 1000, out = {};
+  FILES.forEach(function (q) {
+    var r = l.filter(function (x) { return x.q === q && now - x.t < 3600; }).sort(function (a, b) { return a.m - b.m; });
+    if (r.length) out[q] = { m: r[Math.floor(r.length / 2)].m, n: r.length, t: Math.max.apply(null, r.map(function (x) { return x.t; })) };
+  });
+  return out;
+}
+function boardingFiles_(jeton, ap) {
+  proprioDuJeton_(jeton);
+  ap = String(ap || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+  return { ok: true, ap: ap, files: ap.length === 3 ? filesAeroport_(ap) : {} };
+}
+function boardingFile_(jeton, ap, q, m) {
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  ap = String(ap || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); m = Math.round(Number(m));
+  if (FILES.indexOf(q) < 0 || !(m >= 0 && m <= 240)) throw refus_('Unknown queue.', 'donnees');
+  // seulement pour un aéroport d'un de ses vols (limite les faux avis)
+  var ok = b.v.some(function (v) { var r = null; try { r = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); } catch (e) {} return r && r.f && (r.f.o === ap || r.f.a === ap); });
+  if (!ok) throw refus_('Add a flight from or to this airport first.', 'donnees');
+  var u = idVoyageur_(p), now = Math.round(Date.now() / 1000), key = 'q:' + ap, lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    var l = listeLire_(key).filter(function (r) { return !(r.u === u && r.q === q && now - r.t < 1800); });
+    l.push({ q: q, m: m, t: now, u: u });
+    listeEcrire_(key, l, 3 * 3600);
+  } finally { lock.releaseLock(); }
+  return { ok: true, ap: ap, files: filesAeroport_(ap) };
 }
 function boardingAbord_(jeton, n, d, la, lo) {
   var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
@@ -1496,6 +1585,8 @@ function boardingListe_(b, pourMontre) {
     if (!v.bp && !/^Canceled/.test(f.st) && dep0 - now < 30 * 3600 && dep0 - now > 2 * 3600) x.ci = 1; // « CHECK IN ONLINE »
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
+    // avis des voyageurs (porte, embarquement, tapis) et nombre de voyageurs Boarding sur ce vol
+    try { var cw = foule_(v.n, v.d), pax = paxCarte_()[v.n + ':' + v.d] || 0; if (pax >= 3) cw.pax = pax; if (Object.keys(cw).length) x.cw = cw; } catch (e) { console.error(e); }
     // porte, terminal, tapis : AirLabs aux moments utiles (AeroDataBox reste la référence quand il les a et qu'il est plus récent)
     try { alSuivre_(rec, v); } catch (e) { console.error(e); }
     var ax = rec.alx;
@@ -1512,7 +1603,7 @@ function boardingListe_(b, pourMontre) {
     if (!pourMontre) {
       // page web : prévision à l'heure d'arrivée, et l'avion (immatriculation, âge, photo) quand il est connu
       var arrT = f.ea || f.sa;
-      if (arrT && arrT > now && arrT - now < 7 * 86400 && f.ala != null) { try { x.fc = meteoPrevue_(f.ala, f.alo, arrT); } catch (e) { console.error(e); } }
+      if (arrT && arrT > now && arrT - now < 30 * 3600) { try { x.fc = meteoTaf_(f.ai, arrT); } catch (e) { console.error(e); } }
       if (f.rg && (f.ed || f.sd) - now < 4 * 86400) { try { x.avion = avionInfo_(f.rg); } catch (e) { console.error(e); } }
     }
     // retard probable : l'avion qui arrive se pose trop tard pour repartir à l'heure (escale minimale)
@@ -1580,6 +1671,30 @@ function avionInfo_(reg) {
 }
 
 /* ----- Boarding : prévision météo à l'heure d'arrivée (Open-Meteo, sans clé) ----- */
+/** Météo à l'arrivée par le TAF (prévision officielle de l'aéroport, ~24-30 h, gratuite) + température actuelle du METAR. */
+function meteoTaf_(icao, t) {
+  if (!/^[A-Z]{4}$/.test(icao || '')) return null;
+  var taf = (awc_('taf', [icao])[icao] || [])[0];
+  if (!taf || !Array.isArray(taf.fcsts)) return null;
+  var base = null, poss = null;
+  taf.fcsts.forEach(function (p) {
+    var a = Number(p.timeFrom), b = Number(p.timeTo);
+    if (!(a <= t && t < b)) return;
+    var ch = String(p.fcstChange || '');
+    if (ch === 'TEMPO' || ch === 'PROB' || p.probability) poss = p; else base = Object.assign({}, base || {}, p);
+  });
+  if (!base) return null;
+  var mot = function (p) {
+    var wx = ' ' + String(p.wxString || '') + ' ', cl = (p.clouds || []).map(function (c) { return c.cover; }).join(' ');
+    if (/TS/.test(wx)) return 'Thunderstorm'; if (/SN/.test(wx)) return 'Snow'; if (/SH/.test(wx)) return 'Showers'; if (/RA/.test(wx)) return 'Rain';
+    if (/DZ/.test(wx)) return 'Drizzle'; if (/FG/.test(wx)) return 'Fog'; if (/BR|HZ/.test(wx)) return 'Mist';
+    if (/OVC|BKN/.test(cl)) return 'Cloudy'; if (/SCT|FEW/.test(cl)) return 'Partly cloudy'; return cl || p.wxString ? '' : 'Clear';
+  };
+  var w = mot(base) || 'Clear', pw = poss && poss.wxString ? mot(poss) : '';
+  var m = meteoSimple_(icao);
+  return { src: 'TAF', w: w, v: base.wspd != null ? Math.round(Number(base.wspd) * 1.852) : null, gu: base.wgst ? Math.round(Number(base.wgst) * 1.852) : null,
+    poss: pw && pw !== w ? pw : '', tn: m && m.t != null ? m.t : null };
+}
 function meteoPrevue_(lat, lon, t) {
   var cache = CacheService.getScriptCache(), k = 'om:' + Number(lat).toFixed(2) + ',' + Number(lon).toFixed(2), raw = cache.get(k), h = null;
   if (raw) { try { h = JSON.parse(raw); } catch (e) { h = null; } }
@@ -1630,7 +1745,7 @@ function boardingVoir_(s) {
   o.al2 = f.ea && f.sa ? Math.round((f.ea - f.sa) / 60) : 0;
   var now = Date.now() / 1000, arrT = f.ea || f.sa;
   if (arrT && arrT > now - 3 * 3600 && arrT - now < 6 * 3600) { try { o.wx = meteoSimple_(f.ai); } catch (e) { o.wx = null; } }
-  if (arrT && arrT > now && arrT - now < 7 * 86400 && f.ala != null) { try { o.fc = meteoPrevue_(f.ala, f.alo, arrT); } catch (e) { o.fc = null; } }
+  if (arrT && arrT > now && arrT - now < 30 * 3600) { try { o.fc = meteoTaf_(f.ai, arrT); } catch (e) { o.fc = null; } }
   return { ok: true, vol: o };
 }
 
@@ -1651,6 +1766,7 @@ function proprioDuJeton_(jeton) {
 }
 function proprioEcrire_(p, b) {
   var o = { Vols: JSON.stringify(b) };
+  try { CacheService.getScriptCache().remove('paxmap'); } catch (e) {}
   verrou_(function () { majLigne_(p.t === 'U' ? 'Comptes' : 'Montres', function (x) { return x.Id === p.id; }, o); });
   p.row.Vols = o.Vols;
 }

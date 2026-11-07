@@ -164,7 +164,7 @@ function charger(opts) {
         remove: (k) => { delete cache[k]; }
       })
     },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock: () => {}, releaseLock: () => {} }) },
     DriveApp: {
       createFolder: (nom) => { const id = 'd' + (++drive.n); drive.dossiers[id] = dossier(id, nom); return drive.dossiers[id]; },
       getFolderById: (id) => { if (!drive.dossiers[id]) throw new Error('introuvable'); return drive.dossiers[id]; }
@@ -197,7 +197,8 @@ function charger(opts) {
         }
         if (url.startsWith('https://aviationweather.gov/api/data/taf')) {
           const now = Math.floor(Date.now() / 1000);
-          const out = [{ icaoId: 'ELLX', rawTAF: 'TAF ELLX ...', fcsts: [{ timeFrom: now - 3600, timeTo: now + 20 * 3600, wdir: 80, wspd: 12, visib: '6+', clouds: [{ cover: 'BKN', base: 2500 }] }, { timeFrom: now - 3600, timeTo: now + 3 * 3600, fcstChange: 'TEMPO', wdir: 80, wspd: 15, wgst: 25, visib: '', clouds: [] }] }];
+          const ids = (url.match(/ids=([A-Z,]+)/) || [, 'ELLX'])[1].split(',');
+          const out = ids.map((id) => ({ icaoId: id, rawTAF: 'TAF ' + id + ' ...', fcsts: [{ timeFrom: now - 3600, timeTo: now + 20 * 3600, wdir: 80, wspd: 12, visib: '6+', clouds: [{ cover: 'BKN', base: 2500 }] }, { timeFrom: now - 3600, timeTo: now + 5 * 3600, fcstChange: 'TEMPO', wdir: 80, wspd: 15, wgst: 25, visib: '', wxString: '-SHRA', clouds: [] }] }));
           return { getResponseCode: () => 200, getContentText: () => JSON.stringify(out) };
         }
         if (url.startsWith('https://aviationweather.gov/api/data/metar')) {

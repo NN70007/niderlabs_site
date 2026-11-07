@@ -489,7 +489,7 @@ console.log('Boarding : avion, prévision à l\'arrivée, partage du vol');
   let c = bo.post({ action: 'boarding.charger', jeton: s.jeton });
   const v = c.vols[0];
   ok(v.avion && v.avion.rg === 'LX-LGU' && v.avion.age === 6.2 && v.avion.se === 186 && v.avion.ph && v.avion.ph.by === 'A. Spotter', 'page : immatriculation, âge, sièges et photo créditée');
-  ok(v.fc && v.fc.t === 14 && v.fc.p === 30 && v.fc.w === 'Rain' && v.fc.v === 18, 'page : prévision à l\'heure d\'arrivée');
+  ok(v.fc && v.fc.src === 'TAF' && v.fc.w === 'Cloudy' && v.fc.v === 22 && v.fc.poss === 'Showers', 'page : prévision TAF à l\'heure d\'arrivée');
   const n1 = bo.adbAppels.filter((u) => /aircrafts/.test(u)).length;
   bo.post({ action: 'boarding.charger', jeton: s.jeton });
   ok(bo.adbAppels.filter((u) => /aircrafts/.test(u)).length === n1 && n1 === 1, 'fiche avion demandée une seule fois');
@@ -511,6 +511,32 @@ console.log('Boarding : avion, prévision à l\'arrivée, partage du vol');
   ok(bo.post({ action: 'boarding.voir', s: sh.s }).code === 'lien', 'lien expiré refusé');
   bo.run('nettoyerSessions');
   ok(!(k in bo.props), 'liens expirés effacés au nettoyage');
+}
+
+console.log('Boarding : signalements des voyageurs');
+{
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test' } });
+  bo.run('installer');
+  const today = new Date().toISOString().slice(0, 10);
+  const users = ['a1@example.com', 'a2@example.com', 'a3@example.com'].map((e) => {
+    bo.post({ action: 'boarding.code', email: e });
+    const s = bo.post({ action: 'boarding.entrer', email: e, code: bo.lastCode(e) });
+    bo.post({ action: 'boarding.ajouter', jeton: s.jeton, vol: { n: 'LG8803', d: today } });
+    return s.jeton;
+  });
+  let r = bo.post({ action: 'boarding.signaler', jeton: users[0], n: 'LG8803', d: today, k: 'g', v: 'b 34' });
+  ok(r.ok && r.vols[0].cw.g.v === 'B34' && r.vols[0].cw.g.n === 1, 'porte signalée (nettoyée en B34)');
+  bo.post({ action: 'boarding.signaler', jeton: users[0], n: 'LG8803', d: today, k: 'g', v: 'B34' });
+  r = bo.post({ action: 'boarding.signaler', jeton: users[1], n: 'LG8803', d: today, k: 'g', v: 'B34' });
+  ok(r.vols[0].cw.g.n === 2, 'deux voyageurs distincts confirment (un voyageur ne compte qu\'une fois)');
+  r = bo.post({ action: 'boarding.signaler', jeton: users[2], n: 'LG8803', d: today, k: 'bd' });
+  ok(r.vols[0].cw.bd && r.vols[0].cw.bd.n === 1 && r.vols[0].cw.pax === 3, 'embarquement signalé, 3 voyageurs Boarding sur le vol');
+  ok(bo.post({ action: 'boarding.signaler', jeton: users[0], n: 'XX1', d: today, k: 'g', v: 'A1' }).code === 'introuvable', 'signalement refusé pour un vol non suivi');
+  ok(bo.post({ action: 'boarding.file', jeton: users[0], ap: 'LUX', q: 'sec', m: 12 }).files.sec.m === 12, 'attente à la sécurité enregistrée');
+  bo.post({ action: 'boarding.file', jeton: users[1], ap: 'LUX', q: 'sec', m: 20 });
+  const f = bo.post({ action: 'boarding.files', jeton: users[2], ap: 'LUX' });
+  ok(f.files.sec.n === 2 && f.files.sec.m === 20, 'médiane des attentes signalées');
+  ok(bo.post({ action: 'boarding.file', jeton: users[0], ap: 'JFK', q: 'sec', m: 5 }).code === 'donnees', 'file refusée pour un aéroport sans vol');
 }
 
 console.log('\n' + n + ' vérifications réussies.');

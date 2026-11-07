@@ -265,3 +265,10 @@ details.avion-carte .corps{padding-top:4px}
 #bp .bp-code svg{max-height:52vh}
 /* code un peu plus petit, proche de la taille de la carte Wallet de la compagnie */
 #bp .bp-code svg{width:68%;max-width:240px}
+
+/* avis des voyageurs */
+.foule{margin:-4px 0 0;font-size:14px;font-weight:600;color:var(--encre-3)}
+.sig-l{display:flex;gap:10px}.sig-l input{flex:1;min-width:0;text-transform:uppercase}.sig-l .bouton{width:auto;padding:0 20px}
+.file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--trait)}
+.file b{display:block;font-size:17px}.file small{display:block;font-size:14px;color:var(--encre-3);font-weight:500}
+.file .bouton.petit{width:auto;min-height:44px;height:auto;padding:8px 14px;font-size:15px;white-space:nowrap;flex:none}

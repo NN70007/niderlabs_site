@@ -128,6 +128,7 @@
     document.querySelectorAll("#nav button").forEach(function (b) { if (b.getAttribute("data-o") === o) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     window.scrollTo(0, 0);
     try { history.replaceState(null, "", "#" + o); } catch (e) {}
+    if (o === "trajet" && dernier) afficherFiles(dernier.vols || [], true);
   }
   document.querySelectorAll("#nav button[data-o]").forEach(function (b) { b.addEventListener("click", function () { onglet(b.getAttribute("data-o")); }); });
 
@@ -268,7 +269,7 @@
     if (v.sd && v.sd - now() > 2 * 86400) return ["SCHEDULED", "gris"];
     return ["ON TIME", ""];
   }
-  function cas(lab, val, cl, sous) { return val ? "<div><span>" + lab + '</span><b class="' + (cl || "") + '">' + esc(val) + "</b>" + (sous ? "<small>" + esc(sous) + "</small>" : "") + "</div>" : ""; }
+  function cas(lab, val, cl, sous) { return val ? "<div><span>" + lab + '</span><b class="' + (cl || "") + '">' + esc(val) + "</b>" + (sous ? "<small" + (/^(confirmed|reported)/.test(sous) ? ' class="gris"' : "") + ">" + esc(sous) + "</small>" : "") + "</div>" : ""; }
   function bandeaux(v) {
     var h = "", t = now(), parti = v.tk || /Departed|EnRoute|Approaching|Arrived|Diverted/.test(v.st || "");
     if (/^Canceled/.test(v.st || "")) return '<div class="bandeau rouge"><span>FLIGHT CANCELLED<small>Contact your airline to rebook.</small></span></div>';
@@ -312,6 +313,8 @@
   }
   function meteoHtml(v, titre) {
     var w = v.wx, f = v.fc;
+    if (f && f.src === "TAF") return '<div class="meteo">' + (f.tn != null ? '<span class="temp">' + f.tn + '°</span>' : "") + '<span class="txt">' + esc(titre || "At " + v.a + " on arrival") + " · " + esc(f.w) +
+      "<span>" + (f.v != null ? "wind " + f.v + " km/h" + (f.gu ? " (gusts " + f.gu + ")" : "") : "") + (f.poss ? " · " + esc(f.poss.toLowerCase()) + " possible" : "") + " · airport forecast" + (f.tn != null ? " · " + f.tn + "° there now" : "") + "</span></span></div>";
     if (f && f.t != null) return '<div class="meteo"><span class="temp">' + f.t + '°</span><span class="txt">' + esc(titre || "At " + v.a + " on arrival") + " · " + esc(f.w) +
       "<span>" + (f.p != null ? f.p + "% rain · " : "") + "wind " + f.v + " km/h · forecast</span></span></div>";
     if (w && w.t != null) return '<div class="meteo"><span class="temp">' + w.t + '°</span><span class="txt">' + esc(titre || "At " + v.a + " now") + "<span>" + esc(String(w.w || "").toLowerCase()) + "</span></span></div>";
@@ -320,6 +323,93 @@
   var observateur = ("IntersectionObserver" in window) ? new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting && e.target._v) { observateur.unobserve(e.target); carteVol(e.target, e.target._v); e.target._v = null; } });
   }, { rootMargin: "300px" }) : null;
+
+  // ---- avis des voyageurs : porte, tapis (avec le nombre de confirmations) ----
+  function nVoy(n) { return n + (n > 1 ? " travellers" : " traveller"); }
+  function porteCase(v, gOk, dep, t) {
+    var c = (v.cw || {}).g;
+    if (gOk) {
+      var sous = v.gp ? "was " + v.gp : c && c.v === v.g ? "confirmed by " + nVoy(c.n) : c && c.v !== v.g && c.t > t - 1800 ? nVoy(c.n) + " report " + c.v : "";
+      return cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", sous);
+    }
+    if (c && dep > t) return cas("GATE", c.v, "", "reported by " + nVoy(c.n) + (c.c ? " · unconfirmed" : ""));
+    return porteAttente(v, dep, t);
+  }
+  function tapisCase(v) {
+    var c = (v.cw || {}).b;
+    if (v.b) return cas("BELT", v.b, "", c && c.v === v.b ? "confirmed by " + nVoy(c.n) : c ? nVoy(c.n) + " report " + c.v : "");
+    return c ? cas("BELT", c.v, "", "reported by " + nVoy(c.n) + (c.c ? " · unconfirmed" : "")) : "";
+  }
+  // feuille « signaler » : ce que le voyageur voit sur les écrans, partagé (sans nom) avec les autres voyageurs du vol
+  function signalerOuvrir(v) {
+    var t = now(), parti = v.tk || v.atk, pose = v.ln || v.ald || v.st === "Arrived", arr = v.ln || v.ald || v.ea || v.sa, cw = v.cw || {};
+    var h = "<h2>Help other travellers</h2><p class=\"aide\">Shared anonymously with the other Boarding travellers on " + esc(v.n) + ".</p>";
+    if (!parti) h += '<label class="titre" for="sig-g">GATE ON THE SCREENS</label><div class="sig-l"><input id="sig-g" maxlength="5" autocapitalize="characters" autocomplete="off" placeholder="e.g. D56" value="' + esc(v.g || (cw.g && cw.g.v) || "") + '"><button type="button" class="bouton" data-k="g">Send</button></div>' +
+      '<button type="button" class="bouton second" data-k="bd">Boarding has started</button>';
+    if (pose || t > arr - 1800 || parti) h += '<label class="titre" for="sig-b">BAGGAGE BELT</label><div class="sig-l"><input id="sig-b" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="e.g. 4" value="' + esc(v.b || (cw.b && cw.b.v) || "") + '"><button type="button" class="bouton" data-k="b">Send</button></div>';
+    h += '<button type="button" class="lien" data-fermer>Close</button>';
+    var o = $("#sig"), c = $("#sig-c"); c.innerHTML = h; o.hidden = false;
+    var fermer = function () { o.hidden = true; recaler(); };
+    c.querySelector("[data-fermer]").addEventListener("click", fermer);
+    c.querySelectorAll("[data-k]").forEach(function (bt) {
+      bt.addEventListener("click", function () {
+        var k = bt.getAttribute("data-k"), val = k === "g" ? $("#sig-g").value : k === "b" ? $("#sig-b").value : "1";
+        if (k !== "bd" && !String(val).trim()) { toast(k === "g" ? "Type the gate shown on the screens." : "Type the belt number.", false); return; }
+        var fin = occupe(bt, "…");
+        AVIATOR.appel({ action: "boarding.signaler", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, k: k, v: val }).then(function (r) {
+          fin(); if (!r.ok) { toast(r.error || "Not sent.", false); return; }
+          fermer(); toast("Thanks! Shared with the other travellers.", true); afficherVols(r);
+        }).catch(function (x) { fin(); erreur(x); });
+      });
+    });
+  }
+
+  // ---- files d'attente (sécurité, passeports) : signalées par les voyageurs, à l'aéroport de départ puis d'arrivée ----
+  var FILES = { sec: "Security", fast: "Security · fast track", eu: "Passport control · EU/EEA/CH passports", neu: "Passport control · other passports", us: "US citizens & residents", vis: "Visitors (ESTA / visa)" };
+  var filesCache = {};
+  function fileEnCours() { try { return JSON.parse(localStorage.getItem("boarding-file") || "null"); } catch (e) { return null; } }
+  function afficherFiles(vols, charger) {
+    var box = $("#files-box"); if (!box) return;
+    var t = now(), cible = null;
+    (vols || []).some(function (v) {
+      if (v.inconnu || /^Canceled/.test(v.st || "")) return false;
+      var dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, parti = v.tk || v.atk;
+      if (!parti && dep > t && dep - t < 12 * 3600) { cible = { ap: v.o, q: ["sec", "fast", "eu", "neu"], quand: "before your flight " + v.n }; return true; }
+      if ((parti || dep < t) && arr && t > arr - 3600 && t < arr + 2 * 3600) { cible = { ap: v.a, q: /^K/.test(v.ai || "") ? ["us", "vis"] : ["eu", "neu"], quand: "on arrival" }; return true; }
+      return false;
+    });
+    if (!cible) { box.hidden = true; return; }
+    box.hidden = false;
+    var data = filesCache[cible.ap], encours = fileEnCours();
+    var rows = cible.q.map(function (q) {
+      var f = data && data.files && data.files[q], moi = encours && encours.ap === cible.ap && encours.q === q;
+      var info = f ? "~" + f.m + " min · " + f.n + (f.n > 1 ? " reports" : " report") + " · " + Math.max(1, Math.round((t - f.t) / 60)) + " min ago" : data ? "No report in the last hour" : "…";
+      return '<div class="file"><div><b>' + FILES[q] + "</b><small>" + (moi ? "You are in line since " + new Date(encours.t0 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : info) + "</small></div>" +
+        '<button type="button" class="bouton ' + (moi ? "" : "second ") + 'petit" data-q="' + q + '">' + (moi ? "I'm through" : "I'm in line") + "</button></div>";
+    }).join("");
+    box.innerHTML = "<h2>Queues at " + esc(cible.ap) + "</h2><p class=\"aide\">Waiting times reported by Boarding travellers in the last hour, " + esc(cible.quand) + ". Tap <b>I'm in line</b> when you join a queue and <b>I'm through</b> when you leave it.</p>" + rows;
+    box.querySelectorAll("[data-q]").forEach(function (bt) {
+      bt.addEventListener("click", function () {
+        var q = bt.getAttribute("data-q"), e = fileEnCours();
+        if (e && e.ap === cible.ap && e.q === q) {
+          var m = Math.round((now() - e.t0) / 60);
+          try { localStorage.removeItem("boarding-file"); } catch (x) {}
+          if (m > 240) { afficherFiles(vols, false); return; }
+          var fin = occupe(bt, "…");
+          AVIATOR.appel({ action: "boarding.file", jeton: jeton, ap: cible.ap, q: q, m: m }).then(function (r) {
+            fin(); if (!r.ok) { toast(r.error || "Not sent.", false); afficherFiles(vols, false); return; }
+            filesCache[cible.ap] = r; toast("Thanks! " + m + " min shared with other travellers.", true); afficherFiles(vols, false);
+          }).catch(function (x) { fin(); erreur(x); });
+        } else {
+          try { localStorage.setItem("boarding-file", JSON.stringify({ ap: cible.ap, q: q, t0: Math.round(now()) })); } catch (x) {}
+          afficherFiles(vols, false);
+        }
+      });
+    });
+    if (charger && (!data || now() - data.lu > 120)) {
+      AVIATOR.appel({ action: "boarding.files", jeton: jeton, ap: cible.ap }).then(function (r) { if (r && r.ok) { r.lu = now(); filesCache[cible.ap] = r; afficherFiles(vols, false); } }).catch(function () {});
+    }
+  }
 
   function afficherUber(vols) {
     var box = $("#uber-box"), t = now();
@@ -340,6 +430,7 @@
     dernier = o;
     afficherUber(vols);
     bpPurger(vols);
+    afficherFiles(vols, false);
     if (!vols.length) { box.innerHTML = '<div class="carte"><h2>No flight yet</h2><p class="aide">Scan your boarding pass or type your flight number above. You can add flights months ahead.</p></div>'; return; }
     box.innerHTML = "";
     vols.forEach(function (v) {
@@ -347,25 +438,28 @@
       if (v.inconnu) {
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(v.d) + '</div></div></div><p class="aide">Waiting for flight data…</p><div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
       } else {
-        var e = etat(v), dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, t = now();
+        var e = etat(v), dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, t = now(), cw = v.cw || {};
         // porte seulement à moins de 3 h du départ (avant, souvent provisoire) ; avant : le terminal
         var gOk = v.g && (dep - t < 3 * 3600 || v.gp || v.tk || dep < t);
         var bp = bpDe(v);
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
+          (cw.pax ? '<p class="foule">' + cw.pax + " Boarding travellers on this flight</p>" : "") +
+          (cw.bd && !(v.tk || v.atk) && dep > t - 1800 ? '<div class="bandeau bleu"><span>BOARDING STARTED<small>Reported by ' + nVoy(cw.bd.n) + " at " + hm(cw.bd.t, v.oz) + "</small></span></div>" : "") +
           bandeaux(v) +
           '<div class="actions-vol">' + (bp || v.bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
           '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button>" +
+          (t > dep - 4 * 3600 && t < arr + 5400 ? '<button type="button" class="bouton second" data-signaler style="grid-column:1/-1">Report gate · boarding · belt</button>' : "") +
           (!v.hx && t > dep - 5400 && t < arr && !(v.tk || v.atk) ? '<button type="button" class="bouton" data-abord style="grid-column:1/-1">I\'m on board · find my plane</button>' : "") + "</div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
           '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3>' +
           '<div class="escale"><p class="escale-t"><b>' + esc(v.o) + "</b> " + esc(v.oc || "") + "<span>DEPARTURE</span></p>" +
           '<div class="cases">' + cas("TERMINAL", v.t) +
-          (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : porteAttente(v, dep, t)) +
+          porteCase(v, gOk, dep, t) +
           cas("CHECK-IN", v.ck) + cas("SEAT", v.s) + ((v.tk || v.atk) ? cas("TAKE-OFF", hm(v.tk || v.atk, v.oz)) : "") + "</div></div>" +
           '<div class="escale"><p class="escale-t"><b>' + esc(v.a) + "</b> " + esc(v.ac2 || "") + "<span>ARRIVAL</span></p>" +
-          '<div class="cases">' + cas("TERMINAL", v.ta) + cas("GATE", v.ag) + cas("BELT", v.b) + "</div>" + meteoHtml(v) + "</div>" +
+          '<div class="cases">' + cas("TERMINAL", v.ta) + cas("GATE", v.ag) + tapisCase(v) + "</div>" + meteoHtml(v) + "</div>" +
           avionHtml(v) + "</section>" +
           '<section class="sec" data-sec="jour"><h3 class="sec-titre">My day</h3>' + journee(v) + "</section>" +
           '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section>' +
@@ -381,6 +475,7 @@
         if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
         d.querySelector("[data-partager]").addEventListener("click", function (ev) { partager(v, ev.currentTarget); });
+        var sg = d.querySelector("[data-signaler]"); if (sg) sg.addEventListener("click", function () { signalerOuvrir(v); });
         var ab = d.querySelector("[data-abord]"); if (ab) ab.addEventListener("click", function () { abord(v, ab); });
         var pm = d.querySelector("[data-pasmonavion]"); if (pm) pm.addEventListener("click", function () {
           demander("Forget this aircraft and search again?", "Forget").then(function (oui) {
@@ -880,6 +975,7 @@
     ["Sharing a flight", "<p><b>Share flight</b> creates a link for whoever picks you up: live arrival time, delay, baggage belt and weather – no account needed. No seat, no name, no e-mail. The link stops working a few days after the flight.</p>"],
     ["When to leave home", "<p>In <b>To the airport</b>, set where you leave from and how much time you want at the airport. Car times use OpenStreetMap routing with a margin for traffic and parking. The <b>Uber</b> button opens Uber with the airport as destination; to book ahead, choose Schedule and the time shown.</p>"],
     ["The Garmin watch face", "<p>Install <a href=\"https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50\" target=\"_blank\" rel=\"noopener\">Boarding</a> on your watch, tap it and link it in <b>Account</b>. When your destination is in another time zone, a small <b>L</b> on the dial points to the local time there.</p>"],
+    ["Travellers' reports", "<p>Gates, boarding, baggage belts and queue times can be reported by Boarding travellers. Each report is anonymous and counts once per traveller; a value is shown as <b>confirmed</b> when several travellers agree. Official data from the airport always comes first.</p>"],
     ["Your data", "<p>Your account keeps only your e-mail address, your flights and your settings. Flight data comes from AeroDataBox and AirLabs, live aircraft positions from adsb.lol and adsb.fi, weather from NOAA and Open-Meteo, aircraft photos from Wikimedia Commons. \u201cI'm on board\u201d uses your phone's position once to find your aircraft; it is not stored. See the <a href=\"privacy/\">privacy policy</a>.</p>"]
   ];
   $("#infos").innerHTML = INFOS.map(function (x) { return "<details><summary>" + x[0] + "</summary>" + x[1] + "</details>"; }).join("");
@@ -964,7 +1060,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "34";
+  var VERSION = "35";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
