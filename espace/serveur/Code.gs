@@ -99,6 +99,10 @@ function doGet(e) {
         enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
+  if (p.a === 'xdiag') {
+    try { return json_(xDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))); }
+    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
+  }
   if (p.a === 'tick') {
     try { return json_(boardingTick_()); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
@@ -1036,6 +1040,46 @@ function hash_(s) {
 /* ======================= Cadran vol (passagers) : données AeroDataBox ======================= */
 // Clé lue dans l'onglet « config » (A: nom, B: valeur) ou, à défaut, dans les propriétés du script.
 // Elle n'est jamais renvoyée ni journalisée.
+/** Clé lue dans les propriétés du script, sinon dans l'onglet config (nom en A, valeur en B). Jamais renvoyée au navigateur. */
+function cfgCle_(nom) {
+  var k = PropertiesService.getScriptProperties().getProperty(nom);
+  if (k) return String(k).trim();
+  var sh = null;
+  try { sh = classeur_(false).getSheetByName('config'); } catch (e) { sh = null; }
+  if (!sh) return '';
+  var v = sh.getDataRange().getValues();
+  for (var i = 0; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === nom) return String(v[i][1] || '').trim();
+  return '';
+}
+/** Diagnostic des sources d'immatriculation (AirLabs, FlightAware AeroAPI) pour un vol : champs utiles seulement. */
+function xDiag_(n) {
+  var out = { ok: true, airlabs: null, aeroapi: null };
+  var c = CacheService.getScriptCache(), kc = 'xdiag:' + n, prev = c.get(kc);
+  if (prev) { var o = JSON.parse(prev); o.cache = true; return o; }
+  var al = cfgCle_('AIRLABS_KEY'), fa = cfgCle_('AEROAPI_KEY');
+  if (al) {
+    try {
+      var r = UrlFetchApp.fetch('https://airlabs.co/api/v9/flight?flight_iata=' + encodeURIComponent(n) + '&api_key=' + encodeURIComponent(al), { muteHttpExceptions: true });
+      var j = null; try { j = JSON.parse(r.getContentText()); } catch (e) {}
+      var d = j && j.response;
+      out.airlabs = { http: r.getResponseCode(), err: j && j.error ? (j.error.message || j.error.code || 'erreur') : null,
+        f: d ? { reg: d.reg_number || null, hex: d.hex || null, ac: d.aircraft_icao || null, st: d.status || null, dep: d.dep_iata, arr: d.arr_iata,
+          gate: d.dep_gate || null, term: d.dep_terminal || null, dep_time: d.dep_time || null, dep_est: d.dep_estimated || null, model: d.model || null, built: d.built || null } : null };
+    } catch (e) { out.airlabs = { erreur: String(e && e.message || e).slice(0, 120) }; }
+  }
+  if (fa) {
+    try {
+      var r2 = UrlFetchApp.fetch('https://aeroapi.flightaware.com/aeroapi/flights/' + encodeURIComponent(n) + '?max_pages=1', { muteHttpExceptions: true, headers: { 'x-apikey': fa } });
+      var j2 = null; try { j2 = JSON.parse(r2.getContentText()); } catch (e) {}
+      out.aeroapi = { http: r2.getResponseCode(), err: j2 && (j2.title || j2.detail) || null,
+        vols: j2 && Array.isArray(j2.flights) ? j2.flights.slice(0, 4).map(function (f) { return { ident: f.ident, reg: f.registration || null, type: f.aircraft_type || null, st: f.status || null,
+          o: f.origin && f.origin.code_iata, d: f.destination && f.destination.code_iata, out: f.scheduled_out || null, gate: f.gate_origin || null, term: f.terminal_origin || null, inb: f.inbound_fa_flight_id || null }; }) : null };
+    } catch (e) { out.aeroapi = { erreur: String(e && e.message || e).slice(0, 120) }; }
+  }
+  out.cles = { airlabs: !!al, aeroapi: !!fa };
+  c.put(kc, JSON.stringify(out), 120);
+  return out;
+}
 function volCle_() {
   var k = PropertiesService.getScriptProperties().getProperty('AERODATABOX_KEY');
   if (k) return String(k).trim();
