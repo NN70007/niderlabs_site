@@ -924,7 +924,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "27";
+  var VERSION = "28";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

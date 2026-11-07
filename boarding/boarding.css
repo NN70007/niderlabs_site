@@ -263,3 +263,5 @@ details.avion-carte .corps{padding-top:4px}
 /* carte d'embarquement : la barre du bas reste visible et utilisable */
 #bp.plein{bottom:calc(71px + env(safe-area-inset-bottom));z-index:25;justify-content:flex-start;padding-bottom:16px}
 #bp .bp-code svg{max-height:52vh}
+/* code un peu plus petit, proche de la taille de la carte Wallet de la compagnie */
+#bp .bp-code svg{width:68%;max-width:240px}
