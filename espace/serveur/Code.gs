@@ -96,7 +96,7 @@ function doGet(e) {
       }
       var budget = Number(CacheService.getScriptCache().get('adb:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd')) || 0);
       return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, ms: f ? f.ms || '' : '', fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null, brut: brut,
-        enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
+        enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o, tk: f && f.tk, atk: f && f.atk, ald: f && f.ald, ea: f && f.ea, ln: f && f.ln } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'csdiag') {
