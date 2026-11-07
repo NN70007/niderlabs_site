@@ -103,6 +103,14 @@ function doGet(e) {
     try { return json_(csDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8), String(p.d || '').replace(/[^0-9-]/g, ''))); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur', e: String(err && err.message || err).slice(0, 200) }); }
   }
+  if (p.a === 'aldep') {
+    try {
+      var k = cfgCle_('AIRLABS_KEY'), ap = String(p.ap || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3), al = String(p.al || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+      var rr = UrlFetchApp.fetch('https://airlabs.co/api/v9/schedules?dep_iata=' + ap + '&airline_iata=' + al + '&api_key=' + encodeURIComponent(k), { muteHttpExceptions: true });
+      var jj = JSON.parse(rr.getContentText());
+      return json_({ ok: true, vols: (jj.response || []).slice(0, 40).map(function (x) { return [x.flight_iata, x.arr_iata, x.dep_time, x.status, x.cs_flight_iata || '']; }) });
+    } catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
+  }
   if (p.a === 'xdiag') {
     try { return json_(xDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
