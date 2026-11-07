@@ -247,3 +247,13 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 .bp-code img{display:block}
 .cases b.attente{font-size:24px;color:var(--encre-2)}
 .cases small.gris{color:var(--encre-3);font-weight:500}
+.escale{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.escale-t{display:flex;align-items:baseline;gap:8px;margin:0;font-size:16px;color:var(--encre-2);font-weight:600}
+.escale-t b{font:700 24px var(--titre);color:var(--encre)}
+.escale-t span{margin-left:auto;font-size:12px;letter-spacing:1.4px;color:var(--encre-3)}
+details.avion-carte summary{list-style:none;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px 44px 12px 14px;position:relative}
+details.avion-carte summary::-webkit-details-marker{display:none}
+details.avion-carte summary::after{content:"▾";position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--encre-3)}
+details.avion-carte[open] summary::after{content:"▴"}
+details.avion-carte .titre{font:600 13px var(--texte);letter-spacing:1.2px;color:var(--encre-3)}
+details.avion-carte .corps{padding-top:4px}

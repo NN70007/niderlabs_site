@@ -273,26 +273,30 @@
     return h;
   }
   // pas encore de porte : à quelle heure elle s'affichera (3 h avant le départ), sinon « SOON »
+  var avionOuvert = {}; // garde la fiche avion ouverte pendant les rafraîchissements
   function porteAttente(v, dep, t) {
     if (dep <= t || v.tk) return "";
     var h3 = dep - 3 * 3600;
     if (h3 > t) return '<div><span>GATE</span><b class="attente">from ' + hm(h3, v.oz) + "</b><small class=\"gris\">" + (jourTxt(h3, v.oz) !== jourTxt(t, v.oz) ? jourTxt(h3, v.oz) + " · " : "") + "shown 3 h before departure</small></div>";
     return cas("GATE", "SOON", "", "not announced yet");
   }
+  // l'avion : le modèle, et en touchant, l'immatriculation, l'âge et la photo
   function avionHtml(v) {
     var a = v.avion;
-    if (!a) return v.md ? '<div class="avion-carte"><div class="corps"><span class="titre">AIRCRAFT</span><span class="modele">' + esc(v.md) + "</span></div></div>" : "";
+    if (!a && !v.md) return "";
+    var ouvert = avionOuvert[cleVol(v.n, v.d)] ? " open" : "";
+    if (!a) return '<details class="avion-carte" data-avion' + ouvert + '><summary><span class="titre">AIRCRAFT</span><span class="modele">' + esc(v.md) + '</span></summary>' +
+      '<div class="corps"><p class="aide">Registration, age and photo appear once the airline assigns the aircraft – usually on the day of the flight.</p></div></details>';
     var dl = [];
     if (a.rg) dl.push(["REGISTRATION", a.rg]);
     if (a.age != null) dl.push(["AGE", a.age + (a.age === 1 ? " year" : " years")]);
     if (a.se) dl.push(["SEATS", a.se]);
     if (a.dv) dl.push(["DELIVERED", a.dv.slice(0, 7)]);
     else if (a.ff) dl.push(["FIRST FLIGHT", a.ff.slice(0, 7)]);
-    return '<div class="avion-carte">' +
+    return '<details class="avion-carte" data-avion' + ouvert + '><summary><span class="titre">AIRCRAFT' + (a.rg ? " · " + esc(a.rg) : "") + '</span><span class="modele">' + esc(a.md || v.md || "") + "</span></summary>" +
       (a.ph ? '<img loading="lazy" src="' + esc(a.ph.u) + '" alt="' + esc((a.md || v.md || "Aircraft") + " " + (a.rg || "")) + '" referrerpolicy="no-referrer">' +
         '<p class="credit">Photo: ' + (a.ph.w ? '<a href="' + esc(a.ph.w) + '" target="_blank" rel="noopener">' + esc(a.ph.by || "Wikimedia Commons") + "</a>" : esc(a.ph.by || "")) + " · " + esc(a.ph.l) + "</p>" : "") +
-      '<div class="corps"><span class="titre">AIRCRAFT</span><span class="modele">' + esc(a.md || v.md || "") + "</span><dl>" +
-      dl.map(function (x) { return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl></div></div>";
+      '<div class="corps"><dl>' + dl.map(function (x) { return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl></div></details>";
   }
   function meteoHtml(v, titre) {
     var w = v.wx, f = v.fc;
@@ -342,11 +346,14 @@
           '<div class="actions-vol">' + (bp || v.bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
           '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
-          '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3><div class="cases">' +
+          '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3>' +
+          '<div class="escale"><p class="escale-t"><b>' + esc(v.o) + "</b> " + esc(v.oc || "") + "<span>DEPARTURE</span></p>" +
+          '<div class="cases">' + cas("TERMINAL", v.t) +
           (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : porteAttente(v, dep, t)) +
-          cas("TERMINAL", v.t) + cas("SEAT", v.s) + cas("CHECK-IN", v.ck) + cas("BELT", v.b) + cas("ARR. TERMINAL", v.ta) + cas("ARR. GATE", v.ag) + "</div>" +
-
-          avionHtml(v) + meteoHtml(v) + "</section>" +
+          cas("CHECK-IN", v.ck) + cas("SEAT", v.s) + "</div></div>" +
+          '<div class="escale"><p class="escale-t"><b>' + esc(v.a) + "</b> " + esc(v.ac2 || "") + "<span>ARRIVAL</span></p>" +
+          '<div class="cases">' + cas("TERMINAL", v.ta) + cas("GATE", v.ag) + cas("BELT", v.b) + "</div>" + meteoHtml(v) + "</div>" +
+          avionHtml(v) + "</section>" +
           '<section class="sec" data-sec="jour"><h3 class="sec-titre">My day</h3>' + journee(v) + "</section>" +
           '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section>' +
           '<div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
@@ -355,6 +362,8 @@
         });
         d.querySelectorAll("[data-copier]").forEach(function (cp) { cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier")); }); });
         d.querySelectorAll("[data-aller]").forEach(function (x) { x.addEventListener("click", function () { onglet("trajet"); }); });
+        var av = d.querySelector("[data-avion]");
+        if (av) av.addEventListener("toggle", function () { avionOuvert[cleVol(v.n, v.d)] = av.open; });
         var im = d.querySelector(".avion-carte img");
         if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
@@ -898,7 +907,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "23";
+  var VERSION = "24";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
