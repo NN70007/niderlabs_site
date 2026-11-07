@@ -254,6 +254,7 @@
     if (/^Canceled/.test(s)) return ["CANCELLED", "rouge"];
     if (s === "Arrived") return ["LANDED", ""];
     if (s === "Diverted") return ["DIVERTED", "rouge"];
+    if (v.ald) return ["LANDED", ""];
     if (v.ads && s !== "Arrived") {
       if (v.ads.gr && v.ads.gs > 3) return ["TAXIING", "bleu"];
       if (!v.ads.gr) return ["IN FLIGHT", "bleu"];
@@ -346,7 +347,7 @@
       if (v.inconnu) {
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(v.d) + '</div></div></div><p class="aide">Waiting for flight data…</p><div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
       } else {
-        var e = etat(v), dep = v.ed || v.sd, arr = v.ea || v.sa, t = now();
+        var e = etat(v), dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, t = now();
         // porte seulement à moins de 3 h du départ (avant, souvent provisoire) ; avant : le terminal
         var gOk = v.g && (dep - t < 3 * 3600 || v.gp || v.tk || dep < t);
         var bp = bpDe(v);
@@ -450,7 +451,7 @@
     if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>Airport</b> to know when to leave home.") + "</p>";
     h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + "</ol>";
     // arrivée : heure locale à destination, mise à jour en cas de retard (rafraîchie toutes les 2 min)
-    var arrS = v.sa, arrE = v.ln || v.ea || v.sa;
+    var arrS = v.sa, arrE = v.ln || v.ald || v.ea || v.sa;
     if (arrE) {
       var ecart = arrS ? Math.round((arrE - arrS) / 60) : 0, pose = !!v.ln || v.st === "Arrived";
       var etatA = ecart > 5 ? "+" + ecart + " min late" + (arrS ? " · planned " + hm(arrS, v.az) : "") : ecart < -5 ? -ecart + " min early" : "on time";
@@ -952,7 +953,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "30";
+  var VERSION = "31";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

@@ -1363,7 +1363,7 @@ function volStatut_(n, d, o, forcer) {
     var l = volChoisir_(r.data, o);
     var f = l ? volNorme_(l) : null;
     // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
-    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; }
+    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
     nv.al = (rec && rec.al) || {};
@@ -1432,16 +1432,21 @@ function boardingListe_(b, pourMontre) {
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
     // avion suivi en direct (ADS-B) : au sol / roulage / en vol, heure réelle de décollage
-    if (f.hx && now > (f.ed || f.sd) - 5400 && now < arr + 1800 && f.st !== 'Arrived') {
+    if (f.hx && now > (f.ed || f.sd) - 5400 && now < Math.max(arr, f.ald || 0) + 1800 && f.st !== 'Arrived') {
       try {
         var lv = adsLive_(f.hx);
         if (lv) {
           x.ads = lv;
-          if (!lv.gr && !f.tk && !f.atk) { f.atk = Math.round(now - (lv.vu || 0)); rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
+          var ecrire = false;
+          if (!lv.gr && !f.tk && !f.atk) { f.atk = Math.round(now - (lv.vu || 0)); ecrire = true; }
+          // posé : au sol près de l'aéroport d'arrivée après avoir décollé
+          if (lv.gr && (f.tk || f.atk) && !f.ald && f.ala != null && lv.la != null && distKm_(lv.la, lv.lo, f.ala, f.alo) < 8) { f.ald = Math.round(now - (lv.vu || 0)); ecrire = true; }
+          if (ecrire) { rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
         }
       } catch (e) { console.error(e); }
     }
     if (f.atk && !f.tk) x.atk = f.atk;
+    if (f.ald && f.st !== 'Arrived') x.ald = f.ald;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
     if (now > (f.ed || f.sd) - 6 * 3600) { try { x.wx = meteoSimple_(f.ai); } catch (e) { x.wx = null; } }
     if (!pourMontre) {
