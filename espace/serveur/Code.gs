@@ -1155,6 +1155,26 @@ function adsLive_(hx) {
   return a;
 }
 /** Avions autour d'un point (rayon en milles nautiques) : adsb.lol, sinon adsb.fi. */
+/** Suit l'avion reconnu (f.hx) : note décollage (atk), atterrissage (ald) et dernier point vu (lst). */
+function adsSuivre_(rec, v) {
+  var f = rec && rec.f, now = Date.now() / 1000;
+  if (!f || !f.hx || f.st === 'Arrived' || f.ald) return null;
+  var dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600;
+  if (now < dep - 5400 || now > arr + 3 * 3600) return null;
+  var lv = adsLive_(f.hx), ecrire = false, envol = !!(f.tk || f.atk);
+  var pres = function (la, lo) { return f.ala != null && la != null && distKm_(la, lo, f.ala, f.alo) < 8; };
+  if (lv) {
+    var t = Math.round(now - (lv.vu || 0));
+    if (!lv.gr && !envol) { f.atk = t; envol = true; ecrire = true; }
+    if (lv.gr && envol && pres(lv.la, lv.lo)) { f.ald = t; ecrire = true; }
+    f.lst = { t: t, gr: lv.gr, la: lv.la, lo: lv.lo, alt: lv.alt }; ecrire = true;
+  } else if (envol && f.lst && pres(f.lst.la, f.lst.lo) && (f.lst.gr || (f.lst.alt || 0) < 1500) && now > arr - 1800) {
+    // plus de signal (transpondeur coupé au poste) : dernier point vu au sol, ou en finale, à l'arrivée
+    f.ald = f.lst.t; ecrire = true;
+  }
+  if (ecrire) { rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
+  return lv;
+}
 function adsAutour_(la, lo, nm) {
   var urls = ['https://api.adsb.lol/v2/point/' + la + '/' + lo + '/' + nm, 'https://opendata.adsb.fi/api/v3/lat/' + la + '/lon/' + lo + '/dist/' + nm], out = null;
   urls.some(function (u) {
@@ -1364,7 +1384,7 @@ function volStatut_(n, d, o, forcer) {
     var l = volChoisir_(r.data, o);
     var f = l ? volNorme_(l) : null;
     // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
-    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; }
+    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; if (rec.f.lst) f.lst = rec.f.lst; }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
     nv.al = (rec && rec.al) || {};
@@ -1432,20 +1452,8 @@ function boardingListe_(b, pourMontre) {
     if (!v.bp && !/^Canceled/.test(f.st) && dep0 - now < 30 * 3600 && dep0 - now > 2 * 3600) x.ci = 1; // « CHECK IN ONLINE »
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
-    // avion suivi en direct (ADS-B) : au sol / roulage / en vol, heure réelle de décollage
-    if (f.hx && now > (f.ed || f.sd) - 5400 && now < Math.max(arr, f.ald || 0) + 1800 && f.st !== 'Arrived') {
-      try {
-        var lv = adsLive_(f.hx);
-        if (lv) {
-          x.ads = lv;
-          var ecrire = false;
-          if (!lv.gr && !f.tk && !f.atk) { f.atk = Math.round(now - (lv.vu || 0)); ecrire = true; }
-          // posé : au sol près de l'aéroport d'arrivée après avoir décollé
-          if (lv.gr && (f.tk || f.atk) && !f.ald && f.ala != null && lv.la != null && distKm_(lv.la, lv.lo, f.ala, f.alo) < 8) { f.ald = Math.round(now - (lv.vu || 0)); ecrire = true; }
-          if (ecrire) { rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
-        }
-      } catch (e) { console.error(e); }
-    }
+    // avion suivi en direct (ADS-B) : au sol / roulage / en vol, décollage et atterrissage réels
+    try { var lv = adsSuivre_(rec, v); if (lv) x.ads = lv; } catch (e) { console.error(e); }
     if (f.atk && !f.tk) x.atk = f.atk;
     if (f.ald && f.st !== 'Arrived') x.ald = f.ald;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
@@ -1758,6 +1766,13 @@ function boardingTick_() {
     var b = boardingDe_(p.row);
     if (!(b.ps || []).length) return;
     b.v.forEach(function (v) { var k = v.n + ':' + v.d; if (!vus[k]) { vus[k] = 1; nv++; try { volStatut_(v.n, v.d, v.o, false); } catch (e) { console.error(e); } } });
+  });
+  // avions reconnus à bord : décollage / atterrissage suivis même page fermée (ADS-B, gratuit)
+  proprios_().forEach(function (p) {
+    boardingDe_(p.row).v.forEach(function (v) {
+      var k = 'ads|' + v.n + ':' + v.d; if (vus[k]) return; vus[k] = 1;
+      try { var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); if (rec && rec.f && rec.f.hx) adsSuivre_(rec, v); } catch (e) { console.error(e); }
+    });
   });
   // relu après les rafraîchissements (les alertes ont pu retirer des abonnements)
   var nr = 0, now = Date.now() / 1000;
