@@ -164,6 +164,8 @@ function route_(req) {
   // Boarding (niderlabs.com/boarding) : même jumelage par code que Aviator
   if (a === 'boarding.charger') return boardingCharger_(req.jeton);
   if (a === 'boarding.ajouter') return boardingAjouter_(req.jeton, req.vol);
+  // « I'm on board » : la position du téléphone (une seule fois, non conservée) désigne l'avion le plus proche (ADS-B)
+  if (a === 'boarding.abord') return boardingAbord_(req.jeton, String(req.n || ''), String(req.d || ''), Number(req.la), Number(req.lo));
   if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.maison') return boardingMaison_(req.jeton, req.tz);
   if (a === 'boarding.trajet') return boardingTrajet_(req.jeton, req.tr);
@@ -1124,6 +1126,65 @@ function csDiag_(n, d) {
   c.put(kc, JSON.stringify(out), 60);
   return out;
 }
+/** ADS-B en direct (adsb.lol, sinon adsb.fi) : au sol ?, vitesse, altitude, position. Gardé 30 s. */
+function adsLive_(hx) {
+  hx = String(hx || '').toLowerCase().replace(/[^0-9a-f]/g, '');
+  if (!hx) return null;
+  var c = CacheService.getScriptCache(), k = 'ads:' + hx, m = c.get(k);
+  if (m) return JSON.parse(m);
+  var a = null;
+  ['https://api.adsb.lol/v2/hex/', 'https://opendata.adsb.fi/api/v2/hex/'].some(function (u) {
+    try {
+      var r = UrlFetchApp.fetch(u + hx, { muteHttpExceptions: true });
+      if (r.getResponseCode() !== 200) return false;
+      var j = JSON.parse(r.getContentText()), x = j.ac && j.ac[0];
+      if (!x) return false;
+      var lp = x.lastPosition || {};
+      a = { gr: x.alt_baro === 'ground', alt: x.alt_baro === 'ground' ? 0 : Number(x.alt_baro) || null, gs: isFinite(Number(x.gs)) ? Math.round(Number(x.gs)) : null,
+        la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, vu: Math.round(Number(x.seen) || 0), cs: String(x.flight || '').trim(), rg: x.r || '' };
+      return true;
+    } catch (e) { return false; }
+  });
+  c.put(k, JSON.stringify(a), 30);
+  return a;
+}
+/** Avions autour d'un point (rayon en milles nautiques) : adsb.lol, sinon adsb.fi. */
+function adsAutour_(la, lo, nm) {
+  var urls = ['https://api.adsb.lol/v2/point/' + la + '/' + lo + '/' + nm, 'https://opendata.adsb.fi/api/v3/lat/' + la + '/lon/' + lo + '/dist/' + nm], out = null;
+  urls.some(function (u) {
+    try {
+      var r = UrlFetchApp.fetch(u, { muteHttpExceptions: true });
+      if (r.getResponseCode() !== 200) return false;
+      var j = JSON.parse(r.getContentText());
+      out = (j.ac || []).filter(function (x) { return x.hex && (x.lat != null || x.lastPosition); }).map(function (x) {
+        var lp = x.lastPosition || {};
+        return { hx: x.hex, rg: x.r || '', t: x.t || '', cs: String(x.flight || '').trim(), la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, gr: x.alt_baro === 'ground', gs: Number(x.gs) || 0, vu: Number(x.seen) || 0 };
+      });
+      return out.length > 0;
+    } catch (e) { return false; }
+  });
+  return out || [];
+}
+function boardingAbord_(jeton, n, d, la, lo) {
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  n = n.toUpperCase().replace(/\s/g, '');
+  var v = b.v.filter(function (x) { return x.n === n && x.d === d; })[0];
+  if (!v) throw refus_('Flight not found.', 'introuvable');
+  if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) throw refus_('Your position is not available.', 'donnees');
+  la = Math.round(la * 10000) / 10000; lo = Math.round(lo * 10000) / 10000;
+  var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
+  try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
+  if (!rec || !rec.f) throw refus_('Flight data not loaded yet. Try again in a minute.', 'introuvable');
+  var cand = adsAutour_(la, lo, 1).map(function (x) { x.km = distKm_(la, lo, x.la, x.lo); return x; })
+    .filter(function (x) { return isFinite(x.km) && x.km < 0.6 && x.vu < 120; })
+    .sort(function (a, b) { return a.km - b.km; });
+  if (!cand.length) return { ok: false, code: 'aucun', error: 'No aircraft found next to you. Its transponder may still be off: try again once the doors are closed.' };
+  var c0 = cand[0];
+  rec.f.hx = c0.hx; if (c0.rg) rec.f.rg = c0.rg;
+  props.setProperty(k, JSON.stringify(rec));
+  CacheService.getScriptCache().remove('ads:' + c0.hx);
+  return { ok: true, rg: c0.rg, t: c0.t, m: Math.round(c0.km * 1000), vols: boardingListe_(b, false), enregistres: b.v };
+}
 function volCle_() {
   var k = PropertiesService.getScriptProperties().getProperty('AERODATABOX_KEY');
   if (k) return String(k).trim();
@@ -1276,6 +1337,8 @@ function volStatut_(n, d, o, forcer) {
   if (r.code === 200 || r.code === 204) {
     var l = volChoisir_(r.data, o);
     var f = l ? volNorme_(l) : null;
+    // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
+    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
     nv.al = (rec && rec.al) || {};
@@ -1343,6 +1406,17 @@ function boardingListe_(b, pourMontre) {
     if (!v.bp && !/^Canceled/.test(f.st) && dep0 - now < 30 * 3600 && dep0 - now > 2 * 3600) x.ci = 1; // « CHECK IN ONLINE »
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
+    // avion suivi en direct (ADS-B) : au sol / roulage / en vol, heure réelle de décollage
+    if (f.hx && now > (f.ed || f.sd) - 5400 && now < arr + 1800 && f.st !== 'Arrived') {
+      try {
+        var lv = adsLive_(f.hx);
+        if (lv) {
+          x.ads = lv;
+          if (!lv.gr && !f.tk && !f.atk) { f.atk = Math.round(now - (lv.vu || 0)); rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
+        }
+      } catch (e) { console.error(e); }
+    }
+    if (f.atk && !f.tk) x.atk = f.atk;
     if (now > (f.ed || f.sd) - 10 * 3600 && now < (f.ed || f.sd)) { try { x.in = volEntrant_(f); } catch (e) { console.error(e); } }
     if (now > (f.ed || f.sd) - 6 * 3600) { try { x.wx = meteoSimple_(f.ai); } catch (e) { x.wx = null; } }
     if (!pourMontre) {

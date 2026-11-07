@@ -254,6 +254,11 @@
     if (/^Canceled/.test(s)) return ["CANCELLED", "rouge"];
     if (s === "Arrived") return ["LANDED", ""];
     if (s === "Diverted") return ["DIVERTED", "rouge"];
+    if (v.ads && s !== "Arrived") {
+      if (v.ads.gr && v.ads.gs > 3) return ["TAXIING", "bleu"];
+      if (!v.ads.gr) return ["IN FLIGHT", "bleu"];
+      if (v.tk || /Departed|EnRoute|Approaching/.test(s)) return ["AT GATE", ""];
+    }
     if (v.tk || /Departed|EnRoute|Approaching/.test(s)) return ["IN FLIGHT", "bleu"];
     if (s === "Boarding") return ["BOARDING", ""];
     if (s === "GateClosed") return ["GATE CLOSING", "ambre"];
@@ -349,13 +354,14 @@
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
           bandeaux(v) +
           '<div class="actions-vol">' + (bp || v.bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
-          '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
+          '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button>" +
+          (!v.hx && t > dep - 5400 && t < arr && !(v.tk || v.atk) ? '<button type="button" class="bouton" data-abord style="grid-column:1/-1">I\'m on board · find my plane</button>' : "") + "</div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
           '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3>' +
           '<div class="escale"><p class="escale-t"><b>' + esc(v.o) + "</b> " + esc(v.oc || "") + "<span>DEPARTURE</span></p>" +
           '<div class="cases">' + cas("TERMINAL", v.t) +
           (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : porteAttente(v, dep, t)) +
-          cas("CHECK-IN", v.ck) + cas("SEAT", v.s) + "</div></div>" +
+          cas("CHECK-IN", v.ck) + cas("SEAT", v.s) + ((v.tk || v.atk) ? cas("TAKE-OFF", hm(v.tk || v.atk, v.oz)) : "") + "</div></div>" +
           '<div class="escale"><p class="escale-t"><b>' + esc(v.a) + "</b> " + esc(v.ac2 || "") + "<span>ARRIVAL</span></p>" +
           '<div class="cases">' + cas("TERMINAL", v.ta) + cas("GATE", v.ag) + cas("BELT", v.b) + "</div>" + meteoHtml(v) + "</div>" +
           avionHtml(v) + "</section>" +
@@ -373,6 +379,7 @@
         if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
         d.querySelector("[data-partager]").addEventListener("click", function (ev) { partager(v, ev.currentTarget); });
+        var ab = d.querySelector("[data-abord]"); if (ab) ab.addEventListener("click", function () { abord(v, ab); });
         var mapEl = d.querySelector(".carte-vol");
         if (observateur) { mapEl._v = v; observateur.observe(mapEl); } else setTimeout(function () { carteVol(mapEl, v); }, 0);
       }
@@ -386,6 +393,20 @@
       });
       box.appendChild(d);
     });
+  }
+
+  // ---- « I'm on board » : la position du téléphone (une fois, non conservée) trouve l'avion le plus proche ----
+  function abord(v, btn) {
+    if (!navigator.geolocation) { toast("Location is not available on this device.", false); return; }
+    var fin = occupe(btn, "Finding your plane…");
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      AVIATOR.appel({ action: "boarding.abord", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, la: pos.coords.latitude, lo: pos.coords.longitude }).then(function (r) {
+        fin();
+        if (!r.ok) { toast(r.error || "No aircraft found next to you.", false); return; }
+        toast("Found: " + (r.rg || "your plane") + (r.t ? " (" + r.t + ")" : "") + ", " + r.m + " m from you.", true);
+        afficherVols(r);
+      }).catch(function (x) { fin(); erreur(x); });
+    }, function () { fin(); toast("Allow location to find your plane.", false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
 
   // ---- partager le vol : lien public en lecture seule ----
@@ -924,7 +945,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "28";
+  var VERSION = "29";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
