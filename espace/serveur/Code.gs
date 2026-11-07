@@ -1586,7 +1586,11 @@ function boardingCharger_(jeton) {
   var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
   var o = { ok: true, h: b.h, vols: boardingListe_(b, false), enregistres: b.v, tr: b.tr || null, alertes: (b.ps || []).length };
   if (p.t === 'U' && !p.montre) { o.compte = { email: p.row.Email, montres: montresDuCompte_(p.id) }; touche_(p); }
-  else o.montre = true;
+  else {
+    o.montre = true;
+    // montre liée à un compte : on indique lequel (adresse masquée) pour que la personne sache où sont ses réglages
+    if (p.t === 'U') { var e = String(p.row.Email || ''), at = e.indexOf('@'); o.lie = at > 1 ? e[0] + '•••' + e.slice(at) : '•••' + e.slice(at); }
+  }
   return o;
 }
 function boardingAjouter_(jeton, vol) {
