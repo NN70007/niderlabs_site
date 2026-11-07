@@ -878,7 +878,7 @@
     ["Sharing a flight", "<p><b>Share flight</b> creates a link for whoever picks you up: live arrival time, delay, baggage belt and weather – no account needed. No seat, no name, no e-mail. The link stops working a few days after the flight.</p>"],
     ["When to leave home", "<p>In <b>To the airport</b>, set where you leave from and how much time you want at the airport. Car times use OpenStreetMap routing with a margin for traffic and parking. The <b>Uber</b> button opens Uber with the airport as destination; to book ahead, choose Schedule and the time shown.</p>"],
     ["The Garmin watch face", "<p>Install <a href=\"https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50\" target=\"_blank\" rel=\"noopener\">Boarding</a> on your watch, tap it and link it in <b>Account</b>. When your destination is in another time zone, a small <b>L</b> on the dial points to the local time there.</p>"],
-    ["Your data", "<p>Your account keeps only your e-mail address, your flights and your settings. Flight data comes from AeroDataBox, weather from NOAA and Open-Meteo, aircraft photos from Wikimedia Commons. See the <a href=\"privacy/\">privacy policy</a>.</p>"]
+    ["Your data", "<p>Your account keeps only your e-mail address, your flights and your settings. Flight data comes from AeroDataBox and AirLabs, live aircraft positions from adsb.lol and adsb.fi, weather from NOAA and Open-Meteo, aircraft photos from Wikimedia Commons. \u201cI'm on board\u201d uses your phone's position once to find your aircraft; it is not stored. See the <a href=\"privacy/\">privacy policy</a>.</p>"]
   ];
   $("#infos").innerHTML = INFOS.map(function (x) { return "<details><summary>" + x[0] + "</summary>" + x[1] + "</details>"; }).join("");
 
@@ -962,7 +962,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "32";
+  var VERSION = "33";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

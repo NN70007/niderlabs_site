@@ -90,7 +90,7 @@ function doGet(e) {
       var reg = f && f.rg ? String(f.rg).toUpperCase().replace(/[^A-Z0-9-]/g, '') : '';
       var ac = reg ? JSON.parse(PropertiesService.getScriptProperties().getProperty('ac:' + reg) || 'null') : null;
       var brut = null;
-      if (p.r === '1' && budgetAdb_()) {
+      if (false) {
         var rr = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
         brut = { code: rr.code, avions: Array.isArray(rr.data) ? rr.data.map(function (l) { return { n: l.number, cs: l.codeshareStatus, ac: l.aircraft || null, st: l.status, dep: l.departure ? { g: l.departure.gate || null, t: l.departure.terminal || null, ck: l.departure.checkInDesk || null, ap: l.departure.airport && l.departure.airport.iata } : null }; }) : null };
       }
@@ -99,26 +99,11 @@ function doGet(e) {
         enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o, tk: f && f.tk, atk: f && f.atk, ald: f && f.ald, ea: f && f.ea, ln: f && f.ln } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
-  if (p.a === 'csdiag') {
-    try { return json_(csDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8), String(p.d || '').replace(/[^0-9-]/g, ''))); }
-    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur', e: String(err && err.message || err).slice(0, 200) }); }
-  }
-  if (p.a === 'aldep') {
-    try {
-      var k = cfgCle_('AIRLABS_KEY'), ap = String(p.ap || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3), al = String(p.al || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
-      var rr = UrlFetchApp.fetch('https://airlabs.co/api/v9/schedules?dep_iata=' + ap + '&airline_iata=' + al + '&api_key=' + encodeURIComponent(k), { muteHttpExceptions: true });
-      var jj = JSON.parse(rr.getContentText());
-      return json_({ ok: true, vols: (jj.response || []).filter(function (x) { return x.status === 'scheduled' && !x.cs_flight_iata; }).slice(0, 25).map(function (x) { return [x.flight_iata, x.arr_iata, x.dep_time, x.status, x.cs_flight_iata || '']; }) });
-    } catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
-  }
+  if (p.a === 'conso') return json_(consoJours_());
   if (p.a === 'adsdiag') {
     if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
     try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
     catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
-  }
-  if (p.a === 'xdiag') {
-    try { return json_(xDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))); }
-    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'tick') {
     try { return json_(boardingTick_()); }
@@ -1141,7 +1126,7 @@ function adsLive_(hx) {
   var a = null;
   ['https://api.adsb.lol/v2/hex/', 'https://opendata.adsb.fi/api/v2/hex/'].some(function (u) {
     try {
-      var r = UrlFetchApp.fetch(u + hx, { muteHttpExceptions: true });
+      compter_('radar'); var r = UrlFetchApp.fetch(u + hx, { muteHttpExceptions: true });
       if (r.getResponseCode() !== 200) return false;
       var j = JSON.parse(r.getContentText()), x = j.ac && j.ac[0];
       if (!x) return false;
@@ -1155,6 +1140,48 @@ function adsLive_(hx) {
   return a;
 }
 /** Avions autour d'un point (rayon en milles nautiques) : adsb.lol, sinon adsb.fi. */
+/** AirLabs (quota gratuit plus large) : porte, terminal et tapis aux moments où ils changent. Résultat dans rec.alx. */
+function alBudget_() {
+  var c = CacheService.getScriptCache(), k = 'al:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd'), n = Number(c.get(k) || 0);
+  if (n >= BOARDING.AIRLABS_JOUR) return false;
+  c.put(k, String(n + 1), 90000); return true;
+}
+function alSuivre_(rec, v) {
+  var f = rec && rec.f, now = Date.now() / 1000;
+  if (!f || !f.sd || /^Canceled/.test(f.st)) return;
+  var x = rec.alx || {}, dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600, envol = !!(f.tk || f.atk), pose = f.st === 'Arrived' || !!f.ald;
+  var porte = x.g || f.g, tapis = x.b || f.b, attente = 0;
+  var props = PropertiesService.getScriptProperties(), gl = null;
+  try { gl = JSON.parse(props.getProperty('gl:' + f.o) || 'null'); } catch (e) {}
+  var avance = Math.max(45, Math.min(150, (gl && gl.m || 80) + 15)) * 60;  // heure habituelle d'annonce de la porte à cet aéroport (+15 min)
+  if (!envol && now > dep - avance && now < dep) {
+    if (!porte) attente = 900;                                 // porte pas encore connue : toutes les 15 min
+    else if (!x.gc && now > dep - 2400) attente = 1;           // porte connue : un seul contrôle vers 40 min avant (changement de porte)
+  }
+  if ((pose || now > arr - 900) && now < arr + 4500 && !(tapis && x.bc)) attente = 600;    // tapis, puis une confirmation
+  if (!attente || now - (x.tc || 0) < attente || !alBudget_()) return;
+  var k = cfgCle_('AIRLABS_KEY'); if (!k) return;
+  compter_('airlabs');
+  try {
+    var r = UrlFetchApp.fetch('https://airlabs.co/api/v9/flight?flight_iata=' + encodeURIComponent(v.n) + '&api_key=' + encodeURIComponent(k), { muteHttpExceptions: true });
+    x.tc = Math.round(now);
+    var j = JSON.parse(r.getContentText() || '{}'), d = j && j.response;
+    if (d && (!d.dep_iata || d.dep_iata === f.o) && (!d.dep_time || String(d.dep_time).slice(0, 10) === v.d)) {
+      var avant = porte;
+      if (d.dep_gate) { x.g = String(d.dep_gate); if (!avant) { var m = Math.round((dep - now) / 60); gl = gl || { n: 0, m: m }; gl.m = Math.round((gl.m * gl.n + m) / (gl.n + 1)); gl.n = Math.min(gl.n + 1, 20); try { props.setProperty('gl:' + f.o, JSON.stringify(gl)); } catch (e) {} } }
+      if (d.dep_terminal) x.t = String(d.dep_terminal);
+      if (d.arr_baggage) { if (x.b && pose) x.bc = 1; x.b = String(d.arr_baggage); if (pose && !x.bc && tapis === x.b) x.bc = 1; }
+      if (d.arr_gate) x.ag = String(d.arr_gate);
+      if (d.arr_terminal) x.ta = String(d.arr_terminal);
+      if (porte && !envol && now > dep - 2400) x.gc = 1;
+      x.t2 = Math.round(now);
+      // changement de porte vu par AirLabs : même alerte qu'avec AeroDataBox
+      if (avant && x.g && avant !== x.g && f.g !== x.g) { rec.gp = avant; rec.gpt = Math.round(now); try { boardingAlerter_(v.n, v.d, f, [f.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2') + ' gate changed to ' + x.g + '.']); } catch (e) {} }
+    }
+  } catch (e) { console.error(e); }
+  rec.alx = x;
+  try { props.setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {}
+}
 /** Suit l'avion reconnu (f.hx) : note décollage (atk), atterrissage (ald) et dernier point vu (lst). */
 function adsSuivre_(rec, v) {
   var f = rec && rec.f, now = Date.now() / 1000;
@@ -1179,7 +1206,7 @@ function adsAutour_(la, lo, nm) {
   var urls = ['https://api.adsb.lol/v2/point/' + la + '/' + lo + '/' + nm, 'https://opendata.adsb.fi/api/v3/lat/' + la + '/lon/' + lo + '/dist/' + nm], out = null;
   urls.some(function (u) {
     try {
-      var r = UrlFetchApp.fetch(u, { muteHttpExceptions: true });
+      compter_('radar_autour'); var r = UrlFetchApp.fetch(u, { muteHttpExceptions: true });
       if (r.getResponseCode() !== 200) return false;
       var j = JSON.parse(r.getContentText());
       out = (j.ac || []).filter(function (x) { return x.hex && (x.lat != null || x.lastPosition); }).map(function (x) {
@@ -1241,9 +1268,22 @@ function volCle_() {
   for (var i = 0; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === 'AERODATABOX_KEY') return String(v[i][1] || '').trim();
   return '';
 }
+/** Compteur d'appels par source et par jour (« qui consomme quoi »), gardé 3 jours. */
+function compter_(src) {
+  try {
+    var c = CacheService.getScriptCache(), k = 'cnt:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd'), o = JSON.parse(c.get(k) || '{}');
+    o[src] = (o[src] || 0) + 1; c.put(k, JSON.stringify(o), 3 * 86400);
+  } catch (e) {}
+}
+function consoJours_() {
+  var c = CacheService.getScriptCache(), out = {};
+  for (var i = 0; i < 3; i++) { var j = Utilities.formatDate(new Date(Date.now() - i * 86400000), 'UTC', 'yyyy-MM-dd'); out[j] = JSON.parse(c.get('cnt:' + j) || '{}'); }
+  return { ok: true, jours: out, plafonds: { aerodatabox_jour: BOARDING.APPELS_JOUR, airlabs_jour: BOARDING.AIRLABS_JOUR } };
+}
 function volAppel_(chemin) {
   var cle = volCle_();
   if (!cle) return { code: 0, data: null };
+  compter_(/^\/aircrafts\//.test(chemin) ? 'adb_fiche_avion' : /^\/flights\/reg\//.test(chemin) ? 'adb_avion_precedent' : 'adb_statut_vol');
   var r = UrlFetchApp.fetch('https://aerodatabox.p.rapidapi.com' + chemin, {
     headers: { 'X-RapidAPI-Key': cle, 'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com' },
     muteHttpExceptions: true
@@ -1281,7 +1321,7 @@ function volDiag_() {
       }
     }
   }
-  cache.put('vdiag4', JSON.stringify(out), 600);
+  cache.put('vdiag4', JSON.stringify(out), 21600);
   return out;
 }
 
@@ -1289,7 +1329,7 @@ function volDiag_() {
 /* Vols par montre (colonne Vols, JSON) : { h: fuseau maison IANA, v: [ { n: 'LG8803', d: 'AAAA-MM-JJ' (date locale de départ), s: siège, o: IATA départ } ] }
    Statut d'un vol : AeroDataBox, gardé dans les propriétés du script ('bv:<n>:<d>') et rafraîchi d'autant plus souvent
    que le départ approche (une seule requête par vol, quel que soit le nombre de montres qui le suivent). */
-var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 80 };
+var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 12, AIRLABS_JOUR: 40 };
 
 function boardingDe_(m) {
   var b = {}; try { b = m.Vols ? JSON.parse(m.Vols) : {}; } catch (e) { b = {}; }
@@ -1364,12 +1404,14 @@ function volFraicheur_(f) {
   var now = Date.now() / 1000;
   if (!f || !f.sd) return 6 * 3600;
   var dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600;
-  if (/^Canceled/.test(f.st)) return 6 * 3600;
-  if (now > arr + 2 * 3600) return 1e9;                       // vol terminé : plus de requête
-  if (now > arr - 1800 || f.st === 'Arrived') return 600;     // atterrissage, tapis à bagages
-  if (now > dep - 3 * 3600) return 360;                       // de 3 h avant le départ à l'arrivée
-  if (dep - now < 12 * 3600) return 2700;
-  if (dep - now < 48 * 3600) return 3 * 3600;
+  if (/^Canceled/.test(f.st)) return 24 * 3600;
+  if (now > arr + 2 * 3600) return 1e9;                                   // vol terminé : plus de requête
+  if (f.st === 'Arrived' || f.ald) return f.b ? 1e9 : 1800;              // posé : tapis (AirLabs d'abord), AeroDataBox au plus 2 fois
+  if (now > arr - 1800) return 1800;                                      // approche
+  if (f.tk || f.atk) return f.hx ? 6 * 3600 : 3600;                       // en vol : le radar suit, AeroDataBox presque plus
+  if (now > dep - 3 * 3600) return 3600;                                  // 3 h avant : horaires/retards ; la porte vient d'AirLabs
+  if (dep - now < 12 * 3600) return 3 * 3600;                             // jour du départ
+  if (dep - now < 48 * 3600) return 6 * 3600;
   return 24 * 3600;
 }
 function volStatut_(n, d, o, forcer) {
@@ -1386,6 +1428,7 @@ function volStatut_(n, d, o, forcer) {
     // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
     if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; if (rec.f.lst) f.lst = rec.f.lst; }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
+    if (rec && rec.alx) nv.alx = rec.alx;
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
     nv.al = (rec && rec.al) || {};
     var ev = rec && rec.f && f ? volEvenements_(rec.f, f, nv.al) : [];
@@ -1399,11 +1442,11 @@ function volStatut_(n, d, o, forcer) {
 function volEntrant_(f) {
   if (!f || !f.rg || !f.sd) return null;
   var now = Date.now() / 1000, dep = f.ed || f.sd;
-  if (now < dep - 10 * 3600 || now > dep) return null;
+  if (now < dep - 5 * 3600 || now > dep) return null;
   var jour = Utilities.formatDate(new Date((f.sd + (f.oz || 0)) * 1000), 'UTC', 'yyyy-MM-dd');
   var props = PropertiesService.getScriptProperties(), k = 'bi:' + f.rg + ':' + jour, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
-  var age = rec ? now - rec.t : 1e9, frais = rec && rec.i && rec.i.st === 'Arrived' ? 3600 : 600;
+  var age = rec ? now - rec.t : 1e9, frais = rec && rec.i && rec.i.st === 'Arrived' ? 4 * 3600 : 2700;
   if (!rec || age > frais) {
     if (budgetAdb_()) {
       var r = volAppel_('/flights/reg/' + encodeURIComponent(f.rg) + '/' + jour + '?withAircraftImage=false&withLocation=false');
@@ -1452,6 +1495,13 @@ function boardingListe_(b, pourMontre) {
     if (!v.bp && !/^Canceled/.test(f.st) && dep0 - now < 30 * 3600 && dep0 - now > 2 * 3600) x.ci = 1; // « CHECK IN ONLINE »
     x.dl = f.ed && f.sd ? Math.round((f.ed - f.sd) / 60) : 0;
     if (rec.gp && now - rec.gpt < 2700) x.gp = rec.gp;
+    // porte, terminal, tapis : AirLabs aux moments utiles (AeroDataBox reste la référence quand il les a et qu'il est plus récent)
+    try { alSuivre_(rec, v); } catch (e) { console.error(e); }
+    var ax = rec.alx;
+    if (ax) {
+      var axRecent = (ax.t2 || 0) > (rec.t || 0);
+      ['g', 't', 'b', 'ag', 'ta'].forEach(function (c) { if (ax[c] && (!x[c] || axRecent)) x[c] = ax[c]; });
+    }
     // avion suivi en direct (ADS-B) : au sol / roulage / en vol, décollage et atterrissage réels
     try { var lv = adsSuivre_(rec, v); if (lv) x.ads = lv; } catch (e) { console.error(e); }
     if (f.atk && !f.tk) x.atk = f.atk;
@@ -1533,7 +1583,7 @@ function meteoPrevue_(lat, lon, t) {
   var cache = CacheService.getScriptCache(), k = 'om:' + Number(lat).toFixed(2) + ',' + Number(lon).toFixed(2), raw = cache.get(k), h = null;
   if (raw) { try { h = JSON.parse(raw); } catch (e) { h = null; } }
   if (!h) {
-    var r = UrlFetchApp.fetch('https://api.open-meteo.com/v1/forecast?latitude=' + Number(lat).toFixed(3) + '&longitude=' + Number(lon).toFixed(3) +
+    compter_('meteo'); var r = UrlFetchApp.fetch('https://api.open-meteo.com/v1/forecast?latitude=' + Number(lat).toFixed(3) + '&longitude=' + Number(lon).toFixed(3) +
       '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=GMT&forecast_days=8&timeformat=unixtime', { muteHttpExceptions: true });
     if (r.getResponseCode() !== 200) return null;
     var j = JSON.parse(r.getContentText()), hh = j.hourly || {};
@@ -1771,7 +1821,7 @@ function boardingTick_() {
   proprios_().forEach(function (p) {
     boardingDe_(p.row).v.forEach(function (v) {
       var k = 'ads|' + v.n + ':' + v.d; if (vus[k]) return; vus[k] = 1;
-      try { var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); if (rec && rec.f && rec.f.hx) adsSuivre_(rec, v); } catch (e) { console.error(e); }
+      try { var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); if (rec && rec.f) { alSuivre_(rec, v); if (rec.f.hx) adsSuivre_(rec, v); } } catch (e) { console.error(e); }
     });
   });
   // relu après les rafraîchissements (les alertes ont pu retirer des abonnements)
