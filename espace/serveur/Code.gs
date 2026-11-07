@@ -1048,7 +1048,7 @@ function cfgCle_(nom) {
   try { sh = classeur_(false).getSheetByName('config'); } catch (e) { sh = null; }
   if (!sh) return '';
   var v = sh.getDataRange().getValues();
-  for (var i = 0; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === nom) return String(v[i][1] || '').trim();
+  for (var i = 0; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === nom) return String(v[i][1] || '').replace(/[\s\u200B-\u200D\uFEFF"'“”]/g, '');
   return '';
 }
 /** Diagnostic des sources d'immatriculation (AirLabs, FlightAware AeroAPI) pour un vol : champs utiles seulement. */
@@ -1076,8 +1076,13 @@ function xDiag_(n) {
           o: f.origin && f.origin.code_iata, d: f.destination && f.destination.code_iata, out: f.scheduled_out || null, gate: f.gate_origin || null, term: f.terminal_origin || null, inb: f.inbound_fa_flight_id || null }; }) : null };
     } catch (e) { out.aeroapi = { erreur: String(e && e.message || e).slice(0, 120) }; }
   }
-  out.cles = { airlabs: !!al, aeroapi: !!fa };
-  c.put(kc, JSON.stringify(out), 120);
+  // forme des clés (jamais leur valeur) : longueur, caractères inattendus, lignes en double
+  function forme(nom, k) {
+    var lignes = 0; try { classeur_(false).getSheetByName('config').getDataRange().getValues().forEach(function (r) { if (String(r[0]).trim().toUpperCase() === nom) lignes++; }); } catch (e) {}
+    return { long: k.length, propre: /^[A-Za-z0-9_-]+$/.test(k), lignes: lignes, prop: !!PropertiesService.getScriptProperties().getProperty(nom) };
+  }
+  out.cles = { airlabs: al ? forme('AIRLABS_KEY', al) : false, aeroapi: fa ? forme('AEROAPI_KEY', fa) : false };
+  c.put(kc, JSON.stringify(out), 20);
   return out;
 }
 function volCle_() {
