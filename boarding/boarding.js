@@ -188,7 +188,15 @@
     if (ch) bpEcrire(o);
   }
   function bpMontrer(v) {
-    var x = bpDe(v); if (!x || !window.qrcode) return;
+    var x = bpDe(v);
+    if (!x) {
+      // scannée dans un autre navigateur ou sur un autre appareil : la copie n'est pas sur celui-ci
+      demander("Your boarding pass is not stored on this phone (it was scanned in another browser or device – Safari and the home-screen app keep separate copies). Scan it again here to show it.", "Scan now").then(function (oui) {
+        if (oui) { onglet("vols"); $("#photo").click(); }
+      });
+      return;
+    }
+    if (!window.qrcode) return;
     var q = qrcode(0, "M"); q.addData(x.t, "Byte"); q.make();
     $("#bp-code").innerHTML = q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
     $("#bp-vol").textContent = v.n + " · " + v.o + " → " + v.a;
@@ -257,9 +265,24 @@
     es.forEach(function (e) { if (e.isIntersecting && e.target._v) { observateur.unobserve(e.target); carteVol(e.target, e.target._v); e.target._v = null; } });
   }, { rootMargin: "300px" }) : null;
 
+  function afficherUber(vols) {
+    var box = $("#uber-box"), t = now();
+    var v = (vols || []).filter(function (x) { return !x.inconnu && x.ola != null && (x.ed || x.sd) > t && !/^Canceled/.test(x.st || ""); })[0];
+    if (!v) { box.hidden = true; return; }
+    var prog = v.lv && v.lv > t + 1800;
+    box.hidden = false;
+    box.innerHTML = "<h2>Ride to " + esc(v.oc || v.o) + " airport</h2>" +
+      '<p class="aide">' + esc(v.n) + " · " + esc(jourTxt(v.ed || v.sd, v.oz)) + " · departs " + hm(v.ed || v.sd, v.oz) + (v.t ? " · Terminal " + esc(v.t) : "") + "</p>" +
+      '<div class="uber-ligne"><a class="bouton" target="_blank" rel="noopener" href="' + uber(v) + '">Uber</a>' +
+      (prog ? '<span class="prog">Schedule the pickup for <button type="button" class="copie" data-copier="' + hm(v.lv, v.oz) + '">' + jourTxt(v.lv, v.oz).slice(0, 3) + " " + hm(v.lv, v.oz) + " ⧉</button><br><small>In Uber: Now › Schedule</small></span>" :
+        '<span class="prog">' + (v.lv && v.lv <= t + 1800 ? "Time to go – " : "") + "Opens Uber with the airport as destination.</span>") + "</div>" +
+      '<button class="lien" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button>';
+    box.querySelectorAll("[data-copier]").forEach(function (cp) { cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier")); }); });
+  }
   function afficherVols(o) {
     var box = $("#liste"), vols = o.vols || [];
     dernier = o;
+    afficherUber(vols);
     bpPurger(vols);
     if (!vols.length) { box.innerHTML = '<div class="carte"><h2>No flight yet</h2><p class="aide">Scan your boarding pass or type your flight number above. You can add flights months ahead.</p></div>'; return; }
     box.innerHTML = "";
@@ -276,8 +299,8 @@
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
           bandeaux(v) +
-          '<div class="actions-vol">' + (bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
-          '<button type="button" class="bouton second" data-partager' + (bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
+          '<div class="actions-vol">' + (bp || v.bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
+          '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
           '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3><div class="cases">' +
           (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : (!v.t && dep > t && !v.tk ? cas("GATE", "SOON") : "")) +
@@ -291,6 +314,7 @@
           bt.addEventListener("click", function () { var s = d.querySelector('[data-sec="' + bt.getAttribute("data-s") + '"]'); if (s) s.scrollIntoView({ behavior: "smooth", block: "start" }); });
         });
         d.querySelectorAll("[data-copier]").forEach(function (cp) { cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier")); }); });
+        d.querySelectorAll("[data-aller]").forEach(function (x) { x.addEventListener("click", function () { onglet("trajet"); }); });
         var im = d.querySelector(".avion-carte img");
         if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
@@ -342,13 +366,7 @@
     var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + "<span>DEPARTS " + hm(dep, v.oz) + "</span></p>" +
       "<h3>Getting to " + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
     if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>To the airport</b> to know when to leave home.") + "</p>";
-    if (v.ola != null && dep > t) {
-      var prog = v.lv && v.lv > t + 1800;
-      h += '<div class="uber"><div class="uber-ligne"><a class="bouton" target="_blank" rel="noopener" href="' + uber(v) + '">Uber</a>' +
-        (prog ? '<span class="prog">Schedule the pickup for <button type="button" class="copie" data-copier="' + hm(v.lv, v.oz) + '">' + jourTxt(v.lv, v.oz).slice(0, 3) + " " + hm(v.lv, v.oz) + " ⧉</button><br><small>In Uber: Now › Schedule</small></span>" :
-          '<span class="prog">Opens Uber with ' + esc(v.o) + " as destination.</span>") + "</div>" +
-        '<button class="lien" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button></div>';
-    }
+    if (v.ola != null && dep > t) h += '<button class="lien" type="button" data-aller>Uber and transport → To the airport</button>';
     h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + '</ol><p class="aide petit">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
     return h;
   }

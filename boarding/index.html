@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="boarding.css?v=20">
+<link rel="stylesheet" href="boarding.css?v=21">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B0F14">
@@ -20,7 +20,7 @@
 <script src="../aviator/commun.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <script src="qrcode-1.4.4.js" defer></script>
-<script src="boarding.js?v=20" defer></script>
+<script src="boarding.js?v=21" defer></script>
 </head>
 <body>
 <header class="barre">
@@ -109,6 +109,7 @@
     <!-- Aller à l'aéroport -->
     <div class="onglet" id="o-trajet" hidden>
       <h1>To the airport</h1>
+      <div class="carte" id="uber-box" hidden></div>
       <div class="carte">
         <h2>Where you leave from</h2>
         <p class="aide">Boarding tells you when to leave. Your choice is saved at once – on this phone and on your other devices.</p>
