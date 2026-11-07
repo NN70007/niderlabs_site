@@ -306,7 +306,8 @@
     return '<details class="avion-carte" data-avion' + ouvert + '><summary><span class="titre">AIRCRAFT' + (a.rg ? " · " + esc(a.rg) : "") + '</span><span class="modele">' + esc(a.md || v.md || "") + "</span></summary>" +
       (a.ph ? '<img loading="lazy" src="' + esc(a.ph.u) + '" alt="' + esc((a.md || v.md || "Aircraft") + " " + (a.rg || "")) + '" referrerpolicy="no-referrer">' +
         '<p class="credit">Photo: ' + (a.ph.w ? '<a href="' + esc(a.ph.w) + '" target="_blank" rel="noopener">' + esc(a.ph.by || "Wikimedia Commons") + "</a>" : esc(a.ph.by || "")) + " · " + esc(a.ph.l) + "</p>" : "") +
-      '<div class="corps"><dl>' + dl.map(function (x) { return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl></div></details>";
+      '<div class="corps"><dl>' + dl.map(function (x) { return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl>" +
+      (v.hx ? '<p class="aide">Found from your position on board' + (a.ph ? " · photo may show an older paint scheme" : "") + '. <button type="button" class="lien" data-pasmonavion>Not my plane</button></p>' : "") + "</div></details>";
   }
   function meteoHtml(v, titre) {
     var w = v.wx, f = v.fc;
@@ -380,6 +381,12 @@
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
         d.querySelector("[data-partager]").addEventListener("click", function (ev) { partager(v, ev.currentTarget); });
         var ab = d.querySelector("[data-abord]"); if (ab) ab.addEventListener("click", function () { abord(v, ab); });
+        var pm = d.querySelector("[data-pasmonavion]"); if (pm) pm.addEventListener("click", function () {
+          demander("Forget this aircraft and search again?", "Forget").then(function (oui) {
+            if (!oui) return; var fin = occupe(pm, "…");
+            AVIATOR.appel({ action: "boarding.pasmonavion", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d }).then(function (r) { fin(); afficherVols(r); }).catch(function (x) { fin(); erreur(x); });
+          });
+        });
         var mapEl = d.querySelector(".carte-vol");
         if (observateur) { mapEl._v = v; observateur.observe(mapEl); } else setTimeout(function () { carteVol(mapEl, v); }, 0);
       }
@@ -945,7 +952,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "29";
+  var VERSION = "30";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

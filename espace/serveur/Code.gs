@@ -169,6 +169,7 @@ function route_(req) {
   if (a === 'boarding.charger') return boardingCharger_(req.jeton);
   if (a === 'boarding.ajouter') return boardingAjouter_(req.jeton, req.vol);
   // « I'm on board » : la position du téléphone (une seule fois, non conservée) désigne l'avion le plus proche (ADS-B)
+  if (a === 'boarding.pasmonavion') return boardingPasMonAvion_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.abord') return boardingAbord_(req.jeton, String(req.n || ''), String(req.d || ''), Number(req.la), Number(req.lo));
   if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.maison') return boardingMaison_(req.jeton, req.tz);
@@ -1175,6 +1176,16 @@ function adsAutour_(la, lo, nm) {
     } catch (e) { return false; }
   });
   return out || [];
+}
+/** « Not my plane » : oublie l'avion reconnu à bord (immatriculation et suivi en direct). */
+function boardingPasMonAvion_(jeton, n, d) {
+  var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
+  n = n.toUpperCase().replace(/\s/g, '');
+  if (!b.v.some(function (x) { return x.n === n && x.d === d; })) throw refus_('Flight not found.', 'introuvable');
+  var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
+  try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
+  if (rec && rec.f && rec.f.hx) { delete rec.f.hx; delete rec.f.atk; rec.f.rg = ''; rec.t = 0; props.setProperty(k, JSON.stringify(rec)); }
+  return { ok: true, vols: boardingListe_(b, false), enregistres: b.v };
 }
 function boardingAbord_(jeton, n, d, la, lo) {
   var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);
