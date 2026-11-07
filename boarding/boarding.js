@@ -455,6 +455,8 @@
     if (arrE) {
       var ecart = arrS ? Math.round((arrE - arrS) / 60) : 0, pose = !!v.ln || v.st === "Arrived";
       var etatA = ecart > 5 ? "+" + ecart + " min late" + (arrS ? " · planned " + hm(arrS, v.az) : "") : ecart < -5 ? -ecart + " min early" : "on time";
+      // prévision statistique (pas un retard annoncé) : indiquée à part, seulement si elle s'écarte nettement
+      if (Math.abs(ecart) <= 5 && v.pa && arrS && Math.abs(v.pa - arrS) > 600 && !(v.tk || v.atk)) etatA = "on schedule · usually lands around " + hm(v.pa, v.az);
       var arrivee = [[pose ? "Landed" : "Landing", arrE, v.az, "local time in " + (v.ac2 || v.a) + " · " + etatA]];
       if (v.b) arrivee.push(["Baggage belt " + v.b, arrE + 900, v.az, "estimated"]);
       h += '<h3>Arriving in ' + esc(v.a) + "</h3><ol>" + arrivee.map(function (p) {
@@ -962,7 +964,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "33";
+  var VERSION = "34";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

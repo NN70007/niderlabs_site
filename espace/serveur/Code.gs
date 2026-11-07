@@ -1366,7 +1366,8 @@ function adbZ_(x) {
 }
 function adbMeilleur_(mv) {
   if (!mv) return null;
-  return adbT_(mv.runwayTime) || adbT_(mv.revisedTime) || adbT_(mv.predictedTime) || adbT_(mv.scheduledTime);
+  // heure réelle ou annoncée seulement : la prévision statistique d'AeroDataBox (predictedTime) n'est pas un retard annoncé
+  return adbT_(mv.runwayTime) || adbT_(mv.revisedTime) || adbT_(mv.scheduledTime);
 }
 function adbLoc_(ap, k) { var v = ap && ap.location && Number(ap.location[k]); return isFinite(v) && v !== 0 ? Math.round(v * 10000) / 10000 : null; }
 function iataDe_(ap) { return ap ? String(ap.iata || ap.icao || '').toUpperCase() : ''; }
@@ -1380,7 +1381,7 @@ function volNorme_(l) {
     sd: adbT_(dp.scheduledTime), ed: adbMeilleur_(dp), sa: adbT_(ar.scheduledTime), ea: adbMeilleur_(ar),
     oz: adbZ_(dp.scheduledTime), az: adbZ_(ar.scheduledTime),
     g: dp.gate || '', t: dp.terminal || '', ck: dp.checkInDesk || '', ta: ar.terminal || '', ag: ar.gate || '', b: ar.baggageBelt || '',
-    tk: adbT_(dp.runwayTime), ln: adbT_(ar.runwayTime),
+    tk: adbT_(dp.runwayTime), ln: adbT_(ar.runwayTime), pa: adbT_(ar.predictedTime) || 0,
     ola: adbLoc_(dp.airport, 'lat'), olo: adbLoc_(dp.airport, 'lon'), ala: adbLoc_(ar.airport, 'lat'), alo: adbLoc_(ar.airport, 'lon'),
     md: ac.model || '', rg: ac.reg || ''
   };
@@ -1418,7 +1419,7 @@ function volStatut_(n, d, o, forcer) {
   var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   var now = Math.round(Date.now() / 1000);
-  var ancien = rec && rec.f && rec.f.ola === undefined; // enregistré avant la 0.2 : sans coordonnées d'aéroport
+  var ancien = rec && rec.f && (rec.f.ola === undefined || (rec.f.pa === undefined && Date.now() / 1000 < (rec.f.sd || 0))); // ancien format (avant 0.2, ou retard « prévu » mêlé au retard annoncé)
   if (rec && !forcer && !ancien && now - rec.t < volFraicheur_(rec.f)) return rec;
   if (!budgetAdb_()) return rec;
   var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
