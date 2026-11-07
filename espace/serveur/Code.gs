@@ -111,6 +111,10 @@ function doGet(e) {
       return json_({ ok: true, vols: (jj.response || []).filter(function (x) { return x.status === 'scheduled' && !x.cs_flight_iata; }).slice(0, 25).map(function (x) { return [x.flight_iata, x.arr_iata, x.dep_time, x.status, x.cs_flight_iata || '']; }) });
     } catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
   }
+  if (p.a === 'adsdiag') {
+    try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
+    catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
+  }
   if (p.a === 'xdiag') {
     try { return json_(xDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
