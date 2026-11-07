@@ -258,3 +258,4 @@ details.avion-carte[open] summary::after{content:"▴"}
 details.avion-carte .titre{font:600 13px var(--texte);letter-spacing:1.2px;color:var(--encre-3)}
 details.avion-carte .corps{padding-top:4px}
 .carte-vol{position:relative;z-index:0;isolation:isolate}
+.jour li .h.ambre{color:var(--ambre)}

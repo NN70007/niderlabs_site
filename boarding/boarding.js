@@ -411,11 +411,24 @@
     var ligne = function (p) {
       return '<li class="' + (p[1] <= t ? "fait" : p === prochain ? "suivant" : "") + '"><span class="h">' + hm(p[1], p[2]) + '</span><span class="pt"></span><span class="t">' + esc(p[0]) + (p[3] ? "<small>" + esc(p[3]) + "</small>" : "") + "</span></li>";
     };
-    var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "No car route found – set your own travel time in To the airport." }[v.tw];
+    var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "No car route found – set your own travel time in Airport." }[v.tw];
     var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + "<span>DEPARTS " + hm(dep, v.oz) + "</span></p>" +
       "<h3>Getting to " + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
-    if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>To the airport</b> to know when to leave home.") + "</p>";
-    h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + '</ol><p class="aide petit">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
+    if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>Airport</b> to know when to leave home.") + "</p>";
+    h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + "</ol>";
+    // arrivée : heure locale à destination, mise à jour en cas de retard (rafraîchie toutes les 2 min)
+    var arrS = v.sa, arrE = v.ln || v.ea || v.sa;
+    if (arrE) {
+      var ecart = arrS ? Math.round((arrE - arrS) / 60) : 0, pose = !!v.ln || v.st === "Arrived";
+      var etatA = ecart > 5 ? "+" + ecart + " min late" + (arrS ? " · planned " + hm(arrS, v.az) : "") : ecart < -5 ? -ecart + " min early" : "on time";
+      var arrivee = [[pose ? "Landed" : "Landing", arrE, v.az, "local time in " + (v.ac2 || v.a) + " · " + etatA]];
+      if (v.b) arrivee.push(["Baggage belt " + v.b, arrE + 900, v.az, "estimated"]);
+      h += '<h3>Arriving in ' + esc(v.a) + "</h3><ol>" + arrivee.map(function (p) {
+        var cl = p[1] <= t ? "fait" : "";
+        return '<li class="' + cl + '"><span class="h' + (ecart > 5 && p === arrivee[0] ? " ambre" : "") + '">' + hm(p[1], p[2]) + '</span><span class="pt"></span><span class="t">' + esc(p[0]) + "<small>" + esc(p[3]) + "</small></span></li>";
+      }).join("") + "</ol>";
+    }
+    h += '<p class="aide petit">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
     return h;
   }
   function uber(v) {
@@ -906,7 +919,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "25";
+  var VERSION = "26";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
