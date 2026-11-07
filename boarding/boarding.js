@@ -272,6 +272,13 @@
     if (v.ld && !parti) h += '<div class="bandeau ambre"><span>LIKELY DELAY +' + v.ld + " MIN<small>The aircraft that will fly you lands late" + (v.in && v.in.o ? " from " + esc(v.in.o) : "") + ".</small></span></div>";
     return h;
   }
+  // pas encore de porte : à quelle heure elle s'affichera (3 h avant le départ), sinon « SOON »
+  function porteAttente(v, dep, t) {
+    if (dep <= t || v.tk) return "";
+    var h3 = dep - 3 * 3600;
+    if (h3 > t) return '<div><span>GATE</span><b class="attente">from ' + hm(h3, v.oz) + "</b><small class=\"gris\">" + (jourTxt(h3, v.oz) !== jourTxt(t, v.oz) ? jourTxt(h3, v.oz) + " · " : "") + "shown 3 h before departure</small></div>";
+    return cas("GATE", "SOON", "", "not announced yet");
+  }
   function avionHtml(v) {
     var a = v.avion;
     if (!a) return v.md ? '<div class="avion-carte"><div class="corps"><span class="titre">AIRCRAFT</span><span class="modele">' + esc(v.md) + "</span></div></div>" : "";
@@ -336,9 +343,9 @@
           '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
           '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3><div class="cases">' +
-          (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : (!v.t && dep > t && !v.tk ? cas("GATE", "SOON") : "")) +
+          (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : porteAttente(v, dep, t)) +
           cas("TERMINAL", v.t) + cas("SEAT", v.s) + cas("CHECK-IN", v.ck) + cas("BELT", v.b) + cas("ARR. TERMINAL", v.ta) + cas("ARR. GATE", v.ag) + "</div>" +
-          (!gOk && v.g ? '<p class="aide petit">The gate shows up 3 hours before departure – earlier gates often change.</p>' : "") +
+
           avionHtml(v) + meteoHtml(v) + "</section>" +
           '<section class="sec" data-sec="jour"><h3 class="sec-titre">My day</h3>' + journee(v) + "</section>" +
           '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section>' +
@@ -889,6 +896,16 @@
     if (partageS) chargerPartage(partageS);
     else if (jeton) AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(afficherVols).catch(function () {});
   }, 120000);
+
+  // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
+  var VERSION = "23";
+  function verifierVersion() {
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
+      if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
+    }).catch(function () {});
+  }
+  verifierVersion();
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) verifierVersion(); });
 
   // ---- démarrage : lien partagé, QR code de la montre, téléphone mémorisé, sinon connexion ----
   var qr = /[?&]c=(\d{6})(?:&|$)/.exec(location.search);
