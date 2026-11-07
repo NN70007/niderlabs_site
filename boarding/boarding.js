@@ -177,7 +177,9 @@
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(v.d) + '</div></div></div><p class="aide">Waiting for flight data…</p>';
       } else {
         var e = etat(v), dep = v.ed || v.sd, arr = v.ea || v.sa, id = v.n.replace(/\W/g, "") + v.d;
-        var porte = v.g ? v.g : (dep > now() && !v.tk ? "SOON" : "");
+        // porte seulement à moins de 3 h du départ (avant, souvent provisoire) ; avant : le terminal
+        var gOk = v.g && (dep - now() < 3 * 3600 || v.gp || v.tk || dep < now());
+        var porte = gOk ? v.g : (v.t ? "" : (dep > now() && !v.tk ? "SOON" : ""));
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
@@ -213,13 +215,14 @@
   // ---- « My day » : aller à l'aéroport, puis à la porte ----
   function journee(v) {
     var dep = v.ed || v.sd, t = now(), aller = [];
+    var gOkJ = v.g && (dep - t < 3 * 3600 || v.gp || v.tk);
     if (v.lv) {
       var veille = jourTxt(v.lv, v.oz) !== jourTxt(dep, v.oz);
       aller.push(["Leave home" + (veille ? " · " + jourTxt(v.lv, v.oz) : ""), v.lv, v.oz, v.tm ? v.tm + " min to the airport" : ""]);
       aller.push(["At the airport", v.lv + v.tm * 60, v.oz, v.av ? v.av + " min before departure" : ""]);
     }
     aller.push(["Bag drop closes", dep - 2700, v.oz, v.ck ? "Check-in desk " + v.ck : ""]);
-    var porte = [["Boarding", dep - 2400, v.oz, v.g ? "Gate " + v.g : "Gate not announced yet"], ["Doors close", dep - 900, v.oz, ""], ["Departure", dep, v.oz, v.tk ? "Took off " + hm(v.tk, v.oz) : ""]];
+    var porte = [["Boarding", dep - 2400, v.oz, gOkJ ? "Gate " + v.g : (v.t ? "Terminal " + v.t + " · gate shown 3 h before" : "Gate not announced yet")], ["Doors close", dep - 900, v.oz, ""], ["Departure", dep, v.oz, v.tk ? "Took off " + hm(v.tk, v.oz) : ""]];
     var prochain = null;
     aller.concat(porte).forEach(function (p) { if (!prochain && p[1] > t) prochain = p; });
     var ligne = function (p) {
@@ -537,7 +540,8 @@
     ["IN FLIGHT", "bleu", "In the air: time to landing on the ring."],
     ["TAXIING", "bleu", "Left the gate, not yet airborne."],
     ["YOUR AIRCRAFT FROM MAD", "bleu", "Where the aircraft that will fly you is coming from."],
-    ["GATE SOON", "blanc", "The gate is not announced yet – usually 30 to 60 min before boarding."],
+    ["TERMINAL 1", "blanc", "More than 3 hours before departure: your terminal. The gate shows up within 3 hours (earlier gates often change)."],
+    ["GATE SOON", "blanc", "Neither gate nor terminal known yet."],
     ["BELT SOON", "blanc", "Baggage belt not announced yet."],
     ["BAG DROP · DOORS", "gris", "The ring in the last 90 minutes: bag drop closes, boarding, doors close, departure."],
     ["DEP · ARR · T", "gris", "Departure, arrival, terminal."],
