@@ -89,7 +89,12 @@ function doGet(e) {
       var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + n + ':' + d) || 'null'), f = rec && rec.f;
       var reg = f && f.rg ? String(f.rg).toUpperCase().replace(/[^A-Z0-9-]/g, '') : '';
       var ac = reg ? JSON.parse(PropertiesService.getScriptProperties().getProperty('ac:' + reg) || 'null') : null;
-      return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null });
+      var brut = null;
+      if (p.r === '1' && budgetAdb_()) {
+        var rr = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
+        brut = { code: rr.code, avions: Array.isArray(rr.data) ? rr.data.map(function (l) { return { n: l.number, cs: l.codeshareStatus, ac: l.aircraft || null }; }) : null };
+      }
+      return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, ms: f ? f.ms || '' : '', fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null, brut: brut });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'tick') {
