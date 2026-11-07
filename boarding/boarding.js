@@ -1,4 +1,5 @@
-/* Boarding — page mobile : connexion par e-mail (code à 6 chiffres) ou code de la montre → vols, trajet, alertes, montres, compte. */
+/* Boarding — page mobile : connexion par e-mail (code à 6 chiffres) ou code de la montre → vols, trajet, infos, compte.
+   La carte d'embarquement scannée reste sur ce téléphone (localStorage) : jamais envoyée au serveur. */
 (function () {
   "use strict";
   var $ = function (s) { return document.querySelector(s); };
@@ -15,6 +16,7 @@
   function jourTxt(t, off) { var d = new Date((t + (off || 0)) * 1000); return JOURS[d.getUTCDay()] + " " + pad(d.getUTCDate()) + " " + MOIS[d.getUTCMonth()]; }
   function jhm(t, off) { var d = new Date((t + (off || 0)) * 1000); return JOURS[d.getUTCDay()] + " " + hm(t, off); }
   function duree(s) { s = Math.max(0, Math.round(s / 60)); return s >= 60 ? Math.floor(s / 60) + " h " + pad(s % 60) : s + " min"; }
+  function cleVol(n, d) { return String(n || "").toUpperCase().replace(/\s/g, "").replace(/^([A-Z0-9]{2})0+(\d)/, "$1$2") + "|" + d; }
 
   // ---- messages ----
   var tToast = null;
@@ -28,25 +30,54 @@
     if (x && (x.code === "session" || x.code === "memo")) { toast("Please sign in again.", false); setTimeout(function () { sortir(false); }, 1800); return; }
     toast((x && x.message) || "Error.", false);
   }
+  // bouton occupé : il réagit tout de suite, ne peut pas être appuyé deux fois ; renvoie la fonction qui le rétablit
+  function occupe(b, txt) {
+    if (!b || b.classList.contains("occupe")) return function () {};
+    var avant = b.innerHTML; b.classList.add("occupe"); b.disabled = true; b.setAttribute("aria-busy", "true");
+    if (txt) b.textContent = txt;
+    return function () { b.classList.remove("occupe"); b.disabled = false; b.removeAttribute("aria-busy"); b.innerHTML = avant; };
+  }
+  // confirmation dans la page (pas de fenêtre système : elle décroche la barre du bas sur iPhone)
+  function demander(texte, oui) {
+    return new Promise(function (res) {
+      var d = $("#dlg"); $("#dlg-txt").textContent = texte; $("#dlg-oui").textContent = oui || "OK"; d.hidden = false;
+      var fin = function (v) { d.hidden = true; $("#dlg-oui").onclick = $("#dlg-non").onclick = null; recaler(); res(v); };
+      $("#dlg-oui").onclick = function () { fin(true); }; $("#dlg-non").onclick = function () { fin(false); };
+    });
+  }
+  // iPhone (écran d'accueil) : après le clavier, la barre du bas peut rester décalée → on la recale
+  function recaler() {
+    setTimeout(function () {
+      window.scrollTo(window.scrollX, window.scrollY);
+      var n = $("#nav"); if (!n || n.hidden) return;
+      n.style.display = "none"; void n.offsetHeight; n.style.display = "";
+    }, 80);
+  }
+  document.addEventListener("focusout", function (e) { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) recaler(); });
+  if (window.visualViewport) {
+    var vvH = window.visualViewport.height;
+    window.visualViewport.addEventListener("resize", function () { var h = window.visualViewport.height; if (h > vvH + 100) recaler(); vvH = h; });
+  }
+
   function chiffres(input) {
     input.addEventListener("input", function () { var d = input.value.replace(/\D/g, "").slice(0, 6); input.value = d.length > 3 ? d.slice(0, 3) + " " + d.slice(3) : d; });
   }
   ["#otp", "#wcode", "#lcode"].forEach(function (s) { chiffres($(s)); });
   $("#date").value = aujourdhui();
 
-  // ---- mémorisation du téléphone (même clé qu'avant : les téléphones déjà mémorisés restent ouverts) ----
+  // ---- mémorisation du téléphone ----
   var MEMO = "boarding-memo";
   function memoEcrire(v, exp) { lsEcrire(MEMO, v || null); lsEcrire(MEMO + "-exp", v ? String(exp) : null); }
 
   // ---- connexion par e-mail ----
   var email = "";
-  function envoyerCode() {
-    var b = $("#f-email button"); b.disabled = true; b.textContent = "Sending…"; msgEntrer("");
+  function envoyerCode(btn) {
+    var fin = occupe(btn || $("#f-email button"), "Sending…"); msgEntrer("");
     return AVIATOR.appel({ action: "boarding.code", email: email }).then(function () {
       $("#f-email").hidden = true; $("#f-otp").hidden = false; $("#otp-email").textContent = email.toUpperCase();
       $("#otp").value = ""; $("#otp").focus();
       msgEntrer("Code sent. Check your inbox (and the spam folder).", true);
-    }).catch(function (x) { msgEntrer(x.message, false); }).then(function () { b.disabled = false; b.textContent = "Send me a code"; });
+    }).catch(function (x) { msgEntrer(x.message, false); }).then(fin);
   }
   $("#f-email").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -56,39 +87,40 @@
     envoyerCode();
   });
   $("#otp-retour").addEventListener("click", function () { $("#f-otp").hidden = true; $("#f-email").hidden = false; msgEntrer(""); });
-  $("#otp-renvoi").addEventListener("click", envoyerCode);
+  $("#otp-renvoi").addEventListener("click", function (e) { envoyerCode(e.currentTarget); });
   $("#otp").addEventListener("input", function () { if ($("#otp").value.replace(/\D/g, "").length === 6) $("#f-otp").requestSubmit(); });
   $("#f-otp").addEventListener("submit", function (e) {
     e.preventDefault();
-    var code = $("#otp").value.replace(/\D/g, ""), b = $("#f-otp button[type=submit]");
+    var code = $("#otp").value.replace(/\D/g, "");
     if (code.length !== 6) { msgEntrer("Type the 6 digits from the e-mail.", false); return; }
-    b.disabled = true; b.textContent = "Signing in…";
+    var fin = occupe($("#f-otp button[type=submit]"), "Signing in…");
     AVIATOR.appel({ action: "boarding.entrer", email: email, code: code, garder: $("#garder").checked }).then(function (o) {
       if (o.memo) memoEcrire(o.memo, o.memoExp);
-      msgEntrer(""); ouvert(o);
+      msgEntrer(""); $("#otp").blur(); ouvert(o);
       if (o.nouveau) toast("Welcome! Add your first flight: scan your boarding pass or type the flight number.", true);
-    }).catch(function (x) { msgEntrer(x.message, false); }).then(function () { b.disabled = false; b.textContent = "Sign in"; });
+    }).catch(function (x) { msgEntrer(x.message, false); }).then(fin);
   });
   if (lsLire("boarding-email")) $("#email").value = lsLire("boarding-email");
 
   // ---- ouverture avec le code de la montre ----
   function ouvrirMontre(code, bouton) {
-    if (bouton) { bouton.disabled = true; bouton.textContent = "Checking…"; }
+    var fin = occupe(bouton, "Checking…");
     return AVIATOR.appel({ action: "aviator.ouvrir", code: code, garder: true }).then(function (o) {
       if (o.memo) memoEcrire(o.memo, o.memoExp);
       o.montre = true; ouvert(o);
-    }).catch(function (x) { voir("entrer"); $("#d-montre").open = true; msgEntrer(x.message, false); })
-      .then(function () { if (bouton) { bouton.disabled = false; bouton.textContent = "Open with the watch code"; } });
+    }).catch(function (x) { voir("entrer"); $("#d-montre").open = true; msgEntrer(x.message, false); }).then(fin);
   }
   $("#f-montre").addEventListener("submit", function (e) {
     e.preventDefault();
     var c = $("#wcode").value.replace(/\D/g, "");
     if (c.length !== 6) { msgEntrer("Enter the 6 digits shown on your watch.", false); return; }
+    $("#wcode").blur();
     ouvrirMontre(c, $("#f-montre button"));
   });
 
   // ---- vues et onglets ----
-  function voir(v) { $("#v-entrer").hidden = v !== "entrer"; $("#v-app").hidden = v !== "app"; $("#nav").hidden = v !== "app"; }
+  function voir(v) { ["entrer", "app", "partage"].forEach(function (x) { $("#v-" + x).hidden = v !== x; }); $("#nav").hidden = v !== "app"; }
+  var ONGLETS = ["vols", "trajet", "info", "moi"];
   function onglet(o) {
     document.querySelectorAll(".onglet").forEach(function (x) { x.hidden = x.id !== "o-" + o; });
     document.querySelectorAll("#nav button").forEach(function (b) { if (b.getAttribute("data-o") === o) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
@@ -101,9 +133,9 @@
     jeton = o.jeton; compte = !o.montre && !!o.email;
     voir("app");
     var h = (location.hash || "").slice(1);
-    onglet(["vols", "trajet", "montre", "moi"].indexOf(h) >= 0 ? h : "vols");
+    onglet(ONGLETS.indexOf(h) >= 0 ? h : "vols");
     $("#moi-titre").textContent = compte ? "Signed in" : "Opened with your watch code";
-    $("#moi-email").textContent = compte ? o.email : "Your flights are kept with your watch.";
+    $("#moi-email").textContent = compte ? o.email : "";
     $("#effacer-box").hidden = !compte;
     $("#montres-compte").hidden = !compte; $("#montre-seule").hidden = compte;
     var exp = Number(lsLire(MEMO + "-exp")) || 0, d = new Date(exp);
@@ -115,27 +147,60 @@
   function sortir(tous) {
     var m = lsLire(MEMO), j = jeton;
     memoEcrire(null); jeton = null;
-    var p = tous && compte ? AVIATOR.appel({ action: "boarding.sortir", memo: m, jeton: j }) :
-      tous ? AVIATOR.appel({ action: "aviator.oublier", tous: true, jeton: j }) : AVIATOR.appel({ action: "boarding.sortir", memo: m, jeton: j });
+    var p = tous && !compte ? AVIATOR.appel({ action: "aviator.oublier", tous: true, jeton: j }) : AVIATOR.appel({ action: "boarding.sortir", memo: m, jeton: j });
     p.catch(function () {}).then(function () { location.href = location.pathname; });
   }
-  $("#sortir").addEventListener("click", function () { sortir(false); });
-  $("#sortir-tous").addEventListener("click", function () { sortir(true); });
-  $("#effacer").addEventListener("click", function () {
-    if (!confirm("Delete your Boarding account? Your e-mail, flights and settings will be erased.")) return;
-    AVIATOR.appel({ action: "boarding.effacer", jeton: jeton, confirme: true }).then(function () {
-      memoEcrire(null); lsEcrire("boarding-email", null); jeton = null;
-      alert("Your account has been deleted."); location.href = location.pathname;
-    }).catch(erreur);
+  $("#sortir").addEventListener("click", function (e) { occupe(e.currentTarget, "Signing out…"); sortir(false); });
+  $("#sortir-tous").addEventListener("click", function (e) { occupe(e.currentTarget); sortir(true); });
+  $("#effacer").addEventListener("click", function (e) {
+    var b = e.currentTarget;
+    demander("Delete your Boarding account? Your e-mail, flights and settings will be erased.", "Delete").then(function (oui) {
+      if (!oui) return;
+      var fin = occupe(b, "Deleting…");
+      AVIATOR.appel({ action: "boarding.effacer", jeton: jeton, confirme: true }).then(function () {
+        memoEcrire(null); lsEcrire("boarding-email", null); lsEcrire(BP, null); jeton = null;
+        toast("Your account has been deleted.", true); setTimeout(function () { location.href = location.pathname; }, 1500);
+      }).catch(function (x) { fin(); erreur(x); });
+    });
   });
 
   function charger() {
-    $("#liste").innerHTML = '<p class="aide">Loading your flights…</p>';
+    if (!dernier) $("#liste").innerHTML = '<p class="aide">Loading your flights…</p>';
     return AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(function (o) {
       afficherVols(o); maison(o.h); trajetAfficher(o.tr); alertesEtat(o.alertes);
       if (o.compte) afficherMontres(o.compte.montres);
+      if (o.montre) $("#montre-seule-txt").innerHTML = o.lie ?
+        "This watch is linked to the account <b>" + esc(o.lie) + "</b>. Sign in with this e-mail to manage alerts, watches and the account." :
+        "Sign in with your e-mail and link this watch to keep your flights on your phone too – even without the watch.";
     }).catch(erreur);
   }
+
+  // ---- carte d'embarquement gardée sur ce téléphone uniquement ----
+  var BP = "boarding-bp";
+  function bpTous() { try { return JSON.parse(lsLire(BP) || "{}") || {}; } catch (e) { return {}; } }
+  function bpEcrire(o) { lsEcrire(BP, Object.keys(o).length ? JSON.stringify(o) : null); }
+  function bpGarder(n, d, txt) { var o = bpTous(); o[cleVol(n, d)] = { t: txt, exp: Date.parse(d + "T00:00:00Z") / 1000 + 2 * 86400 }; bpEcrire(o); }
+  function bpDe(v) { var x = bpTous()[cleVol(v.n, v.d)]; return x && x.t ? x : null; }
+  function bpPurger(vols) {
+    var o = bpTous(), t = now(), ch = false;
+    (vols || []).forEach(function (v) { var x = o[cleVol(v.n, v.d)], arr = v.ea || v.sa; if (x && arr && x.exp !== arr + 3 * 3600) { x.exp = arr + 3 * 3600; ch = true; } });
+    Object.keys(o).forEach(function (k) { if (!o[k] || o[k].exp < t) { delete o[k]; ch = true; } });
+    if (ch) bpEcrire(o);
+  }
+  function bpMontrer(v) {
+    var x = bpDe(v); if (!x || !window.qrcode) return;
+    var q = qrcode(0, "M"); q.addData(x.t, "Byte"); q.make();
+    $("#bp-code").innerHTML = q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+    $("#bp-vol").textContent = v.n + " · " + v.o + " → " + v.a;
+    $("#bp-info").textContent = jourTxt(v.ed || v.sd, v.oz) + " · " + hm(v.ed || v.sd, v.oz) + (v.s ? " · SEAT " + v.s : "");
+    $("#bp").hidden = false;
+    $("#bp-oublier").onclick = function () {
+      demander("Delete this boarding pass from this phone?", "Delete").then(function (oui) {
+        if (!oui) return; var o = bpTous(); delete o[cleVol(v.n, v.d)]; bpEcrire(o); $("#bp").hidden = true; if (dernier) afficherVols(dernier);
+      });
+    };
+  }
+  $("#bp-fermer").addEventListener("click", function () { $("#bp").hidden = true; recaler(); });
 
   // ---- vols ----
   function etat(v) {
@@ -153,8 +218,8 @@
   }
   function cas(lab, val, cl, sous) { return val ? "<div><span>" + lab + '</span><b class="' + (cl || "") + '">' + esc(val) + "</b>" + (sous ? "<small>" + esc(sous) + "</small>" : "") + "</div>" : ""; }
   function bandeaux(v) {
-    var h = "", t = now(), dep = v.ed || v.sd, parti = v.tk || /Departed|EnRoute|Approaching|Arrived|Diverted/.test(v.st || "");
-    if (/^Canceled/.test(v.st || "")) return '<div class="bandeau rouge">Flight cancelled<small>Contact your airline to rebook.</small></div>';
+    var h = "", t = now(), parti = v.tk || /Departed|EnRoute|Approaching|Arrived|Diverted/.test(v.st || "");
+    if (/^Canceled/.test(v.st || "")) return '<div class="bandeau rouge"><span>FLIGHT CANCELLED<small>Contact your airline to rebook.</small></span></div>';
     if (v.lv && !parti && t < v.lv + 1200) {
       var r = v.lv - t;
       if (r <= 0) h += '<div class="bandeau rouge"><span>LEAVE NOW<small>' + v.tm + " min to " + esc(v.o) + "</small></span></div>";
@@ -166,50 +231,95 @@
     if (v.ld && !parti) h += '<div class="bandeau ambre"><span>LIKELY DELAY +' + v.ld + " MIN<small>The aircraft that will fly you lands late" + (v.in && v.in.o ? " from " + esc(v.in.o) : "") + ".</small></span></div>";
     return h;
   }
+  function avionHtml(v) {
+    var a = v.avion;
+    if (!a) return v.md ? '<div class="avion-carte"><div class="corps"><span class="titre">AIRCRAFT</span><span class="modele">' + esc(v.md) + "</span></div></div>" : "";
+    var dl = [];
+    if (a.rg) dl.push(["REGISTRATION", a.rg]);
+    if (a.age != null) dl.push(["AGE", a.age + (a.age === 1 ? " year" : " years")]);
+    if (a.se) dl.push(["SEATS", a.se]);
+    if (a.dv) dl.push(["DELIVERED", a.dv.slice(0, 7)]);
+    else if (a.ff) dl.push(["FIRST FLIGHT", a.ff.slice(0, 7)]);
+    return '<div class="avion-carte">' +
+      (a.ph ? '<img loading="lazy" src="' + esc(a.ph.u) + '" alt="' + esc((a.md || v.md || "Aircraft") + " " + (a.rg || "")) + '" referrerpolicy="no-referrer">' +
+        '<p class="credit">Photo: ' + (a.ph.w ? '<a href="' + esc(a.ph.w) + '" target="_blank" rel="noopener">' + esc(a.ph.by || "Wikimedia Commons") + "</a>" : esc(a.ph.by || "")) + " · " + esc(a.ph.l) + "</p>" : "") +
+      '<div class="corps"><span class="titre">AIRCRAFT</span><span class="modele">' + esc(a.md || v.md || "") + "</span><dl>" +
+      dl.map(function (x) { return "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl></div></div>";
+  }
+  function meteoHtml(v, titre) {
+    var w = v.wx, f = v.fc;
+    if (f && f.t != null) return '<div class="meteo"><span class="temp">' + f.t + '°</span><span class="txt">' + esc(titre || "At " + v.a + " on arrival") + " · " + esc(f.w) +
+      "<span>" + (f.p != null ? f.p + "% rain · " : "") + "wind " + f.v + " km/h · forecast</span></span></div>";
+    if (w && w.t != null) return '<div class="meteo"><span class="temp">' + w.t + '°</span><span class="txt">' + esc(titre || "At " + v.a + " now") + "<span>" + esc(String(w.w || "").toLowerCase()) + "</span></span></div>";
+    return "";
+  }
+  var observateur = ("IntersectionObserver" in window) ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting && e.target._v) { observateur.unobserve(e.target); carteVol(e.target, e.target._v); e.target._v = null; } });
+  }, { rootMargin: "300px" }) : null;
+
   function afficherVols(o) {
     var box = $("#liste"), vols = o.vols || [];
     dernier = o;
+    bpPurger(vols);
     if (!vols.length) { box.innerHTML = '<div class="carte"><h2>No flight yet</h2><p class="aide">Scan your boarding pass or type your flight number above. You can add flights months ahead.</p></div>'; return; }
     box.innerHTML = "";
     vols.forEach(function (v) {
       var d = document.createElement("div"); d.className = "carte vol";
       if (v.inconnu) {
-        d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(v.d) + '</div></div></div><p class="aide">Waiting for flight data…</p>';
+        d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(v.d) + '</div></div></div><p class="aide">Waiting for flight data…</p><div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
       } else {
-        var e = etat(v), dep = v.ed || v.sd, arr = v.ea || v.sa, id = v.n.replace(/\W/g, "") + v.d;
+        var e = etat(v), dep = v.ed || v.sd, arr = v.ea || v.sa, t = now();
         // porte seulement à moins de 3 h du départ (avant, souvent provisoire) ; avant : le terminal
-        var gOk = v.g && (dep - now() < 3 * 3600 || v.gp || v.tk || dep < now());
-        var porte = gOk ? v.g : (v.t ? "" : (dep > now() && !v.tk ? "SOON" : ""));
+        var gOk = v.g && (dep - t < 3 * 3600 || v.gp || v.tk || dep < t);
+        var bp = bpDe(v);
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
           bandeaux(v) +
-          '<div class="mini" role="tablist"><button type="button" role="tab" aria-selected="true" data-o="info">Details</button><button type="button" role="tab" data-o="jour">My day</button><button type="button" role="tab" data-o="carte">Map</button></div>' +
-          '<div data-p="info"><div class="cases">' + cas(v.gp ? "NEW GATE" : "GATE", porte, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") + cas("TERMINAL", v.t) + cas("SEAT", v.s) +
-          cas("CHECK-IN", v.ck) + cas("BELT", v.b) + cas("AIRCRAFT", v.md) + cas("ARR. GATE", v.ag) + cas("ARR. TERM.", v.ta) +
-          (v.wx ? cas("AT " + v.a, v.wx.t != null ? v.wx.t + "°" : "", "", v.wx.w || "") : "") + "</div></div>" +
-          '<div data-p="jour" hidden>' + journee(v) + "</div>" +
-          '<div data-p="carte" hidden><div class="carte-vol" id="map-' + esc(id) + '"></div></div>' +
+          '<div class="actions-vol">' + (bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
+          '<button type="button" class="bouton second" data-partager' + (bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button></div>" +
+          '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
+          '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3><div class="cases">' +
+          (gOk ? cas(v.gp ? "NEW GATE" : "GATE", v.g, v.gp ? "rouge" : "", v.gp ? "was " + v.gp : "") : (!v.t && dep > t && !v.tk ? cas("GATE", "SOON") : "")) +
+          cas("TERMINAL", v.t) + cas("SEAT", v.s) + cas("CHECK-IN", v.ck) + cas("BELT", v.b) + cas("ARR. TERMINAL", v.ta) + cas("ARR. GATE", v.ag) + "</div>" +
+          (!gOk && v.g ? '<p class="aide petit">The gate shows up 3 hours before departure – earlier gates often change.</p>' : "") +
+          avionHtml(v) + meteoHtml(v) + "</section>" +
+          '<section class="sec" data-sec="jour"><h3 class="sec-titre">My day</h3>' + journee(v) + "</section>" +
+          '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section>' +
           '<div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
-        var tabs = d.querySelectorAll(".mini button"), faite = false;
-        tabs.forEach(function (t) {
-          t.addEventListener("click", function () {
-            tabs.forEach(function (x) { x.setAttribute("aria-selected", x === t ? "true" : "false"); });
-            d.querySelectorAll("[data-p]").forEach(function (p) { p.hidden = p.getAttribute("data-p") !== t.getAttribute("data-o"); });
-            if (t.getAttribute("data-o") === "carte" && !faite) { faite = true; carteVol(v); }
-          });
+        d.querySelectorAll("[data-s]").forEach(function (bt) {
+          bt.addEventListener("click", function () { var s = d.querySelector('[data-sec="' + bt.getAttribute("data-s") + '"]'); if (s) s.scrollIntoView({ behavior: "smooth", block: "start" }); });
         });
-        d.querySelectorAll("[data-copier]").forEach(function (cp) { cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier"), cp); }); });
+        d.querySelectorAll("[data-copier]").forEach(function (cp) { cp.addEventListener("click", function () { copier(cp.getAttribute("data-copier")); }); });
+        var im = d.querySelector(".avion-carte img");
+        if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
+        var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
+        d.querySelector("[data-partager]").addEventListener("click", function (ev) { partager(v, ev.currentTarget); });
+        var mapEl = d.querySelector(".carte-vol");
+        if (observateur) { mapEl._v = v; observateur.observe(mapEl); } else setTimeout(function () { carteVol(mapEl, v); }, 0);
       }
       var b = d.querySelector("[data-suppr]");
-      if (!b) { b = document.createElement("button"); b.type = "button"; b.className = "lien"; b.textContent = "Remove flight"; d.appendChild(b); }
       b.addEventListener("click", function () {
-        if (!confirm("Remove " + v.n + "?")) return;
-        b.disabled = true;
-        AVIATOR.appel({ action: "boarding.supprimer", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d }).then(afficherVols).catch(erreur).then(function () { b.disabled = false; });
+        demander("Remove " + v.n + " from your flights?", "Remove").then(function (oui) {
+          if (!oui) return;
+          var fin = occupe(b, "Removing…");
+          AVIATOR.appel({ action: "boarding.supprimer", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d }).then(function (r) { fin(); afficherVols(r); }).catch(function (x) { fin(); erreur(x); });
+        });
       });
       box.appendChild(d);
     });
+  }
+
+  // ---- partager le vol : lien public en lecture seule ----
+  function partager(v, btn) {
+    var fin = occupe(btn, "Creating link…");
+    AVIATOR.appel({ action: "boarding.partager", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d }).then(function (r) {
+      fin();
+      var url = location.origin + location.pathname + "?s=" + r.s;
+      var txt = v.n + " " + v.o + " → " + v.a + ", lands " + (v.ea || v.sa ? hm(v.ea || v.sa, v.az) : "") + " local time. Live status:";
+      if (navigator.share) navigator.share({ title: "My flight " + v.n, text: txt, url: url }).catch(function () {});
+      else copier(url);
+    }).catch(function (x) { fin(); erreur(x); });
   }
 
   // ---- « My day » : aller à l'aéroport, puis à la porte ----
@@ -228,14 +338,15 @@
     var ligne = function (p) {
       return '<li class="' + (p[1] <= t ? "fait" : p === prochain ? "suivant" : "") + '"><span class="h">' + hm(p[1], p[2]) + '</span><span class="pt"></span><span class="t">' + esc(p[0]) + (p[3] ? "<small>" + esc(p[3]) + "</small>" : "") + "</span></li>";
     };
-    var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "No car route found – set your own travel time in Travel." }[v.tw];
-    var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + '<span>DEPARTS ' + hm(dep, v.oz) + "</span></p>" +
+    var raison = { far: "Your starting point is far from " + v.o + ": no leave-home time for this flight.", noairport: "Airport position not known yet.", route: "No car route found – set your own travel time in To the airport." }[v.tw];
+    var h = '<div class="jour"><p class="jour-date">' + esc(jourTxt(dep, v.oz)) + "<span>DEPARTS " + hm(dep, v.oz) + "</span></p>" +
       "<h3>Getting to " + esc(v.o) + "</h3><ol>" + aller.map(ligne).join("") + "</ol>";
-    if (!v.lv) h += '<p class="aide">' + (raison || "Set your starting point in <b>Travel</b> to know when to leave home.") + "</p>";
+    if (!v.lv) h += '<p class="aide">' + (raison || "Set where you leave from in <b>To the airport</b> to know when to leave home.") + "</p>";
     if (v.ola != null && dep > t) {
-      h += '<div class="uber"><div class="ligne"><a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber now</a>' +
-        (v.lv && v.lv > t + 1800 ? '<a class="bouton" target="_blank" rel="noopener" href="' + uber(v) + '">Book Uber for ' + hm(v.lv, v.oz) + "</a>" : "") + "</div>" +
-        (v.lv && v.lv > t + 1800 ? '<p class="aide">Uber opens with ' + esc(v.o) + ' as destination. Tap <b>Now › Schedule</b> and choose <button type="button" class="copie" data-copier="' + hm(v.lv, v.oz) + '">' + jourTxt(v.lv, v.oz).slice(0, 3) + " " + hm(v.lv, v.oz) + " ⧉</button></p>" : "") +
+      var prog = v.lv && v.lv > t + 1800;
+      h += '<div class="uber"><div class="uber-ligne"><a class="bouton" target="_blank" rel="noopener" href="' + uber(v) + '">Uber</a>' +
+        (prog ? '<span class="prog">Schedule the pickup for <button type="button" class="copie" data-copier="' + hm(v.lv, v.oz) + '">' + jourTxt(v.lv, v.oz).slice(0, 3) + " " + hm(v.lv, v.oz) + " ⧉</button><br><small>In Uber: Now › Schedule</small></span>" :
+          '<span class="prog">Opens Uber with ' + esc(v.o) + " as destination.</span>") + "</div>" +
         '<button class="lien" type="button" data-copier="' + esc(adresseAeroport(v)) + '">Copy airport address</button></div>';
     }
     h += "<h3>At the gate</h3><ol>" + porte.map(ligne).join("") + '</ol><p class="aide petit">Bag drop, boarding and doors are estimated. Follow the airport screens.</p></div>';
@@ -246,16 +357,16 @@
       "&dropoff%5Bnickname%5D=" + encodeURIComponent((v.oc || v.o) + " Airport" + (v.t ? " T" + v.t : ""));
   }
   function adresseAeroport(v) { return (v.oc || v.o) + " Airport (" + v.o + ")" + (v.t ? ", Terminal " + v.t : ""); }
-  function copier(txt, btn) {
+  function copier(txt) {
     var fin = function () { toast("Copied: " + txt, true); };
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fin).catch(function () { prompt("Copy:", txt); });
-    else prompt("Copy:", txt);
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fin).catch(function () { toast(txt, true); });
+    else toast(txt, true);
   }
 
   // ---- carte : route et position estimée ----
-  function carteVol(v) {
-    var el = document.getElementById("map-" + v.n.replace(/\W/g, "") + v.d);
-    if (!el || v.ola == null || v.ala == null || !window.L) { if (el) el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return; }
+  function carteVol(el, v) {
+    if (!el) return;
+    if (v.ola == null || v.ala == null || !window.L) { el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return; }
     var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false });
     // fond OpenStreetMap (sans clé) ; assombri par un filtre CSS en mode nuit
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 9, className: AVIATOR.sombre() ? "tuiles-nuit" : "" }).addTo(m);
@@ -281,15 +392,18 @@
     setTimeout(function () { m.invalidateSize(); m.fitBounds(L.latLngBounds(ligne), { padding: [36, 36] }); }, 60);
   }
 
+
+
   // ---- ajout manuel ----
-  $("#manuel").addEventListener("click", function () { var f = $("#f-vol"); f.hidden = !f.hidden; if (!f.hidden) $("#num").focus(); });
+  $("#manuel").addEventListener("click", function () { var f = $("#f-vol"); f.hidden = !f.hidden; $("#camera").hidden = true; if (!f.hidden) $("#num").focus(); });
   function ajouter(vol) {
-    var b = $("#ajouter"); b.disabled = true; b.textContent = "Checking the flight…";
+    var fin = occupe($("#ajouter"), "Checking the flight…");
     return AVIATOR.appel({ action: "boarding.ajouter", jeton: jeton, vol: vol }).then(function (o) {
       var v = o.vol;
       toast("Added: " + v.n + " " + v.o + " → " + v.a + ", " + jourTxt(v.ed || v.sd, v.oz) + " " + hm(v.ed || v.sd, v.oz) + ".", true);
-      afficherVols(o); $("#num").value = ""; $("#siege").value = ""; $("#f-vol").hidden = true;
-    }).catch(erreur).then(function () { b.disabled = false; b.textContent = "Add flight"; });
+      $("#num").value = ""; $("#siege").value = ""; $("#f-vol").hidden = true; $("#num").blur();
+      afficherVols(o);
+    }).catch(erreur).then(fin);
   }
   $("#num").addEventListener("input", function (e) { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9 ]/g, ""); });
   $("#siege").addEventListener("input", function (e) { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
@@ -319,48 +433,128 @@
     for (var k = 0; k < 2; k++) { var d = new Date(Date.UTC(y + k, 0, 1) + (j - 1) * 86400000); if (d.getTime() > Date.now() - 2 * 86400000) return d.toISOString().slice(0, 10); }
     return null;
   }
+
   function luCode(txt) {
     var legs = bcbp(txt);
-    if (!legs || !legs.length) { toast("This barcode is not a boarding pass. Try again, or type the flight number.", false); return; }
+    if (!legs || !legs.length) { toast("This barcode is not a boarding pass. Try again, or type the flight number.", false); return false; }
     arreterCamera();
     var p = Promise.resolve();
-    legs.forEach(function (l) { var d = dateJulien(l.j); if (d) p = p.then(function () { return ajouter({ n: l.n, d: d, s: l.s, o: l.o, bp: true }); }); });
+    legs.forEach(function (l) {
+      var d = dateJulien(l.j);
+      if (!d) return;
+      bpGarder(l.n, d, txt); // reste sur ce téléphone
+      p = p.then(function () { return ajouter({ n: l.n, d: d, s: l.s, o: l.o, bp: true }); });
+    });
+    return true;
   }
-  var flux = null, boucle = null, lecteurZX = null;
+
+  // ---- lecture des codes : caméra, photo ou capture d'écran entière ----
+  var flux = null, boucle = null, lecteurP = null;
   function zxing() {
     if (window.ZXing) return Promise.resolve(window.ZXing);
     return new Promise(function (ok, ko) { var s = document.createElement("script"); s.src = "zxing-0.21.3.min.js"; s.onload = function () { ok(window.ZXing); }; s.onerror = ko; document.head.appendChild(s); });
   }
-  function detecteur() {
+  function detecteurNatif() {
     if (!("BarcodeDetector" in window)) return Promise.resolve(null);
     return BarcodeDetector.getSupportedFormats().then(function (f) {
       var voulu = ["aztec", "pdf417", "qr_code", "data_matrix"].filter(function (x) { return f.indexOf(x) >= 0; });
       if (voulu.indexOf("aztec") < 0 || voulu.indexOf("pdf417") < 0) return null;
       var d = new BarcodeDetector({ formats: voulu });
-      return function (src) { return d.detect(src).then(function (r) { return r.length ? r[0].rawValue : null; }); };
+      return function (src) { return d.detect(src).then(function (r) { return r.length ? r[0].rawValue : null; }).catch(function () { return null; }); };
     }).catch(function () { return null; });
   }
-  function lecteurImage() {
-    return detecteur().then(function (natif) {
-      if (natif) return natif;
-      return zxing().then(function (Z) {
+  // lit(canvas) → Promise<texte|null>
+  function lecteur() {
+    if (lecteurP) return lecteurP;
+    lecteurP = Promise.all([detecteurNatif(), zxing().catch(function () { return null; })]).then(function (r) {
+      var natif = r[0], Z = r[1], zx = null;
+      if (Z) {
         var hints = new Map();
         hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.AZTEC, Z.BarcodeFormat.PDF_417, Z.BarcodeFormat.QR_CODE, Z.BarcodeFormat.DATA_MATRIX]);
         hints.set(Z.DecodeHintType.TRY_HARDER, true);
-        var r = new Z.MultiFormatReader(); r.setHints(hints);
-        var c = document.createElement("canvas"), x = c.getContext("2d", { willReadFrequently: true });
-        return function (src) {
-          var w = src.videoWidth || src.naturalWidth || src.width, h = src.videoHeight || src.naturalHeight || src.height;
-          var k = Math.min(1, 1400 / Math.max(w, h)); c.width = Math.round(w * k); c.height = Math.round(h * k);
-          x.drawImage(src, 0, 0, c.width, c.height);
-          var px = x.getImageData(0, 0, c.width, c.height).data, lum = new Uint8ClampedArray(c.width * c.height);
-          for (var i = 0, j = 0; i < px.length; i += 4, j++) lum[j] = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
-          try { return Promise.resolve(r.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.RGBLuminanceSource(lum, c.width, c.height)))).getText()); }
-          catch (e) { return Promise.resolve(null); }
+        var mr = new Z.MultiFormatReader(); mr.setHints(hints);
+        zx = function (c, inverse) {
+          var x = c.getContext("2d", { willReadFrequently: true }), px = x.getImageData(0, 0, c.width, c.height).data, lum = new Uint8ClampedArray(c.width * c.height);
+          for (var i = 0, j = 0; i < px.length; i += 4, j++) { var l = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000; lum[j] = inverse ? 255 - l : l; }
+          var src = new Z.RGBLuminanceSource(lum, c.width, c.height);
+          try { return mr.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src))).getText(); } catch (e) { /* suite */ }
+          try { return mr.decode(new Z.BinaryBitmap(new Z.GlobalHistogramBinarizer(src))).getText(); } catch (e) { return null; }
         };
-      });
+      }
+      return function (c, inverse) {
+        return (natif && !inverse ? natif(c) : Promise.resolve(null)).then(function (t) { return t || (zx ? zx(c, inverse) : null); });
+      };
+    });
+    return lecteurP;
+  }
+  function toile(src, sx, sy, sw, sh, larg) {
+    var c = document.createElement("canvas"), k = larg / sw;
+    c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+    var x = c.getContext("2d", { willReadFrequently: true });
+    x.imageSmoothingEnabled = k < 1;
+    x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    return c;
+  }
+  // zone claire la plus grande (le cadre blanc autour du code, sur fond de couleur) : on la cherche sur une petite image
+  function zoneBlanche(img, W, H) {
+    var k = 240 / Math.max(W, H), w = Math.max(8, Math.round(W * k)), h = Math.max(8, Math.round(H * k));
+    var c = toile(img, 0, 0, W, H, w), px = c.getContext("2d").getImageData(0, 0, w, h).data, blanc = new Uint8Array(w * h), vu = new Uint8Array(w * h);
+    for (var i = 0; i < w * h; i++) { var r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2]; blanc[i] = (r > 200 && g > 200 && b > 200) ? 1 : 0; }
+    var best = null, pile = [];
+    for (var s = 0; s < w * h; s++) {
+      if (!blanc[s] || vu[s]) continue;
+      var n = 0, x0 = w, y0 = h, x1 = 0, y1 = 0; pile.push(s); vu[s] = 1;
+      while (pile.length) {
+        var p = pile.pop(), x = p % w, y = (p - x) / w; n++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        [p - 1, p + 1, p - w, p + w].forEach(function (q) { if (q >= 0 && q < w * h && !vu[q] && blanc[q] && Math.abs((q % w) - x) <= 1) { vu[q] = 1; pile.push(q); } });
+      }
+      var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+      // le cadre du code : assez grand, pas toute l'image
+      if (bw * bh > w * h * 0.85 || bw < w * 0.12 || bh < h * 0.05) continue;
+      if (!best || bw * bh > best.a) best = { a: bw * bh, x: x0, y: y0, w: bw, h: bh };
+    }
+    if (!best) return null;
+    var m = 0.04;
+    return { x: Math.max(0, (best.x / k) - W * m), y: Math.max(0, (best.y / k) - H * m), w: Math.min(W, best.w / k + 2 * W * m), h: Math.min(H, best.h / k + 2 * H * m) };
+  }
+  // plusieurs essais : image entière en pleine résolution, cadre blanc agrandi, centre, moitiés, image inversée
+  function lireImage(img) {
+    var W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    return lecteur().then(function (lit) {
+      var essais = [];
+      essais.push(function () { return lit(toile(img, 0, 0, W, H, Math.min(W, 2400))); });
+      var z = zoneBlanche(img, W, H);
+      if (z) essais.push(function () { return lit(toile(img, z.x, z.y, z.w, z.h, 1100)); });
+      essais.push(function () { return lit(toile(img, W * 0.1, H * 0.25, W * 0.8, H * 0.5, 1200)); });
+      essais.push(function () { return lit(toile(img, 0, H * 0.4, W, H * 0.6, 1200)); });
+      essais.push(function () { return lit(toile(img, 0, 0, W, H * 0.6, 1200)); });
+      essais.push(function () { return lit(toile(img, 0, 0, W, H, Math.min(W, 1600)), true); });
+      var i = 0;
+      var suite = function () { if (i >= essais.length) return Promise.resolve(null); return essais[i++]().then(function (t) { return t || suite(); }); };
+      return suite();
     });
   }
+  // dernier recours : la personne touche le code sur l'image
+  function pointer(img) {
+    var W = img.naturalWidth, H = img.naturalHeight, c = $("#pointer-c"), k = Math.min(1, 1200 / W);
+    c.width = Math.round(W * k); c.height = Math.round(H * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    $("#pointer").hidden = false;
+    c.onclick = function (e) {
+      var r = c.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height, cote = Math.min(W, H) * 0.55;
+      var x = Math.max(0, Math.min(W - cote, fx * W - cote / 2)), y = Math.max(0, Math.min(H - cote, fy * H - cote / 2));
+      toast("Reading…", true);
+      lecteur().then(function (lit) {
+        return lit(toile(img, x, y, cote, cote, 1000)).then(function (t) { return t || lit(toile(img, x - cote * 0.2, y - cote * 0.2, cote * 1.4, cote * 1.4, 1200)); });
+      }).then(function (t) {
+        if (t) { $("#pointer").hidden = true; c.onclick = null; if (luCode(t)) recaler(); }
+        else toast("Still no barcode there. Tap right on the code, or type the flight number.", false);
+      });
+    };
+  }
+  $("#pointer-annuler").addEventListener("click", function () { $("#pointer").hidden = true; $("#pointer-c").onclick = null; recaler(); });
+
   function arreterCamera() {
     if (boucle) { clearTimeout(boucle); boucle = null; }
     if (flux) { flux.getTracks().forEach(function (t) { t.stop(); }); flux = null; }
@@ -370,28 +564,36 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $("#photo").click(); return; }
     $("#camera").hidden = false; $("#f-vol").hidden = true;
     var v = $("#video");
-    lecteurImage().then(function (lire) {
-      lecteurZX = lire;
+    lecteur().then(function (lit) {
       return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(function (s) {
         flux = s; v.srcObject = s; return v.play();
       }).then(function () {
-        var tour = function () { if (!flux) return; lire(v).then(function (t) { if (t) luCode(t); else boucle = setTimeout(tour, 250); }).catch(function () { boucle = setTimeout(tour, 400); }); };
+        var tour = function () {
+          if (!flux) return;
+          var w = v.videoWidth, h = v.videoHeight;
+          if (!w) { boucle = setTimeout(tour, 250); return; }
+          lit(toile(v, 0, 0, w, h, Math.min(w, 1400))).then(function (t) { if (t && luCode(t)) return; boucle = setTimeout(tour, 250); }).catch(function () { boucle = setTimeout(tour, 400); });
+        };
         tour();
       });
     }).catch(function () { arreterCamera(); toast("The camera is not available. Choose a photo or a screenshot of your boarding pass.", false); $("#photo").click(); });
   });
   $("#cam-stop").addEventListener("click", arreterCamera);
   $("#photo-btn").addEventListener("click", function () { $("#photo").click(); });
+  $("#photo-btn0").addEventListener("click", function () { $("#photo").click(); });
   $("#photo").addEventListener("change", function (e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
+    var fin = occupe($("#photo-btn0"), "Reading…");
     var img = new Image(), url = URL.createObjectURL(f);
     img.onload = function () {
-      (lecteurZX ? Promise.resolve(lecteurZX) : lecteurImage()).then(function (lire) { return lire(img); }).then(function (t) {
-        URL.revokeObjectURL(url);
-        if (t) luCode(t); else toast("No boarding pass barcode found. Crop closer to the barcode, or type the flight number.", false);
-      }).catch(function () { toast("Could not read this picture.", false); });
+      lireImage(img).then(function (t) {
+        fin();
+        if (t && luCode(t)) { URL.revokeObjectURL(url); return; }
+        if (!t) { toast("Tap the barcode in your picture.", true); pointer(img); }
+      }).catch(function () { fin(); toast("Could not read this picture.", false); });
     };
+    img.onerror = function () { fin(); toast("Could not open this picture.", false); };
     img.src = url; e.target.value = "";
   });
 
@@ -405,8 +607,10 @@
     sel.innerHTML = zones.map(function (z) { return '<option value="' + esc(z) + '">' + esc(z.replace(/_/g, " ")) + (z === ici ? " (this phone)" : "") + "</option>"; }).join("");
     sel.value = h || ici;
   }
+
   $("#maison").addEventListener("change", function (e) {
-    AVIATOR.appel({ action: "boarding.maison", jeton: jeton, tz: e.target.value }).then(function () { toast("Home time zone saved.", true); }).catch(erreur);
+    var s = e.target; s.disabled = true;
+    AVIATOR.appel({ action: "boarding.maison", jeton: jeton, tz: s.value }).then(function () { toast("Home time zone saved.", true); }).catch(erreur).then(function () { s.disabled = false; });
   });
 
   // ---- alertes (Web Push) ----
@@ -422,7 +626,7 @@
     b.textContent = n ? "Turn on alerts on this phone too" : "Turn on alerts";
   }
   $("#alertes").addEventListener("click", function () {
-    var b = $("#alertes"); b.disabled = true;
+    var fin = occupe($("#alertes"), "Turning on…");
     Notification.requestPermission().then(function (p) {
       if (p !== "granted") throw { message: "Notifications are blocked for this site. Allow them in your browser settings." };
       return Promise.all([navigator.serviceWorker.register("sw.js", { scope: "./" }), AVIATOR.appel({ action: "boarding.cle" })]);
@@ -431,23 +635,45 @@
         return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(r[1].cle) }); });
       });
     }).then(function (sub) { return AVIATOR.appel({ action: "boarding.abonner", jeton: jeton, sub: sub.toJSON() }); })
-      .then(function (o) { alertesEtat(o.alertes); toast("Alerts are on. A test notification is on its way.", true); })
-      .catch(erreur).then(function () { b.disabled = false; });
+      .then(function (o) { fin(); alertesEtat(o.alertes); toast("Alerts are on. A test notification is on its way.", true); })
+      .catch(function (x) { fin(); erreur(x); });
   });
 
-  // ---- trajet vers l'aéroport ----
-  var depart = null;
+  // ---- aller à l'aéroport : chaque choix est enregistré tout de suite (sur le compte) ----
+  var depart = null, tSauve = null;
+  function departAfficher() {
+    var p = $("#adr-choisie");
+    p.hidden = !depart;
+    if (depart) p.innerHTML = "<small>✓ SAVED STARTING POINT</small>📍 " + esc(depart.lab || (depart.la.toFixed(4) + ", " + depart.lo.toFixed(4)));
+  }
   function trajetAfficher(tr) {
-    if (!tr) return;
+    if (!tr) { departAfficher(); return; }
     depart = { la: tr.la, lo: tr.lo, lab: tr.lab };
-    $("#adr-choisie").textContent = "📍 " + (tr.lab || tr.la + ", " + tr.lo);
     var r = document.querySelector('input[name="mode"][value="' + tr.mode + '"]'); if (r) r.checked = true;
     if (tr.min) $("#minutes").value = tr.min;
     $("#avance").value = tr.av || 90;
-    majMode();
+    majMode(); departAfficher();
   }
   function majMode() { var m = document.querySelector('input[name="mode"]:checked'); $("#ligne-min").hidden = !(m && m.value === "min"); }
-  document.querySelectorAll('input[name="mode"]').forEach(function (x) { x.addEventListener("change", majMode); });
+  function etatTrajet(txt, err) { var e = $("#tr-etat"); e.textContent = txt; e.className = "etat-sauve" + (err ? " err" : ""); }
+  function sauverTrajet(delai) {
+    clearTimeout(tSauve);
+    if (!depart) { etatTrajet("Choose where you leave from first.", true); return; }
+    etatTrajet("Saving…");
+    tSauve = setTimeout(function () {
+      var mode = document.querySelector('input[name="mode"]:checked').value;
+      AVIATOR.appel({ action: "boarding.trajet", jeton: jeton, tr: { la: depart.la, lo: depart.lo, lab: depart.lab, mode: mode, min: Number($("#minutes").value) || 0, av: Number($("#avance").value) || 90 } })
+        .then(function (o) {
+          var v = (o.vols || []).filter(function (x) { return x.lv; })[0], w = (o.vols || []).filter(function (x) { return x.tw === "far"; })[0];
+          etatTrajet(v ? "✓ Saved · " + v.n + ": " + v.tm + " min to " + v.o + ", leave home " + jhm(v.lv, v.oz) :
+            (w ? "✓ Saved – but more than 250 km from " + w.o + ": no leave-home time for this flight." : "✓ Saved"), false);
+          departAfficher();
+          if (o.vols) afficherVols(o);
+        }).catch(function (x) { etatTrajet((x && x.message) || "Not saved.", true); });
+    }, delai || 0);
+  }
+  document.querySelectorAll('input[name="mode"]').forEach(function (x) { x.addEventListener("change", function () { majMode(); sauverTrajet(); }); });
+  ["#minutes", "#avance"].forEach(function (s) { $(s).addEventListener("input", function () { sauverTrajet(900); }); });
   var nAdr = 0, tAdr = null;
   $("#adresse").addEventListener("input", function () {
     clearTimeout(tAdr);
@@ -462,8 +688,8 @@
           l.forEach(function (a) {
             var bt = document.createElement("button"); bt.type = "button"; bt.className = "sugg"; bt.textContent = a.display_name;
             bt.addEventListener("click", function () {
-              depart = { la: Number(a.lat), lo: Number(a.lon), lab: a.display_name.split(",").slice(0, 3).join(",") };
-              $("#adr-choisie").textContent = "📍 " + depart.lab; box.hidden = true; $("#adresse").value = "";
+              depart = { la: Number(a.lat), lo: Number(a.lon), lab: a.display_name.split(",").slice(0, 3).join(",").trim() };
+              box.hidden = true; $("#adresse").value = ""; $("#adresse").blur(); departAfficher(); sauverTrajet();
             });
             box.appendChild(bt);
           });
@@ -471,26 +697,21 @@
         }).catch(function () { box.hidden = true; });
     }, 450);
   });
-  $("#ici").addEventListener("click", function () {
+  $("#ici").addEventListener("click", function (e) {
     if (!navigator.geolocation) { toast("Position is not available on this device.", false); return; }
+    var fin = occupe(e.currentTarget, "Locating…");
     navigator.geolocation.getCurrentPosition(function (p) {
-      depart = { la: p.coords.latitude, lo: p.coords.longitude, lab: "My position" };
-      $("#adr-choisie").textContent = "📍 My position (" + p.coords.latitude.toFixed(3) + ", " + p.coords.longitude.toFixed(3) + ")";
-    }, function () { toast("Position refused or unavailable.", false); }, { enableHighAccuracy: false, timeout: 15000 });
-  });
-  $("#trajet").addEventListener("click", function () {
-    if (!depart) { toast("Choose a starting point first (address or your position).", false); return; }
-    var mode = document.querySelector('input[name="mode"]:checked').value;
-    AVIATOR.appel({ action: "boarding.trajet", jeton: jeton, tr: { la: depart.la, lo: depart.lo, lab: depart.lab, mode: mode, min: Number($("#minutes").value) || 0, av: Number($("#avance").value) || 90 } })
-      .then(function (o) {
-        var v = (o.vols || []).filter(function (x) { return x.lv; })[0], w = (o.vols || []).filter(function (x) { return x.tw === "far"; })[0];
-        toast(v ? "Saved. " + v.n + ": " + v.tm + " min to " + v.o + " – leave home " + jhm(v.lv, v.oz) + "." :
-          (w ? "Saved, but your starting point is more than 250 km from " + w.o + ": no leave-home time for this flight." : "Saved."), !!v || !w);
-        if (o.vols) afficherVols(o);
-      }).catch(erreur);
+      var la = p.coords.latitude, lo = p.coords.longitude;
+      // adresse lisible (OpenStreetMap) ; à défaut, les coordonnées
+      fetch("https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat=" + la + "&lon=" + lo, { headers: { "Accept-Language": "en" } })
+        .then(function (r) { return r.json(); }).catch(function () { return null; }).then(function (a) {
+          var lab = a && a.display_name ? a.display_name.split(",").slice(0, 3).join(",").trim() : "Position " + la.toFixed(4) + ", " + lo.toFixed(4);
+          depart = { la: la, lo: lo, lab: lab }; fin(); departAfficher(); sauverTrajet();
+        });
+    }, function () { fin(); toast("Position refused or unavailable.", false); }, { enableHighAccuracy: false, timeout: 15000 });
   });
 
-  // ---- montres liées ----
+  // ---- montres liées (dans Compte) ----
   function afficherMontres(l) {
     var box = $("#montres");
     box.innerHTML = l.length ? "" : '<p class="aide">No watch linked yet.</p>';
@@ -499,23 +720,42 @@
       var vu = m.vu ? Math.round((Date.now() - m.vu) / 60000) : null;
       d.innerHTML = '<div class="txt"><b>Garmin watch ··' + esc(m.fin) + "</b><span>" + esc(/^B/.test(m.v) ? "Boarding " + m.v.slice(1) : m.v) +
         (vu != null ? " · seen " + (vu < 90 ? vu + " min ago" : vu < 2880 ? Math.round(vu / 60) + " h ago" : Math.round(vu / 1440) + " days ago") : "") + '</span></div><button class="lien" type="button">Unlink</button>';
-      d.querySelector("button").addEventListener("click", function () {
-        if (!confirm("Unlink this watch? It will stop showing your flights.")) return;
-        AVIATOR.appel({ action: "boarding.delier", jeton: jeton, ref: m.ref }).then(function (o) { afficherMontres(o.montres); toast("Watch unlinked.", true); }).catch(erreur);
+      var b = d.querySelector("button");
+      b.addEventListener("click", function () {
+        demander("Unlink this watch? It will stop showing your flights.", "Unlink").then(function (oui) {
+          if (!oui) return;
+          var fin = occupe(b, "Unlinking…");
+          AVIATOR.appel({ action: "boarding.delier", jeton: jeton, ref: m.ref }).then(function (o) { fin(); afficherMontres(o.montres); toast("Watch unlinked.", true); }).catch(function (x) { fin(); erreur(x); });
+        });
       });
       box.appendChild(d);
     });
   }
   $("#f-lier").addEventListener("submit", function (e) {
     e.preventDefault();
-    var c = $("#lcode").value.replace(/\D/g, ""), b = $("#f-lier button");
+    var c = $("#lcode").value.replace(/\D/g, "");
     if (c.length !== 6) { toast("Enter the 6 digits shown on your watch.", false); return; }
-    b.disabled = true;
+    $("#lcode").blur();
+    var fin = occupe($("#f-lier button"), "Linking…");
     AVIATOR.appel({ action: "boarding.lier", jeton: jeton, code: c }).then(function (o) {
-      afficherMontres(o.montres); afficherVols(o); $("#lcode").value = "";
+      fin(); afficherMontres(o.montres); afficherVols(o); $("#lcode").value = ""; recaler();
       toast("Watch linked. Your flights appear on it within 5 minutes.", true);
-    }).catch(erreur).then(function () { b.disabled = false; });
+    }).catch(function (x) { fin(); recaler(); erreur(x); });
   });
+
+  // ---- Info ----
+  var INFOS = [
+    ["What Boarding does", "<p>Boarding follows your flights and tells you what matters, when it matters: when to leave home, when to check in, your terminal then your gate, delays, boarding, the baggage belt.</p><p>It works on any phone. With the free Garmin watch face, the same information is on your wrist.</p>"],
+    ["Adding a flight", "<ul><li><b>Scan</b> the barcode of your boarding pass with the camera.</li><li>Or choose a <b>screenshot</b> of it – the whole screen is fine (wallet, airline app).</li><li>Or <b>type</b> the flight number and date – months ahead if you like.</li></ul>"],
+    ["Reminders and alerts", "<ul><li><b>CHECK IN ONLINE</b> the day before (not shown once you scanned your boarding pass).</li><li><b>LEAVE HOME</b> at a set time; 30 minutes before, a reminder.</li><li>Alerts for a gate change, delay, cancellation, boarding and the baggage belt.</li></ul><p>Turn alerts on in <b>Account</b>. On iPhone, add Boarding to your home screen first.</p>"],
+    ["Terminal first, then the gate", "<p>More than 3 hours before departure you see your <b>terminal</b>. Gates announced earlier often change, so the gate shows up within 3 hours. A gate change is always shown in red.</p>"],
+    ["Your boarding pass", "<p>After a scan, <b>Boarding pass</b> shows a clean QR code you can show at security and at the gate. It is <b>stored only on this phone</b>, never sent to our servers, and deleted after landing.</p><p>Safari and the home-screen app keep separate copies: scan from the one you use. Keep your airline’s pass as a backup.</p>"],
+    ["Sharing a flight", "<p><b>Share flight</b> creates a link for whoever picks you up: live arrival time, delay, baggage belt and weather – no account needed. No seat, no name, no e-mail. The link stops working a few days after the flight.</p>"],
+    ["When to leave home", "<p>In <b>To the airport</b>, set where you leave from and how much time you want at the airport. Car times use OpenStreetMap routing with a margin for traffic and parking. The <b>Uber</b> button opens Uber with the airport as destination; to book ahead, choose Schedule and the time shown.</p>"],
+    ["The Garmin watch face", "<p>Install <a href=\"https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50\" target=\"_blank\" rel=\"noopener\">Boarding</a> on your watch, tap it and link it in <b>Account</b>. When your destination is in another time zone, a small <b>L</b> on the dial points to the local time there.</p>"],
+    ["Your data", "<p>Your account keeps only your e-mail address, your flights and your settings. Flight data comes from AeroDataBox, weather from NOAA and Open-Meteo, aircraft photos from Wikimedia Commons. See the <a href=\"privacy/\">privacy policy</a>.</p>"]
+  ];
+  $("#infos").innerHTML = INFOS.map(function (x) { return "<details><summary>" + x[0] + "</summary>" + x[1] + "</details>"; }).join("");
 
   // ---- lexique : ce que la montre affiche, dans ses couleurs ----
   var LEX = [
@@ -545,9 +785,11 @@
     ["BELT SOON", "blanc", "Baggage belt not announced yet."],
     ["BAG DROP · DOORS", "gris", "The ring in the last 90 minutes: bag drop closes, boarding, doors close, departure."],
     ["DEP · ARR · T", "gris", "Departure, arrival, terminal."],
-    ["HOME", "gris", "Time at home (your home time zone), shown when you travel."]
+    ["HOME", "gris", "Time at home (your home time zone), shown when you travel."],
+    ["L", "blanc", "Small mark on the edge of the dial: the local time at your destination, when it is in another time zone (e.g. on 10 when it is 16:00 at home and 10:00 in New York)."]
   ];
   $("#lexique").innerHTML = LEX.map(function (x) { return '<div><dt class="w-' + x[1] + '">' + esc(x[0]) + "</dt><dd>" + esc(x[2]) + "</dd></div>"; }).join("");
+
 
   // ---- bandeau « Ajouter à l'écran d'accueil » ----
   var invite = null;
@@ -565,20 +807,46 @@
   $("#inst-non").addEventListener("click", function () { lsEcrire("boarding-inst-non", String(Date.now())); $("#installer").hidden = true; });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});
 
-  // rafraîchissement : à chaque retour sur la page, et toutes les 2 min tant qu'elle est ouverte
-  document.addEventListener("visibilitychange", function () { if (!document.hidden && jeton) charger(); });
-  setInterval(function () { if (!document.hidden && jeton) AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(afficherVols).catch(function () {}); }, 120000);
+  // ---- vol partagé (lien public) ----
+  function afficherPartage(v) {
+    var box = $("#partage");
+    if (v.inconnu) { box.innerHTML = '<div class="carte"><h2>' + esc(v.n) + '</h2><p class="aide">Waiting for flight data…</p></div>'; return; }
+    var e = etat(v), dep = v.ed || v.sd, arr = v.ea || v.sa;
+    var retard = v.al2 > 5 ? "+" + v.al2 + " min" : v.al2 < -5 ? v.al2 + " min" : "on time";
+    box.innerHTML = '<div class="carte vol"><div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
+      '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
+      '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h' + (v.al2 > 5 ? " ambre" : "") + '">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
+      (arr ? '<div class="bandeau ' + (v.st === "Arrived" ? "bleu" : v.al2 > 5 ? "ambre" : "bleu") + '"><span>' + (v.st === "Arrived" ? "LANDED" : "LANDS AT") + "<small>local time in " + esc(v.ac2 || v.a) + " · " + retard + '</small></span><span class="grand">' + hm(v.ln || arr, v.az) + "</span></div>" : "") +
+      '<div class="cases">' + cas("BELT", v.b) + cas("ARR. TERMINAL", v.ta) + cas("ARR. GATE", v.ag) + cas("TOOK OFF", v.tk ? hm(v.tk, v.oz) : "") + "</div>" +
+      meteoHtml(v, "Weather in " + (v.ac2 || v.a)) + '<section class="sec"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section></div>';
+    carteVol(box.querySelector(".carte-vol"), v);
+  }
+  function chargerPartage(s) {
+    return AVIATOR.appel({ action: "boarding.voir", s: s }).then(function (o) { afficherPartage(o.vol); }).catch(function (x) {
+      $("#partage").innerHTML = '<div class="carte"><h2>Link not available</h2><p class="aide">' + esc((x && x.message) || "Error.") + "</p></div>";
+    });
+  }
 
-  // ---- démarrage : QR code de la montre, sinon téléphone mémorisé, sinon connexion ----
+  // rafraîchissement : à chaque retour sur la page, et toutes les 2 min tant qu'elle est ouverte
+  var partageS = (/[?&]s=([0-9a-f]{16})(?:&|$)/.exec(location.search) || [])[1];
+  document.addEventListener("visibilitychange", function () { if (document.hidden) return; if (partageS) chargerPartage(partageS); else if (jeton) charger(); });
+  setInterval(function () {
+    if (document.hidden) return;
+    if (partageS) chargerPartage(partageS);
+    else if (jeton) AVIATOR.appel({ action: "boarding.charger", jeton: jeton }).then(afficherVols).catch(function () {});
+  }, 120000);
+
+  // ---- démarrage : lien partagé, QR code de la montre, téléphone mémorisé, sinon connexion ----
   var qr = /[?&]c=(\d{6})(?:&|$)/.exec(location.search);
-  if (qr) {
+  if (partageS) {
+    voir("partage"); $("#partage").innerHTML = '<p class="aide">Loading…</p>'; chargerPartage(partageS);
+  } else if (qr) {
     try { history.replaceState(null, "", location.pathname); } catch (e) {}
-    // déjà connecté avec un compte : on propose de lier cette montre plutôt que d'ouvrir une session « montre »
     var mm = lsLire(MEMO);
     (mm ? AVIATOR.appel({ action: "boarding.reprendre", memo: mm }) : Promise.reject({}))
       .then(function (o) {
         if (!o.email) throw {};
-        ouvert(o); onglet("montre");
+        ouvert(o); onglet("moi");
         $("#lcode").value = qr[1].slice(0, 3) + " " + qr[1].slice(3);
         toast("Tap “Link this watch” to show your flights on it.", true);
       })

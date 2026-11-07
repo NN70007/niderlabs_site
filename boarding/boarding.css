@@ -17,7 +17,7 @@
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--fond);color:var(--encre);font:400 18px/1.45 var(--texte);min-height:100vh;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 24px)}
+body{margin:0;background:var(--fond);color:var(--encre);font:400 18px/1.45 var(--texte);min-height:100vh;min-height:100dvh;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 24px)}
 [hidden]{display:none!important}
 a{color:var(--accent)}
 h1{font:700 34px/1.1 var(--titre);letter-spacing:.3px;margin:6px 0 16px}
@@ -118,12 +118,12 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 .bandeau.rouge{background:color-mix(in srgb,var(--rouge) 15%,transparent);color:var(--rouge)}
 .bandeau.bleu{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
 .bandeau .grand{font:700 28px/1 var(--titre);margin-left:auto;white-space:nowrap}
-.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.cases div{display:flex;flex-direction:column;padding:8px 10px;border-radius:12px;background:var(--champ);border:1px solid var(--trait);min-width:0}
-.cases span{font-size:12px;font-weight:600;color:var(--encre-3);letter-spacing:1px}
-.cases b{font:700 24px/1.15 var(--titre);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cases{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cases div{display:flex;flex-direction:column;padding:12px 14px;border-radius:14px;background:var(--champ);border:1px solid var(--trait);min-width:0}
+.cases span{font-size:13px;font-weight:600;color:var(--encre-3);letter-spacing:1.2px}
+.cases b{font:700 30px/1.1 var(--titre);overflow-wrap:anywhere}
 .cases b.rouge{color:var(--rouge)}.cases b.ambre{color:var(--ambre)}
-.cases small{font-size:12px;color:var(--rouge);font-weight:600}
+.cases small{font-size:14px;color:var(--rouge);font-weight:600}
 .mini{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--champ);border:1px solid var(--trait)}
 .mini button{flex:1;min-height:42px;border:0;border-radius:9px;background:transparent;color:var(--encre-3);font:700 15px var(--texte);cursor:pointer}
 .mini button[aria-selected="true"]{background:var(--accent);color:var(--sur-accent)}
@@ -180,7 +180,65 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 .toast.ok{border-color:var(--vert)}.toast.err{border-color:var(--rouge);color:var(--rouge)}
 
 @media (min-width:700px){h1{font-size:38px}.accroche h1{font-size:46px}}
-@media (max-width:360px){.cases{grid-template-columns:repeat(2,1fr)}.trajetv .code3{font-size:34px}}
+@media (max-width:360px){.trajetv .code3{font-size:34px}}
 .tuiles-nuit{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}
 .jour-date{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:2px 0 10px;padding:10px 14px;border-radius:12px;background:var(--champ);border:1px solid var(--trait);font:700 22px var(--titre);letter-spacing:.5px}
 .jour-date span{font-size:18px;color:var(--encre-3)}
+
+/* --- v20 : fiche d'un seul tenant, avion, météo, partage, carte d'embarquement, boutons occupés --- */
+.sauts{position:sticky;top:calc(env(safe-area-inset-top) + 58px);z-index:5}
+.sec{scroll-margin-top:140px;display:flex;flex-direction:column;gap:12px}
+.sec-titre{margin:10px 0 0;font:700 14px var(--texte);letter-spacing:1.4px;text-transform:uppercase;color:var(--encre-3)}
+.avion-carte{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:var(--champ);border:1px solid var(--trait)}
+.avion-carte img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#000}
+.avion-carte .credit{font-size:12px;color:var(--encre-3);padding:6px 14px 0}
+.avion-carte .credit a{color:var(--encre-3)}
+.avion-carte .corps{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.avion-carte .modele{font:700 26px/1.1 var(--titre)}
+.avion-carte dl{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0}
+.avion-carte dt{font-size:13px;font-weight:600;color:var(--encre-3);letter-spacing:1.2px}
+.avion-carte dd{margin:0;font:700 22px var(--titre)}
+.meteo{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--champ);border:1px solid var(--trait)}
+.meteo .temp{font:700 40px/1 var(--titre)}
+.meteo .txt{display:flex;flex-direction:column;font-weight:600;color:var(--encre-2)}
+.meteo .txt span{font-size:14px;font-weight:500;color:var(--encre-3)}
+.uber-ligne{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.uber-ligne .bouton{flex:0 0 auto;min-width:130px}
+.uber-ligne .prog{flex:1 1 160px;font-size:15px;color:var(--encre-2);line-height:1.35}
+.actions-vol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bouton.bp-btn{min-height:64px;font-size:19px;background:#fff;color:#0B0F14;border:2px solid #0B0F14}
+:root[data-theme="dark"] .bouton.bp-btn,:root:not([data-theme="light"]) .bouton.bp-btn{border-color:#fff}
+.enregistre{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--vert) 14%,transparent);color:var(--encre);font-weight:600}
+.enregistre small{display:block;color:var(--vert);font-size:13px;letter-spacing:1px;font-weight:700}
+.etat-sauve{min-height:22px;font-weight:600;color:var(--vert)}
+.etat-sauve.err{color:var(--rouge)}
+/* bouton occupé : retour immédiat, pas de double appui */
+.bouton.occupe,.lien.occupe{pointer-events:none;opacity:.75}
+.bouton.occupe::before{content:"";width:18px;height:18px;border-radius:50%;border:3px solid currentColor;border-right-color:transparent;animation:tourne .8s linear infinite;flex:none}
+@keyframes tourne{to{transform:rotate(360deg)}}
+.bouton:active,.lien:active{opacity:.7}
+/* plein écran : carte d'embarquement, pointeur, confirmations */
+.plein{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);background:#fff;color:#0B0F14;overflow:auto}
+.plein.sombre{background:rgba(0,0,0,.82);color:#fff}
+.bp-carte{width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.bp-tete{display:flex;justify-content:space-between;align-items:center;font:700 28px var(--titre)}
+.bp-tete .fermer{background:none;border:0;font-size:40px;line-height:1;color:#0B0F14;cursor:pointer;padding:0 6px}
+.bp-code{background:#fff;padding:14px;border-radius:12px;border:1px solid #DDE1E6}
+.bp-code svg{width:100%;height:auto;display:block}
+.bp-info{font:700 22px var(--titre);text-align:center;margin:0}
+.bp-note{font-size:14px;color:#4E5761;text-align:center;margin:0}
+.lien.rouge{color:#B42318;text-align:center}
+.pointer-txt{font-weight:700;font-size:18px;margin:0 0 10px}
+.pointer-img{max-width:100%;max-height:72vh;overflow:auto;border-radius:12px}
+.pointer-img canvas{max-width:100%;height:auto;display:block;cursor:crosshair}
+#pointer .bouton{margin-top:14px;color:#fff;border-color:#fff}
+.dlg-carte{width:100%;max-width:420px;background:var(--surface);color:var(--encre);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:16px;border:1px solid var(--trait)}
+.dlg-carte p{font-size:18px;font-weight:600;margin:0}
+/* infos */
+.infos details{background:var(--surface);border:1px solid var(--trait);border-radius:16px;padding:14px 16px}
+.infos summary{font-weight:700;font-size:18px;cursor:pointer;list-style:none}
+.infos summary::after{content:"＋";float:right;color:var(--encre-3)}
+.infos details[open] summary::after{content:"−"}
+.infos details p,.infos details li{font-size:16px;color:var(--encre-2);margin:10px 0 0}
+.infos details ul{padding-left:20px;margin:0}
+.partage-tete{margin:4px 0 12px}

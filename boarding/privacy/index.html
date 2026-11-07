@@ -23,12 +23,12 @@
 
 <main><div class="col etroit texte-long">
   <h1>Privacy Policy</h1>
-  <p class="aide">Draft – version of 6 November 2026 (beta 0.3). Controller: NiderLabs (see the <a href="../../aviator/legal/">legal notice</a>).</p>
+  <p class="aide">Draft – version of 6 November 2026 (beta 0.4). Controller: NiderLabs (see the <a href="../../aviator/legal/">legal notice</a>).</p>
 
   <h2>In short</h2>
   <ul>
     <li>An account holds only your e-mail address. No name, no password, no payment data. You can also use Boarding with your watch alone, without an e-mail.</li>
-    <li>Your boarding pass is read on your phone. Your name and booking reference are never sent.</li>
+    <li>Your boarding pass is read on your phone. Your name and booking reference are never sent. If you keep it to show at the airport, it stays only on your phone and is deleted after landing.</li>
     <li>We keep a random watch identifier and the flights you follow (flight number, date, seat), so that this page and your watch can show them.</li>
   </ul>
 
@@ -37,7 +37,9 @@
     <li><b>Account</b> (if you sign in with your e-mail): your e-mail address, dates of creation and last visit. Sign-in codes are sent by e-mail, valid 10 minutes and stored only as a fingerprint. Linked watches are recorded against your account.</li>
     <li><b>Watch identifier</b> (if you use the watch face): a random number created by the watch face (not your Garmin serial number or account), and a fingerprint of a random key – the key itself is never stored.</li>
     <li><b>Flights you follow</b>: flight number, local departure date, departure airport and seat(s), and your home time zone.</li>
-    <li><b>Flight status</b>: public data about the flight and the aircraft that operates it (times, gate, terminal, baggage belt, aircraft registration), checked about every 10 minutes for flights with alerts on, obtained from our flight-data provider AeroDataBox using the flight number and date only. Arrival weather comes from aviationweather.gov (NOAA).</li>
+    <li><b>Flight status</b>: public data about the flight and the aircraft that operates it (times, gate, terminal, baggage belt, aircraft registration), checked about every 10 minutes for flights with alerts on, obtained from our flight-data provider AeroDataBox using the flight number and date only. Arrival weather comes from aviationweather.gov (NOAA) and the forecast from Open-Meteo (airport position only). Aircraft details and photos (registration, age, seats, a photo from Wikimedia Commons with its author and licence) come from AeroDataBox and are linked to the aircraft, not to you.</li>
+    <li><b>Shared flights</b> (only if you tap “Share flight”): a random link stored with the flight number and date. Anyone with the link sees the live status, arrival time, baggage belt and weather – never your seat, name or e-mail. The link stops working four days after the flight date and is then deleted.</li>
+    <li><b>Boarding pass</b> (only if you scan one): the full code is kept <b>only in your browser on this phone</b> to show it as a QR code. It is never sent to NiderLabs, and is deleted after landing or when you tap “Delete it from this phone”.</li>
     <li><b>Alerts</b> (only if you turn them on), including reminders to check in online the day before (not sent once a boarding pass has been scanned) and to leave home: the push address your browser gives for this page (an anonymous address at Google, Apple or Mozilla) and its keys. Alerts are encrypted end to end and sent through niderlabs.com, which keeps nothing.</li>
     <li><b>Starting point</b> (only if you set it): a position rounded to about 100 m, its short label, how you travel and how early you want to be at the airport. Addresses are looked up by OpenStreetMap Nominatim directly from your browser; car times are computed by the OSRM routing service from the rounded position and the airport only.</li>
     <li><b>Technical data</b>: date of first and last contact, watch face version.</li>
@@ -54,7 +56,7 @@
   <p>You may ask for access, correction or deletion of the data linked to your account or your watch, or object to their processing, by writing to the contact in the <a href="../../aviator/legal/">legal notice</a> and giving your e-mail address or the code shown on your watch. You may also lodge a complaint with the Luxembourg data protection authority (CNPD, cnpd.public.lu).</p>
 
   <h2>5. Cookies</h2>
-  <p>The Site sets no cookies. It only remembers your day/night mode choice (and, if you ask, your remembered phone, your e-mail address to pre-fill the sign-in form, and whether you closed the “Add to home screen” banner) in your browser. The pages use fonts from Google Fonts, which receive your IP address when loading them. The camera, when you scan a boarding pass, is used only inside the page and nothing is recorded. Your position is used only when you tap “Use my position”. Flight maps use tiles from OpenStreetMap, which receives your IP address when loading them. The “Uber” button opens Uber with the airport as destination; nothing is sent to Uber by NiderLabs.</p>
+  <p>The Site sets no cookies. It only remembers your day/night mode choice (and, if you ask, your remembered phone, your e-mail address to pre-fill the sign-in form, and whether you closed the “Add to home screen” banner, and the boarding passes you scanned) in your browser. The pages use fonts from Google Fonts, which receive your IP address when loading them. The camera, when you scan a boarding pass, is used only inside the page and nothing is recorded. Your position is used only when you tap “Use my position”. Flight maps use tiles from OpenStreetMap, which receives your IP address when loading them; aircraft photos are loaded from Wikimedia Commons in the same way. The “Uber” button opens Uber with the airport as destination; nothing is sent to Uber by NiderLabs.</p>
 
   <h2>6. Information only</h2>
   <p>Flight information may be late, incomplete or wrong. Always follow the airport screens and your airline's announcements. NiderLabs is not responsible for a missed flight or connection.</p>

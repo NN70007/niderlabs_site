@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="boarding.css?v=12">
+<link rel="stylesheet" href="boarding.css?v=20">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B0F14">
@@ -19,7 +19,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../aviator/commun.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
-<script src="boarding.js?v=13" defer></script>
+<script src="qrcode-1.4.4.js" defer></script>
+<script src="boarding.js?v=20" defer></script>
 </head>
 <body>
 <header class="barre">
@@ -59,11 +60,22 @@
     <details class="carte plie" id="d-montre">
       <summary>I have the Boarding watch face</summary>
       <form id="f-montre" class="pile" novalidate>
-        <p class="aide">Tap the watch face: <b>ADD A FLIGHT</b> shows a QR code and a 6-digit code. Scan the QR code, or type the code here. To keep your flights on several devices, sign in with your e-mail instead and link your watch from the <b>Watch</b> tab.</p>
+        <p class="aide">Tap the watch face: <b>ADD A FLIGHT</b> shows a QR code and a 6-digit code. Scan the QR code, or type the code here. To keep your flights on several devices, sign in with your e-mail instead and link your watch from <b>Account</b>.</p>
         <input class="code" id="wcode" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="000 000">
         <button class="bouton second" type="submit">Open with the watch code</button>
       </form>
     </details>
+  </section>
+
+  <!-- ===== Vol partagé (lien public, lecture seule) ===== -->
+  <section class="vue" id="v-partage" hidden>
+    <p class="aide partage-tete">Shared with you – updates live.</p>
+    <div id="partage"></div>
+    <div class="carte">
+      <h2>Track your own flights</h2>
+      <p class="aide">Gate, delays, when to leave home and alerts – on your phone, and on your Garmin watch if you have one.</p>
+      <a class="bouton second" href="./">Open Boarding</a>
+    </div>
   </section>
 
   <!-- ===== Application ===== -->
@@ -73,7 +85,7 @@
       <h1>My flights</h1>
       <div class="ajout">
         <button class="bouton gros" type="button" id="scanner"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>Scan a boarding pass</button>
-        <button class="bouton second" type="button" id="manuel">Type a flight number</button>
+        <div class="ligne"><button class="bouton second" type="button" id="photo-btn0">Screenshot / photo</button><button class="bouton second" type="button" id="manuel">Type flight number</button></div>
       </div>
       <input type="file" id="photo" accept="image/*" hidden>
       <div class="carte" id="camera" hidden>
@@ -94,60 +106,39 @@
       <div id="liste" class="pile"></div>
     </div>
 
-    <!-- Trajet et alertes -->
+    <!-- Aller à l'aéroport -->
     <div class="onglet" id="o-trajet" hidden>
-      <h1>Travel</h1>
+      <h1>To the airport</h1>
       <div class="carte">
-        <h2>Alerts</h2>
-        <p class="aide">Gate change, delay, cancellation, boarding, baggage belt – plus a reminder to <b>check in online</b> the day before and to <b>leave home</b> 30 minutes ahead.</p>
-        <button class="bouton" type="button" id="alertes">Turn on alerts</button>
-        <p class="aide" id="alertes-ios" hidden><b>iPhone:</b> add Boarding to your home screen first (Share <span class="ico-partage">⬆</span> → Add to Home Screen), open it from there, then turn on alerts.</p>
-        <p class="aide" id="alertes-etat"></p>
+        <h2>Where you leave from</h2>
+        <p class="aide">Boarding tells you when to leave. Your choice is saved at once – on this phone and on your other devices.</p>
+        <p class="enregistre" id="adr-choisie" hidden></p>
+        <label class="titre" for="adresse">CHANGE</label>
+        <input id="adresse" type="search" autocomplete="street-address" placeholder="Type an address">
+        <div class="suggestions" id="adr-sg" hidden></div>
+        <button class="bouton second" type="button" id="ici">Use my current position</button>
       </div>
       <div class="carte">
-        <h2>Getting to the airport</h2>
-        <p class="aide">Set where you leave from: Boarding tells you when to leave home.</p>
-        <label class="titre" for="adresse">STARTING POINT</label>
-        <input id="adresse" type="search" autocomplete="street-address" placeholder="Address">
-        <div class="suggestions" id="adr-sg" hidden></div>
-        <button class="bouton second" type="button" id="ici">Use my position</button>
-        <p class="choisi" id="adr-choisie"></p>
-        <label class="titre">HOW YOU GO</label>
+        <h2>How you go</h2>
         <div class="choix"><label><input type="radio" name="mode" value="car" checked>Car / taxi</label><label><input type="radio" name="mode" value="min">Other</label></div>
         <div class="ligne-n" id="ligne-min" hidden><label for="minutes">Door to terminal</label><input class="nombre" id="minutes" inputmode="numeric" maxlength="3" value="45"><span>min</span></div>
         <div class="ligne-n"><label for="avance">At the airport before departure</label><input class="nombre" id="avance" inputmode="numeric" maxlength="3" value="90"><span>min</span></div>
-        <button class="bouton" type="button" id="trajet">Save</button>
+        <p class="etat-sauve" id="tr-etat" aria-live="polite"></p>
         <p class="aide petit">Car times: OpenStreetMap routing plus a margin for traffic and parking. Public transport: check your usual app and type the total time.</p>
-      </div>
-      <div class="carte">
-        <h2>Home</h2>
-        <label class="titre" for="maison">HOME TIME ZONE</label>
-        <select id="maison"></select>
-        <p class="aide">Abroad, local times are shown first, home time below.</p>
       </div>
     </div>
 
-    <!-- Montre -->
-    <div class="onglet" id="o-montre" hidden>
-      <h1>Watch</h1>
-      <div class="carte" id="montres-compte">
-        <h2>My Garmin watches</h2>
-        <div id="montres" class="pile"></div>
-        <form id="f-lier" class="pile" novalidate>
-          <p class="aide">Install the free <a href="https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50" target="_blank" rel="noopener">Boarding watch face</a>, tap it and type the 6-digit code it shows.</p>
-          <input class="code" id="lcode" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="000 000">
-          <button class="bouton" type="submit">Link this watch</button>
-        </form>
-      </div>
-      <div class="carte" id="montre-seule" hidden>
-        <h2>Opened with your watch code</h2>
-        <p class="aide">Sign in with your e-mail and link this watch to keep your flights on your phone too – even without the watch.</p>
-      </div>
+    <!-- Info -->
+    <div class="onglet" id="o-info" hidden>
+      <h1>Info</h1>
+      <div class="pile infos" id="infos"></div>
       <div class="carte">
         <h2>What the watch says</h2>
         <p class="aide">Same colours on your wrist: <b class="c-vert">green</b> all good, <b class="c-ambre">amber</b> keep an eye on it, <b class="c-rouge">red</b> act now, <b class="c-bleu">blue</b> in the air.</p>
         <dl class="lexique" id="lexique"></dl>
       </div>
+      <div class="avert"><b>Information only.</b> Times, gates and belts come from public flight data and can be late or wrong. Always follow the airport screens and your airline.</div>
+      <p class="aide petit centre"><a href="privacy/">Privacy</a> · <a href="../aviator/legal/">Legal notice</a> · Flight data AeroDataBox · Weather NOAA, Open-Meteo · © <span data-annee></span> NiderLabs</p>
     </div>
 
     <!-- Compte -->
@@ -160,23 +151,74 @@
         <button class="bouton second" type="button" id="sortir">Sign out</button>
         <button class="lien" type="button" id="sortir-tous" hidden>Sign out on all phones</button>
       </div>
-      <div class="avert"><b>Information only.</b> Times, gates and belts come from public flight data and can be late or wrong. Always follow the airport screens and your airline.</div>
+      <div class="carte">
+        <h2>Alerts</h2>
+        <p class="aide">Gate change, delay, cancellation, boarding, baggage belt – plus a reminder to <b>check in online</b> the day before and to <b>leave home</b> 30 minutes ahead.</p>
+        <button class="bouton" type="button" id="alertes">Turn on alerts</button>
+        <p class="aide" id="alertes-ios" hidden><b>iPhone:</b> add Boarding to your home screen first (Share <span class="ico-partage">⬆</span> → Add to Home Screen), open it from there, then turn on alerts.</p>
+        <p class="aide" id="alertes-etat"></p>
+      </div>
+      <div class="carte" id="montres-compte">
+        <h2>My Garmin watches</h2>
+        <div id="montres" class="pile"></div>
+        <form id="f-lier" class="pile" novalidate>
+          <p class="aide">Install the free <a href="https://apps.garmin.com/apps/9cc1d995-2624-4cd2-a085-e798e7aa1c50" target="_blank" rel="noopener">Boarding watch face</a>, tap it and type the 6-digit code it shows.</p>
+          <input class="code" id="lcode" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="000 000" enterkeyhint="done">
+          <button class="bouton" type="submit">Link this watch</button>
+        </form>
+      </div>
+      <div class="carte" id="montre-seule" hidden>
+        <h2>Opened with your watch code</h2>
+        <p class="aide" id="montre-seule-txt">Sign in with your e-mail and link this watch to keep your flights on your phone too – even without the watch.</p>
+      </div>
+      <div class="carte">
+        <h2>Home</h2>
+        <label class="titre" for="maison">HOME TIME ZONE</label>
+        <select id="maison"></select>
+        <p class="aide">Abroad, local times are shown first, home time below.</p>
+      </div>
       <div class="carte" id="effacer-box">
         <h2>Delete my account</h2>
         <p class="aide">Your e-mail, flights and settings are erased. Linked watches are unlinked.</p>
         <button class="bouton danger" type="button" id="effacer">Delete my account</button>
       </div>
-      <p class="aide petit centre"><a href="privacy/">Privacy</a> · <a href="../aviator/legal/">Legal notice</a> · Flight data AeroDataBox · Weather NOAA · © <span data-annee></span> NiderLabs</p>
     </div>
   </section>
 </main>
+
+<!-- Carte d'embarquement plein écran (gardée sur ce téléphone uniquement) -->
+<div class="plein" id="bp" hidden role="dialog" aria-modal="true" aria-label="Boarding pass">
+  <div class="bp-carte">
+    <div class="bp-tete"><b id="bp-vol"></b><button type="button" class="fermer" id="bp-fermer" aria-label="Close">×</button></div>
+    <div class="bp-code" id="bp-code"></div>
+    <p class="bp-info" id="bp-info"></p>
+    <p class="bp-note">🔒 Stored only on this phone. Never sent to our servers. Deleted after landing.</p>
+    <p class="bp-note">Most airports read this code. Keep your airline’s boarding pass as a backup.</p>
+    <button type="button" class="lien rouge" id="bp-oublier">Delete it from this phone</button>
+  </div>
+</div>
+
+<!-- Lecture d'une capture : toucher le code si la lecture automatique échoue -->
+<div class="plein sombre" id="pointer" hidden role="dialog" aria-modal="true" aria-label="Tap the barcode">
+  <p class="pointer-txt">Tap the barcode in your picture</p>
+  <div class="pointer-img"><canvas id="pointer-c"></canvas></div>
+  <button type="button" class="bouton second" id="pointer-annuler">Cancel</button>
+</div>
+
+<!-- Confirmation (remplace confirm() : pas de fenêtre système) -->
+<div class="plein sombre" id="dlg" hidden role="dialog" aria-modal="true">
+  <div class="dlg-carte">
+    <p id="dlg-txt"></p>
+    <div class="ligne"><button type="button" class="bouton second" id="dlg-non">Cancel</button><button type="button" class="bouton" id="dlg-oui">OK</button></div>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" hidden></div>
 
 <nav class="onglets-bas" id="nav" hidden aria-label="Sections">
   <button type="button" data-o="vols" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>Flights</button>
-  <button type="button" data-o="trajet"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Travel</button>
-  <button type="button" data-o="montre"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M9 6l1-4h4l1 4M9 18l1 4h4l1-4M12 9v3l2 1"/></svg>Watch</button>
+  <button type="button" data-o="trajet"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5z"/><circle cx="8" cy="17" r="1.8"/><circle cx="16" cy="17" r="1.8"/><path d="M12 3v4"/></svg>To the airport</button>
+  <button type="button" data-o="info"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>Info</button>
   <button type="button" data-o="moi"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Account</button>
 </nav>
 </body>
