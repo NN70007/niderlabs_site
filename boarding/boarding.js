@@ -470,6 +470,15 @@
       "&dropoff%5Bnickname%5D=" + encodeURIComponent((v.oc || v.o) + " Airport" + (v.t ? " T" + v.t : ""));
   }
   function adresseAeroport(v) { return (v.oc || v.o) + " Airport (" + v.o + ")" + (v.t ? ", Terminal " + v.t : ""); }
+  // ---- inviter quelqu'un : lien vers l'appli et comment l'installer ----
+  function inviter() {
+    var url = location.origin + location.pathname.replace(/[^/]*$/, "");
+    var txt = "Boarding – my flights, gate, delays and leave-home time on my phone (and Garmin watch). Open the link, then add it to your home screen:";
+    if (navigator.share) navigator.share({ title: "Boarding", text: txt, url: url }).catch(function () {});
+    else copier(url);
+  }
+  document.querySelectorAll("[data-inviter]").forEach(function (b) { b.addEventListener("click", inviter); });
+
   function copier(txt) {
     var fin = function () { toast("Copied: " + txt, true); };
     if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fin).catch(function () { toast(txt, true); });
@@ -953,7 +962,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "31";
+  var VERSION = "32";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="boarding.css?v=31">
+<link rel="stylesheet" href="boarding.css?v=32">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B0F14">
@@ -20,7 +20,7 @@
 <script src="../aviator/commun.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <script src="qrcode-1.4.4.js" defer></script>
-<script src="boarding.js?v=31" defer></script>
+<script src="boarding.js?v=32" defer></script>
 </head>
 <body>
 <header class="barre">
@@ -132,6 +132,11 @@
     <!-- Info -->
     <div class="onglet" id="o-info" hidden>
       <h1>Info</h1>
+      <div class="carte">
+        <h2>Invite a friend</h2>
+        <p class="aide">Send Boarding to someone. They open the link, then add it to their home screen (Share → Add to Home Screen on iPhone, menu ⋮ → Install on Android).</p>
+        <button type="button" class="bouton" data-inviter>Share Boarding</button>
+      </div>
       <div class="pile infos" id="infos"></div>
       <div class="carte">
         <h2>What the watch says</h2>
@@ -145,6 +150,11 @@
     <!-- Compte -->
     <div class="onglet" id="o-moi" hidden>
       <h1>Account</h1>
+      <div class="carte">
+        <h2>Invite a friend</h2>
+        <p class="aide">Send Boarding to someone. They open the link, then add it to their home screen (Share → Add to Home Screen on iPhone, menu ⋮ → Install on Android).</p>
+        <button type="button" class="bouton" data-inviter>Share Boarding</button>
+      </div>
       <div class="carte">
         <h2 id="moi-titre">Signed in</h2>
         <p class="aide" id="moi-email"></p>
