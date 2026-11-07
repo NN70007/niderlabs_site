@@ -82,6 +82,16 @@ function doGet(e) {
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   // Boarding : passage régulier (GitHub Actions toutes les 10 min) — statuts des vols suivis avec alertes, rappels
+  // Boarding : diagnostic de la fiche avion d'un vol suivi (immatriculation, réponse AeroDataBox) — sans données personnelles
+  if (p.a === 'adiag') {
+    try {
+      var n = String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), d = String(p.d || '').replace(/[^0-9-]/g, '');
+      var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + n + ':' + d) || 'null'), f = rec && rec.f;
+      var reg = f && f.rg ? String(f.rg).toUpperCase().replace(/[^A-Z0-9-]/g, '') : '';
+      var ac = reg ? JSON.parse(PropertiesService.getScriptProperties().getProperty('ac:' + reg) || 'null') : null;
+      return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null });
+    } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
+  }
   if (p.a === 'tick') {
     try { return json_(boardingTick_()); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
@@ -1296,7 +1306,7 @@ function avionInfo_(reg) {
   if (rec && now - rec.t < (rec.a ? 60 : 7) * 86400) return rec.a;
   if (!budgetAdb_()) return rec ? rec.a : null;
   var r = volAppel_('/aircrafts/reg/' + encodeURIComponent(reg) + '?withImage=true&withRegistrations=false');
-  if (r.code === 401 || r.code === 403 || r.code === 0) return rec ? rec.a : null;
+  if (r.code !== 200 && r.code !== 204 && r.code !== 404) { CacheService.getScriptCache().put('acerr:' + reg, String(r.code), 3600); return rec ? rec.a : null; }
   var d = r.code === 200 && r.data ? r.data : null, a = null;
   if (d) {
     a = { rg: d.reg || reg, md: d.typeName || d.model || '', age: isFinite(Number(d.ageYears)) ? Math.round(Number(d.ageYears) * 10) / 10 : null,
