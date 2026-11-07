@@ -112,6 +112,7 @@ function doGet(e) {
     } catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
   }
   if (p.a === 'adsdiag') {
+    if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
     try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
     catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
   }
