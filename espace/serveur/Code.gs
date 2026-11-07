@@ -92,9 +92,11 @@ function doGet(e) {
       var brut = null;
       if (p.r === '1' && budgetAdb_()) {
         var rr = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
-        brut = { code: rr.code, avions: Array.isArray(rr.data) ? rr.data.map(function (l) { return { n: l.number, cs: l.codeshareStatus, ac: l.aircraft || null }; }) : null };
+        brut = { code: rr.code, avions: Array.isArray(rr.data) ? rr.data.map(function (l) { return { n: l.number, cs: l.codeshareStatus, ac: l.aircraft || null, st: l.status, dep: l.departure ? { g: l.departure.gate || null, t: l.departure.terminal || null, ck: l.departure.checkInDesk || null, ap: l.departure.airport && l.departure.airport.iata } : null }; }) : null };
       }
-      return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, ms: f ? f.ms || '' : '', fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null, brut: brut });
+      var budget = Number(CacheService.getScriptCache().get('adb:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd')) || 0);
+      return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, ms: f ? f.ms || '' : '', fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null, brut: brut,
+        enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'tick') {
