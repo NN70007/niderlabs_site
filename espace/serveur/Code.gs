@@ -99,6 +99,10 @@ function doGet(e) {
         enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
+  if (p.a === 'csdiag') {
+    try { return json_(csDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8), String(p.d || '').replace(/[^0-9-]/g, ''))); }
+    catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur', e: String(err && err.message || err).slice(0, 200) }); }
+  }
   if (p.a === 'xdiag') {
     try { return json_(xDiag_(String(p.n || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))); }
     catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
@@ -1083,6 +1087,33 @@ function xDiag_(n) {
   }
   out.cles = { airlabs: al ? forme('AIRLABS_KEY', al) : false, aeroapi: fa ? forme('AEROAPI_KEY', fa) : false };
   c.put(kc, JSON.stringify(out), 20);
+  return out;
+}
+/** Test : indicatif (AeroDataBox) -> avion qui l'émet (OpenSky) -> immatriculation (adsbdb). */
+function csDiag_(n, d) {
+  var c = CacheService.getScriptCache(), kc = 'csdiag:' + n + d, prev = c.get(kc);
+  if (prev) { var o0 = JSON.parse(prev); o0.cache = true; return o0; }
+  var out = { ok: true };
+  if (!budgetAdb_()) return { ok: false, code: 'budget' };
+  var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
+  var l = r.code === 200 ? volChoisir_(r.data, '') : null;
+  out.adb = { http: r.code, callSign: l && l.callSign || null, reg: l && l.aircraft && l.aircraft.reg || null, modeS: l && l.aircraft && l.aircraft.modeS || null, st: l && l.status };
+  var cs = String(out.adb.callSign || '').toUpperCase().replace(/\s/g, '');
+  if (cs) {
+    var o = UrlFetchApp.fetch('https://opensky-network.org/api/states/all', { muteHttpExceptions: true });
+    out.opensky = { http: o.getResponseCode() };
+    if (o.getResponseCode() === 200) {
+      var j = JSON.parse(o.getContentText()), st = (j.states || []).filter(function (x) { return String(x[1] || '').trim().toUpperCase() === cs; })[0];
+      out.opensky.total = (j.states || []).length;
+      out.opensky.trouve = st ? { hex: st[0], cs: String(st[1]).trim(), sol: st[8], lat: st[6], lon: st[5], vu: st[4] } : null;
+      if (st) {
+        var a = UrlFetchApp.fetch('https://api.adsbdb.com/v0/aircraft/' + encodeURIComponent(st[0]), { muteHttpExceptions: true });
+        out.adsbdb = { http: a.getResponseCode() };
+        try { var ad = JSON.parse(a.getContentText()).response.aircraft; out.adsbdb.reg = ad.registration; out.adsbdb.type = ad.type; out.adsbdb.owner = ad.registered_owner; } catch (e) {}
+      }
+    } else out.opensky.txt = o.getContentText().slice(0, 150);
+  }
+  c.put(kc, JSON.stringify(out), 60);
   return out;
 }
 function volCle_() {
