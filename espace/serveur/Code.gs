@@ -1150,6 +1150,21 @@ function adsLive_(hx) {
   c.put(k, JSON.stringify(a), 30);
   return a;
 }
+/** Code radar (Mode S) d'un avion d'après son immatriculation, s'il émet (adsb.lol, sinon adsb.fi). Gardé 6 h, échec 10 min. */
+function adsParImmat_(rg) {
+  rg = String(rg || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (!rg) return '';
+  var c = CacheService.getScriptCache(), k = 'adsrg:' + rg, m = c.get(k);
+  if (m !== null) return m;
+  var hx = '';
+  ['https://api.adsb.lol/v2/registration/', 'https://opendata.adsb.fi/api/v2/registration/'].some(function (u) {
+    try { compter_('radar_immat'); var r = UrlFetchApp.fetch(u + encodeURIComponent(rg), { muteHttpExceptions: true }); if (r.getResponseCode() !== 200) return false;
+      var a = (JSON.parse(r.getContentText()).ac || [])[0]; if (a && a.hex) { hx = String(a.hex).toLowerCase(); return true; } } catch (e) {}
+    return false;
+  });
+  c.put(k, hx, hx ? 21600 : 600);
+  return hx;
+}
 /** Avions autour d'un point (rayon en milles nautiques) : adsb.lol, sinon adsb.fi. */
 /** AirLabs (quota gratuit plus large) : porte, terminal et tapis aux moments où ils changent. Résultat dans rec.alx. */
 function alBudget_() {
@@ -1198,9 +1213,12 @@ function alSuivre_(rec, v) {
 /** Suit l'avion reconnu (f.hx) : note décollage (atk), atterrissage (ald) et dernier point vu (lst). */
 function adsSuivre_(rec, v) {
   var f = rec && rec.f, now = Date.now() / 1000;
-  if (!f || !f.hx || f.st === 'Arrived' || f.ald) return null;
+  if (!f || f.st === 'Arrived' || f.ald) return null;
   var dep = f.ed || f.sd, arr = f.ea || f.sa || dep + 3 * 3600;
   if (now < dep - 5400 || now > arr + 3 * 3600) return null;
+  // immatriculation connue (AeroDataBox) : on retrouve le code radar de l'avion, sans « I'm on board »
+  if (!f.hx && f.rg) { var hx = adsParImmat_(f.rg); if (hx) { f.hx = hx; rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} } }
+  if (!f.hx) return null;
   var lv = adsLive_(f.hx), ecrire = false, envol = !!(f.tk || f.atk);
   var pres = function (la, lo) { return f.ala != null && la != null && distKm_(la, lo, f.ala, f.alo) < 8; };
   if (lv) {
@@ -1938,7 +1956,7 @@ function boardingTick_() {
   proprios_().forEach(function (p) {
     boardingDe_(p.row).v.forEach(function (v) {
       var k = 'ads|' + v.n + ':' + v.d; if (vus[k]) return; vus[k] = 1;
-      try { var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); if (rec && rec.f) { alSuivre_(rec, v); if (rec.f.hx) adsSuivre_(rec, v); } } catch (e) { console.error(e); }
+      try { var rec = JSON.parse(PropertiesService.getScriptProperties().getProperty('bv:' + v.n + ':' + v.d) || 'null'); if (rec && rec.f) { alSuivre_(rec, v); if (rec.f.hx || rec.f.rg) adsSuivre_(rec, v); } } catch (e) { console.error(e); }
     });
   });
   // relu après les rafraîchissements (les alertes ont pu retirer des abonnements)

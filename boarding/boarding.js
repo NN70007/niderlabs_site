@@ -617,18 +617,34 @@
   }
 
   // ---- « I'm on board » : la position du téléphone (une fois, non conservée) trouve l'avion le plus proche ----
+  // position pour « I'm on board » : GPS précis d'abord, puis position approximative (cabine = mauvais GPS)
+  function positionAbord(ok, ko) {
+    var essai = function (precis) {
+      navigator.geolocation.getCurrentPosition(ok, function (e) {
+        if (e && e.code === 1) { ko("refus"); return; }
+        if (precis) essai(false); else ko("signal");
+      }, { enableHighAccuracy: precis, timeout: precis ? 20000 : 15000, maximumAge: precis ? 30000 : 120000 });
+    };
+    essai(true);
+  }
   function abord(v, btn) {
     if (!navigator.geolocation) { toast("Location is not available on this device.", false); return; }
     var fin = occupe(btn, "Finding your plane…");
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      AVIATOR.appel({ action: "boarding.abord", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, la: pos.coords.latitude, lo: pos.coords.longitude }).then(function (r) {
+    positionAbord(function (p) {
+      try { localStorage.setItem("boarding-loc", "1"); } catch (e) {}
+      AVIATOR.appel({ action: "boarding.abord", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, la: p.coords.latitude, lo: p.coords.longitude }).then(function (r) {
         fin();
         if (!r.ok) { toast(r.error || "No aircraft found next to you.", false); return; }
         toast("Found: " + (r.rg || "your plane") + (r.t ? " (" + r.t + ")" : "") + ", " + r.m + " m from you.", true);
         afficherVols(r);
       }).catch(function (x) { fin(); erreur(x); });
-    }, function () { fin(); toast("Allow location to find your plane.", false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }, function (raison) {
+      fin();
+      if (raison === "refus") toast(/Android/.test(navigator.userAgent) ? "Location is blocked for this site: Chrome ⋮ › Settings › Site settings › Location › niderlabs.com › Allow." : "Location is blocked: Safari aA › Website Settings › Location › Allow.", false);
+      else toast("Your phone could not get a position (weak GPS inside the cabin). Try again near a window, or once the plane is moving.", false);
+    });
   }
+
 
   // ---- partager le vol : lien public en lecture seule ----
   function partager(v, btn) {
@@ -1190,7 +1206,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "37";
+  var VERSION = "38";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
