@@ -859,6 +859,14 @@
     return { x: Math.max(0, (best.x / k) - W * m), y: Math.max(0, (best.y / k) - H * m), w: Math.min(W, best.w / k + 2 * W * m), h: Math.min(H, best.h / k + 2 * H * m) };
   }
   // plusieurs essais : image entière en pleine résolution, cadre blanc agrandi, centre, moitiés, image inversée
+  function toileTournee(img, zz, deg, maxW) {
+    var k = Math.min(1, maxW / zz.w), w = Math.round(zz.w * k), h = Math.round(zz.h * k), r = deg * Math.PI / 180;
+    var cw = Math.round(w * Math.abs(Math.cos(r)) + h * Math.abs(Math.sin(r))), ch = Math.round(w * Math.abs(Math.sin(r)) + h * Math.abs(Math.cos(r)));
+    var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    var x = c.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#fff"; x.fillRect(0, 0, cw, ch);
+    x.translate(cw / 2, ch / 2); x.rotate(r); x.drawImage(img, zz.x, zz.y, zz.w, zz.h, -w / 2, -h / 2, w, h);
+    return c;
+  }
   function lireImage(img) {
     var W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     return lecteur().then(function (lit) {
@@ -871,6 +879,10 @@
       essais.push(function () { return lit(toile(img, 0, H * 0.4, W, H * 0.6, 1200)); });
       essais.push(function () { return lit(toile(img, 0, 0, W, H * 0.6, 1200)); });
       essais.push(function () { return lit(toile(img, 0, 0, W, H, Math.min(W, 1600)), true); });
+      // photo prise un peu de travers (carte papier) : petits angles, sur la zone du code puis sur toute l'image
+      [-2, 2, -4, 4, -1, 1, -3, 3, -6, 6].forEach(function (a) {
+        essais.push(function () { var zz = z || { x: 0, y: 0, w: W, h: H }; return lit(toileTournee(img, zz, a, 1400)); });
+      });
       var i = 0;
       var suite = function () { if (i >= essais.length) return Promise.resolve(null); return essais[i++]().then(function (t) { return t || suite(); }); };
       return suite();
@@ -1178,7 +1190,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "36";
+  var VERSION = "37";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
