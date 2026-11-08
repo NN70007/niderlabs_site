@@ -273,7 +273,7 @@
   function bandeaux(v) {
     var h = "", t = now(), parti = v.tk || /Departed|EnRoute|Approaching|Arrived|Diverted/.test(v.st || "");
     if (/^Canceled/.test(v.st || "")) return '<div class="bandeau rouge"><span>FLIGHT CANCELLED<small>Contact your airline to rebook.</small></span></div>';
-    if (v.lv && !parti && t < v.lv + 1200) {
+    if (v.lv && !parti && t < v.lv + 1200 && !aeroport(v)) {
       var r = v.lv - t;
       if (r <= 0) h += '<div class="bandeau rouge"><span>LEAVE NOW<small>' + v.tm + " min to " + esc(v.o) + "</small></span></div>";
       else if (r < 1800) h += '<div class="bandeau rouge"><span>LEAVE HOME IN<small>at ' + hm(v.lv, v.oz) + " · " + v.tm + ' min to the airport</small></span><span class="grand">' + duree(r) + "</span></div>";
@@ -323,6 +323,120 @@
   var observateur = ("IntersectionObserver" in window) ? new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting && e.target._v) { observateur.unobserve(e.target); carteVol(e.target, e.target._v); e.target._v = null; } });
   }, { rootMargin: "300px" }) : null;
+
+  // ---- position (seulement si l'utilisateur l'a activée, et seulement appli ouverte) ----
+  var pos = null;
+  function locOn() { try { return localStorage.getItem("boarding-loc") === "1"; } catch (e) { return false; } }
+  function distKm(a, b, c, d) { var r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r * Math.cos((a + c) / 2 * r); return 6371 * Math.sqrt(x * x + y * y); }
+  function lirePosition(apres) {
+    if (!locOn() || !navigator.geolocation) { if (apres) apres(null); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      pos = { la: p.coords.latitude, lo: p.coords.longitude, t: now(), pr: p.coords.accuracy || 0 };
+      if (apres) apres(pos);
+    }, function (e) {
+      if (e && e.code === 1) { $("#loc-etat").innerHTML = locAideRefus(); }
+      if (apres) apres(null);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+  function locAideRefus() {
+    return /iPhone|iPad/.test(navigator.userAgent) ? "Location is blocked. In Safari: <b>aA › Website Settings › Location › Allow</b> (or Settings › Apps › Safari › Location › Allow)." : "Location is blocked. Allow it for niderlabs.com in your browser's site settings.";
+  }
+  function majLoc() {
+    var b = $("#loc-btn"), e = $("#loc-etat"); if (!b) return;
+    b.textContent = locOn() ? "Stop using my location" : "Use my location";
+    e.textContent = locOn() ? (pos ? "✓ On – used only while Boarding is open." : "On.") : "Off. Without it, Boarding goes by the clock: tap “I'm already at the airport” when you are there.";
+  }
+  $("#loc-btn") && $("#loc-btn").addEventListener("click", function () {
+    if (locOn()) { try { localStorage.removeItem("boarding-loc"); } catch (e) {} pos = null; majLoc(); if (dernier) afficherVols(dernier); return; }
+    try { localStorage.setItem("boarding-loc", "1"); } catch (e) {}
+    lirePosition(function (p) { majLoc(); if (!p) { $("#loc-etat").innerHTML = locAideRefus(); } if (dernier) afficherVols(dernier); });
+  });
+  majLoc();
+
+  // ---- « Next step » : une seule action, selon l'endroit où l'on est et le moment du voyage ----
+  function memo(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+  function cleV(v) { return String(v.n).replace(/\s/g, "") + "|" + v.d; }
+  function aeroport(v) {   // déjà à l'aéroport de départ ? (position, sinon « I'm already at the airport »)
+    var m = memo("boarding-aero"); if (m && m.k === cleV(v)) return true;
+    if (pos && v.ola != null && now() - pos.t < 900) return distKm(pos.la, pos.lo, v.ola, v.olo) < 1.5;
+    return false;
+  }
+  function etapeHtml(v) {
+    var t = now(), dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, cw = v.cw || {}, k = cleV(v);
+    var parti = v.tk || v.atk || (v.ads && !v.ads.gr), pose = v.ln || v.ald || v.st === "Arrived";
+    if (!dep || /^Canceled/.test(v.st || "") || t < dep - 26 * 3600 || (arr && t > arr + 2 * 3600)) return "";
+    var bloc = function (titre, sous, boutons) { return '<div class="etape"><span class="etape-t">NEXT STEP</span><b>' + titre + "</b>" + (sous ? "<small>" + sous + "</small>" : "") + (boutons || "") + "</div>"; };
+    var bt = function (act, txt, cl) { return '<button type="button" class="bouton ' + (cl || "") + '" data-etape="' + act + '">' + txt + "</button>"; };
+    var lien = function (act, txt) { return '<button type="button" class="lien" data-etape="' + act + '">' + txt + "</button>"; };
+    // à l'arrivée
+    if (pose || (parti && arr && t > arr - 1200)) {
+      var tb = v.b || (cw.b && cw.b.v);
+      return bloc("Welcome to " + esc(v.ac2 || v.a), tb ? "Baggage belt <b>" + esc(tb) + "</b>" + (v.b ? "" : " · reported by " + nVoy(cw.b.n)) : "Belt not known yet.", bt("belt", tb ? "Report a different belt" : "Report the belt", "second"));
+    }
+    if (parti) return bloc("In flight", "Landing " + (arr ? hm(arr, v.az) + " local time" : "") , "");
+    var q = memo("boarding-file"), secok = memo("boarding-secok"), auAero = aeroport(v);
+    var fichier = filesCache[v.o] && filesCache[v.o].files && filesCache[v.o].files.sec;
+    // dans la file de sécurité
+    if (q && q.k === k) {
+      return bloc("In the security queue", "Since " + new Date(q.t0 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (locOn() ? " · we'll notice when you've moved on" : ""), bt("fin", "I'm through security") + lien("annuler", "Not in the queue"));
+    }
+    // sécurité passée : porte, embarquement, à bord
+    if (secok && secok.k === k) {
+      var g = v.g || (cw.g && cw.g.v), merci = secok.m != null && t - secok.t < 1800 ? "✓ Security took ~" + secok.m + " min – thanks! " : "";
+      if (cw.bd && !v.hx) return bloc("Boarding has started", merci + (g ? "Gate <b>" + esc(g) + "</b>" : ""), bt("bord", "I'm on board · find my plane"));
+      if (g) return bloc("Gate " + esc(g), merci + (v.gp ? "Changed – was " + esc(v.gp) : cw.g && !v.g ? "Reported by " + nVoy(cw.g.n) : "Departure " + hm(dep, v.oz)), (t > dep - 3600 && !v.hx ? bt("bord", "I'm on board · find my plane", "second") : "") + lien("gate", "Report the gate / boarding"));
+      return bloc("Gate not known yet", merci + "Look at the screens and share it with the other travellers.", bt("gate", "Report the gate"));
+    }
+    // à l'aéroport, avant la sécurité
+    if (auAero) {
+      return bloc("Security queue", fichier ? "~" + fichier.m + " min now · " + fichier.n + (fichier.n > 1 ? " reports" : " report") : "No report yet – be the first", bt("debut", "I'm in the queue") + lien("passee", "Already through security"));
+    }
+    // pas encore à l'aéroport
+    if (dep - t < 26 * 3600) {
+      var sous = v.lv ? (v.lv > t ? "Leave home at " + hm(v.lv, v.oz) + (v.tm ? " · " + v.tm + " min to the airport" : "") : "Time to go – " + (v.tm ? v.tm + " min to the airport" : "")) : "Departure " + hm(dep, v.oz) + (v.t ? " · Terminal " + esc(v.t) : "");
+      var uberOk = v.ola != null && (!v.lv || v.lv - t < 3 * 3600);
+      return bloc(v.lv && v.lv <= t + 1800 ? "Time to go" : "Getting to " + esc(v.o), sous, (uberOk ? '<a class="bouton second" target="_blank" rel="noopener" href="' + uber(v) + '">Uber to the airport</a>' : "") + lien("aero", "I'm already at the airport"));
+    }
+    return "";
+  }
+  function lierEtape(d, v) {
+    d.querySelectorAll("[data-etape]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var a = b.getAttribute("data-etape"), k = cleV(v);
+        if (a === "aero") { memo("boarding-aero", { k: k, t: now() }); afficherVols(dernier); }
+        else if (a === "passee") { memo("boarding-secok", { k: k, t: now(), m: null }); afficherVols(dernier); }
+        else if (a === "debut") {
+          var go = function () { memo("boarding-file", { ap: v.o, q: "sec", k: k, t0: Math.round(now()), la: pos && pos.la, lo: pos && pos.lo }); afficherVols(dernier); afficherFiles(dernier.vols || [], false); };
+          if (locOn()) lirePosition(go); else go();
+        }
+        else if (a === "annuler") { memo("boarding-file", null); afficherVols(dernier); }
+        else if (a === "fin") finFile(v, false);
+        else if (a === "gate" || a === "belt") signalerOuvrir(v);
+        else if (a === "bord") abord(v, b);
+      });
+    });
+  }
+  // fin de la file de sécurité : par le bouton, ou automatiquement quand la position a bougé (≥ 150 m, ≥ 3 min)
+  function finFile(v, auto) {
+    var q = memo("boarding-file"); if (!q) return;
+    var m = Math.max(0, Math.round((now() - q.t0) / 60));
+    memo("boarding-file", null);
+    memo("boarding-secok", { k: q.k, t: now(), m: m <= 180 ? m : null });
+    if (m > 180) { afficherVols(dernier); return; }
+    AVIATOR.appel({ action: "boarding.file", jeton: jeton, ap: q.ap, q: q.q, m: m }).then(function (r) {
+      if (r && r.ok) { r.lu = now(); filesCache[q.ap] = r; }
+      toast((auto ? "You've moved on: security" : "Security") + " took ~" + m + " min – shared with other travellers. Thanks!", true);
+      if (dernier) afficherVols(dernier);
+    }).catch(function () { if (dernier) afficherVols(dernier); });
+  }
+  function verifierFile() {
+    var q = memo("boarding-file"); if (!q || !locOn() || q.la == null) return;
+    lirePosition(function (p) {
+      if (!p || now() - q.t0 < 180) return;
+      if (distKm(p.la, p.lo, q.la, q.lo) > 0.15) { var v = ((dernier && dernier.vols) || []).filter(function (x) { return cleV(x) === q.k; })[0]; if (v) finFile(v, true); }
+    });
+  }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { verifierFile(); if (locOn()) lirePosition(function () { if (dernier) afficherVols(dernier); }); } });
 
   // ---- avis des voyageurs : porte, tapis (avec le nombre de confirmations) ----
   function nVoy(n) { return n + (n > 1 ? " travellers" : " traveller"); }
@@ -431,6 +545,8 @@
     afficherUber(vols);
     bpPurger(vols);
     afficherFiles(vols, false);
+    if (locOn() && (!pos || now() - pos.t > 300) && !lirePosition.encours) { lirePosition.encours = true; lirePosition(function (p) { lirePosition.encours = false; if (p) { verifierFile(); afficherVols(o); } }); }
+    if (!filesCache.lu && vols[0] && vols[0].o) { filesCache.lu = 1; AVIATOR.appel({ action: "boarding.files", jeton: jeton, ap: vols[0].o }).then(function (r) { if (r && r.ok) { r.lu = now(); filesCache[r.ap] = r; afficherVols(o); } }).catch(function () {}); }
     if (!vols.length) { box.innerHTML = '<div class="carte"><h2>No flight yet</h2><p class="aide">Scan your boarding pass or type your flight number above. You can add flights months ahead.</p></div>'; return; }
     box.innerHTML = "";
     vols.forEach(function (v) {
@@ -445,6 +561,7 @@
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
+          etapeHtml(v) +
           (cw.pax ? '<p class="foule">' + cw.pax + " Boarding travellers on this flight</p>" : "") +
           (cw.bd && !(v.tk || v.atk) && dep > t - 1800 ? '<div class="bandeau bleu"><span>BOARDING STARTED<small>Reported by ' + nVoy(cw.bd.n) + " at " + hm(cw.bd.t, v.oz) + "</small></span></div>" : "") +
           bandeaux(v) +
@@ -475,6 +592,7 @@
         if (im) im.addEventListener("error", function () { var c = im.nextElementSibling; im.remove(); if (c && c.classList.contains("credit")) c.remove(); });
         var bb = d.querySelector("[data-bp]"); if (bb) bb.addEventListener("click", function () { bpMontrer(v); });
         d.querySelector("[data-partager]").addEventListener("click", function (ev) { partager(v, ev.currentTarget); });
+        lierEtape(d, v);
         var sg = d.querySelector("[data-signaler]"); if (sg) sg.addEventListener("click", function () { signalerOuvrir(v); });
         var ab = d.querySelector("[data-abord]"); if (ab) ab.addEventListener("click", function () { abord(v, ab); });
         var pm = d.querySelector("[data-pasmonavion]"); if (pm) pm.addEventListener("click", function () {
@@ -1060,7 +1178,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "35";
+  var VERSION = "36";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

@@ -272,3 +272,10 @@ details.avion-carte .corps{padding-top:4px}
 .file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--trait)}
 .file b{display:block;font-size:17px}.file small{display:block;font-size:14px;color:var(--encre-3);font-weight:500}
 .file .bouton.petit{width:auto;min-height:44px;height:auto;padding:8px 14px;font-size:15px;white-space:nowrap;flex:none}
+
+/* « Next step » */
+.etape{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.etape-t{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+.etape>b{font:700 24px/1.15 var(--titre)}
+.etape small{font-size:15px;color:var(--encre-2);font-weight:500}
+.etape .lien{align-self:flex-start;margin:0}
