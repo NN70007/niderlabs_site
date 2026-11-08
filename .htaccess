@@ -2,6 +2,7 @@
 # Les en-têtes propres à l'espace d'administration sont dans espace/.htaccess.
 
 ErrorDocument 404 /404.html
+AddType font/woff2 .woff2
 Options -Indexes
 
 # Forcer HTTPS

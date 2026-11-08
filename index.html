@@ -1,45 +1,138 @@
 <!doctype html>
-<html lang="fr" data-titre="{nom} — site en construction">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Site en construction</title>
-<meta name="description" content="Site en construction.">
-<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111214" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="styles.css?v=20261104a">
+<title>NiderLabs — Conception logicielle</title>
+<meta name="description" content="NiderLabs — conception logicielle. Créations : NiderVoice et Vox Caladrii.">
+<meta name="theme-color" content="#F7FAFD">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NiderLabs">
+<meta property="og:title" content="NiderLabs — Conception logicielle">
+<meta property="og:url" content="https://niderlabs.com/">
+<link rel="icon" type="image/svg+xml" href="assets/niderlabs-n.svg?v=20261108">
+<link rel="preload" href="assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/inter-latin-400-normal.woff2) format('woff2')}
+  @font-face{font-family:Inter;font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/inter-latin-500-normal.woff2) format('woff2')}
+  @font-face{font-family:Inter;font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/inter-latin-600-normal.woff2) format('woff2')}
+  :root{--navy:#0C447C;--blue:#378ADD;--accent:#5FA4E8;--paper:#F7FAFD;--card:#FFFFFF;--line:#DCE6F0;--text:#536A82}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:clip}
+  body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--text);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.6}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 56px;position:relative}
+  header{display:flex;align-items:center;justify-content:space-between;height:96px;position:relative;z-index:2}
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+  .brand img{width:28px;height:auto}
+  .brand span{font-size:20px;font-weight:600;color:var(--navy);letter-spacing:-.01em}
+  .brand span b{font-weight:600;color:var(--blue)}
+  .lang{display:flex;gap:4px;font-size:13px;font-weight:500}
+  .lang button{border:1px solid var(--line);background:transparent;color:var(--text);padding:5px 10px;border-radius:999px;cursor:pointer;font:inherit}
+  .lang button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+
+  /* Présentation : composition typographique, N en filigrane */
+  .hero{position:relative;padding:120px 0 140px}
+  .hero .watermark{position:absolute;right:-28px;top:50%;transform:translateY(-50%);width:min(462px,40vw);height:auto;opacity:.11;pointer-events:none;z-index:0}
+  .hero h1{position:relative;z-index:1;font-size:clamp(53px,8.5vw,120px);line-height:.96;font-weight:600;color:var(--navy);letter-spacing:-.045em}
+  .hero h1>span{display:block}
+  .hero h1 .dot{color:var(--blue)}
+  .hero .rule{position:relative;z-index:1;width:72px;height:3px;background:var(--blue);margin-top:44px;border-radius:2px}
+
+  /* Créations : deux surfaces blanches */
+  .creations{padding:0 0 112px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin-bottom:24px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .card{background:var(--card);border:1px solid transparent;border-radius:20px;padding:40px 44px 36px;display:flex;flex-direction:column;gap:16px;text-decoration:none;color:inherit;transition:border-color .2s}
+  .card:hover{border-color:var(--line)}
+  .card .logo{height:60px;display:flex;align-items:center}
+  .card .logo img{height:100%;width:auto;max-width:100%}
+  .card .logo img.vc{height:128%}
+  .tag{font-size:18px;color:#2C5E92;font-weight:500;letter-spacing:-.005em}
+  .link{margin-top:6px;font-size:14px;font-weight:500;color:var(--blue);display:inline-flex;gap:6px;align-items:center}
+  .card:hover .link span{transform:translate(2px,-2px)}
+  .link span{transition:transform .2s;display:inline-block}
+
+  /* Pied de page intégré */
+  footer{border-top:1px solid var(--line);padding:28px 0 44px;display:flex;justify-content:space-between;align-items:baseline;gap:12px 24px;flex-wrap:wrap;font-size:14px}
+  footer .copy{color:#A9B5C3}
+  footer .mail{color:var(--text)}
+  footer .mail a{color:var(--blue);text-decoration:none;font-weight:500;margin-left:8px}
+
+  [data-en]{display:none}
+  html[lang="en"] [data-fr]{display:none}
+  html[lang="en"] [data-en]{display:revert}
+
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  .hero h1>span{animation:rise .8s ease-out both}
+  .hero h1>span+span{animation-delay:.12s}
+  .hero .rule{animation:rise .8s .3s ease-out both}
+  @media (prefers-reduced-motion:reduce){.hero *{animation:none!important}}
+
+  @media (max-width:760px){
+    .wrap{padding:0 16px}
+    header{height:72px}
+    .hero{padding:48px 16px 150px;overflow:hidden;margin:0 -16px}
+    .hero .watermark{right:16px;top:auto;bottom:40px;transform:none;width:150px;opacity:.12}
+    .hero h1{font-size:clamp(44px,13vw,64px)}
+    .hero .rule{margin-top:28px}
+    .creations{padding-bottom:64px}
+    .cards{grid-template-columns:1fr;gap:16px}
+    .card{padding:32px 24px 28px}
+    .card .logo{height:48px}
+    .tag{font-size:15.5px}
+    footer{flex-direction:column;align-items:flex-start}
+    footer .mail a{margin-left:0;display:block}
+  }
+</style>
 </head>
 <body>
-<header class="entete">
-  <div class="conteneur">
-    <a class="marque" href="./"><span class="monogramme" data-site="initiale" aria-hidden="true">·</span><span data-site="nom">Site en construction</span></a>
-    <span class="domaine" data-site="domaine"></span>
-  </div>
-</header>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./" aria-label="NiderLabs">
+      <img src="assets/niderlabs-n.svg?v=20261108" alt="">
+      <span>Nider<b>Labs</b></span>
+    </a>
+    <div class="lang" role="group" aria-label="Langue">
+      <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
 
-<main>
-  <div class="conteneur">
-    <section class="chantier" aria-labelledby="titre">
-      <span class="etiquette">En construction</span>
-      <h1 id="titre" data-site="nom">Site en construction</h1>
-      <p class="chapeau">Ce site est en cours de préparation. Les premières informations seront publiées ici très prochainement.</p>
-      <div class="barre" aria-hidden="true"><span></span></div>
-    </section>
+  <section class="hero">
+    <img class="watermark" src="assets/niderlabs-n.svg?v=20261108" alt="" aria-hidden="true">
+    <h1 data-fr><span>Conception</span><span>logicielle<span class="dot">.</span></span></h1>
+    <h1 data-en><span>Software</span><span>design<span class="dot">.</span></span></h1>
+    <div class="rule" aria-hidden="true"></div>
+  </section>
 
-    <section id="actualites" aria-labelledby="titre-actus" hidden>
-      <h2 class="titre-section" id="titre-actus">Actualités</h2>
-      <div class="articles"></div>
-    </section>
-  </div>
-</main>
+  <section class="creations" id="creations">
+    <div class="eyebrow"><span data-fr>Créations</span><span data-en>Creations</span></div>
+    <div class="cards">
+      <a class="card" href="https://nidervoice.com/" rel="noopener">
+        <div class="logo"><img src="assets/nidervoice-logo.svg?v=20261108" alt="NiderVoice"></div>
+        <div class="tag"><span data-fr>Dictée professionnelle · 100 % locale</span><span data-en>Professional dictation · 100% local</span></div>
+        <span class="link">nidervoice.com <span>↗</span></span>
+      </a>
+      <a class="card" href="https://caladrii.com/" rel="noopener">
+        <div class="logo"><img class="vc" src="assets/vox-caladrii-logo.svg?v=20261108" alt="Vox Caladrii"></div>
+        <div class="tag"><span data-fr>Reconnaissance vocale · Radiologie</span><span data-en>Speech recognition · Radiology reporting</span></div>
+        <span class="link">caladrii.com <span>↗</span></span>
+      </a>
+    </div>
+  </section>
 
-<footer class="pied">
-  <div class="conteneur">
-    <span>© <span data-annee></span> <span data-site="nom"></span></span>
-    <span data-site="domaine"></span>
-  </div>
-</footer>
-<script src="site.js?v=20261104a"></script>
+  <footer>
+    <span class="copy">© 2026 NiderLabs</span>
+    <span class="mail"><span data-fr>Correspondance</span><span data-en>Contact</span><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></span>
+  </footer>
+</div>
+<script>
+document.querySelectorAll('.lang button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.documentElement.lang=b.dataset.lang;
+    document.querySelectorAll('.lang button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+  });
+});
+</script>
 </body>
 </html>
