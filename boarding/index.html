@@ -20,7 +20,7 @@
 <script src="../aviator/commun.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <script src="qrcode-1.4.4.js" defer></script>
-<script src="boarding.js?v=41" defer></script>
+<script src="boarding.js?v=41" defer onerror="setTimeout(function(){try{if(!sessionStorage.getItem('boarding-retry')){sessionStorage.setItem('boarding-retry','1');location.reload();}}catch(e){}},5000)"></script>
 </head>
 <body>
 <header class="barre">
