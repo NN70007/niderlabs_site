@@ -717,12 +717,19 @@
   }
 
   // ---- carte : route et position estimée ----
-  function carteVol(el, v) {
-    if (!el) return;
-    if (v.ola == null || v.ala == null || !window.L) { el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return; }
-    var m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false });
+  // avion dessiné (et non l'emoji ✈, que l'iPhone affiche en couleur sans tenir compte de la teinte), pointe vers le nord puis tourné selon le cap
+  function iconeAvion(couleur, cap, taille, opacite) {
+    var t = taille || 28;
+    return L.divIcon({ className: "", iconSize: [t, t], iconAnchor: [t / 2, t / 2],
+      html: '<svg width="' + t + '" height="' + t + '" viewBox="0 0 24 24" style="display:block;transform:rotate(' + Math.round(cap || 0) + 'deg);opacity:' + (opacite || 1) + '"><path fill="' + couleur + '" stroke="#fff" stroke-width="1.2" stroke-linejoin="round" d="M12 1.6c.9 0 1.5.8 1.5 1.9v5.4l8 4.7v2.2l-8-2.5v5l2.3 1.7v1.7L12 21l-3.8 1v-1.7l2.3-1.7v-5l-8 2.5v-2.2l8-4.7V3.5c0-1.1.6-1.9 1.5-1.9z"/></svg>' });
+  }
+  function carteVol(el, v, grand) {
+    if (!el) return null;
+    if (v.ola == null || v.ala == null || !window.L) { el.outerHTML = '<p class="aide">Map not available for this flight.</p>'; return null; }
+    var m = L.map(el, grand ? { zoomControl: true, attributionControl: true } : { zoomControl: false, attributionControl: true, scrollWheelZoom: false, dragging: false, touchZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false });
+    if (!grand) { el.style.cursor = "zoom-in"; el.addEventListener("click", function () { carteGrande(v); }); }
     // fond OpenStreetMap (sans clé) ; assombri par un filtre CSS en mode nuit
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 9, className: AVIATOR.sombre() ? "tuiles-nuit" : "" }).addTo(m);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: grand ? 12 : 9, className: AVIATOR.sombre() ? "tuiles-nuit" : "" }).addTo(m);
     var R = Math.PI / 180, la1 = v.ola * R, lo1 = v.olo * R, la2 = v.ala * R, lo2 = v.alo * R;
     var dd = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((la2 - la1) / 2), 2) + Math.cos(la1) * Math.cos(la2) * Math.pow(Math.sin((lo2 - lo1) / 2), 2)));
     var pt = function (f) {
@@ -739,21 +746,35 @@
     pin([v.ola, v.olo], v.o); pin([v.ala, v.alo], v.a);
     if (f > 0 && f < 1) {
       var p = pt(f), q = pt(Math.min(1, f + 0.01)), cap = Math.atan2(q[1] - p[1], q[0] - p[0]) / R;
-      L.marker(p, { icon: L.divIcon({ className: "", html: '<span class="avion" style="transform:rotate(' + (cap - 90).toFixed(0) + 'deg)">✈</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), interactive: false }).addTo(m);
+      L.marker(p, { icon: iconeAvion("#4F8FE8", cap, 24, 0.6), interactive: false }).addTo(m);
     }
     // position réelle (radar ADS-B) en plus de la position estimée d'après les horaires
     var b = L.latLngBounds(ligne), a = v.ads;
     if (a && a.la != null && a.lo != null) {
       var reel = [a.la, a.lo];
-      L.marker(reel, { icon: L.divIcon({ className: "", html: '<span class="avion reel" style="transform:rotate(' + ((a.tr != null ? a.tr : 0) - 90) + 'deg)">✈</span>', iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, zIndexOffset: 1000 }).addTo(m);
+      L.marker(reel, { icon: iconeAvion("#1E9E57", a.tr, 32, 1), interactive: false, zIndexOffset: 1000 }).addTo(m);
       b.extend(reel);
     }
-    var leg = el.parentNode && el.parentNode.querySelector(".carte-leg");
+    var leg = grand ? $("#cg-leg") : el.parentNode && el.parentNode.querySelector(".carte-leg");
     if (leg) leg.innerHTML = (f > 0 && f < 1 ? '<span><i class="pt est"></i>Estimated from the timetable</span>' : "") +
       (a && a.la != null ? '<span><i class="pt live"></i>Live radar · ' + (a.gr ? (a.gs > 3 ? "taxiing" : "on the ground") : (a.alt ? Number(a.alt).toLocaleString("en") + " ft" : "") + (a.gs ? " · " + Math.round(a.gs * 1.852) + " km/h" : "")) + (a.vu > 30 ? " · " + Math.round(a.vu / 60) + " min ago" : "") + "</span>" : "");
     m.fitBounds(b, { padding: [36, 36] });
     setTimeout(function () { m.invalidateSize(); m.fitBounds(b, { padding: [36, 36] }); }, 60);
+    return m;
   }
+  // carte en grand, avec retour
+  var carteG = null;
+  function carteGrande(v) {
+    var o = $("#carte-g"); o.hidden = false;
+    $("#cg-titre").textContent = v.n + " · " + v.o + " → " + v.a;
+    if (carteG) { carteG.remove(); carteG = null; }
+    $("#cg-map").innerHTML = "";
+    carteG = carteVol($("#cg-map"), v, true);
+    try { history.pushState({ carte: 1 }, ""); } catch (e) {}
+  }
+  function fermerCarteG() { $("#carte-g").hidden = true; if (carteG) { carteG.remove(); carteG = null; } recaler(); }
+  $("#cg-retour").addEventListener("click", function () { if (history.state && history.state.carte) history.back(); else fermerCarteG(); });
+  window.addEventListener("popstate", function () { if (!$("#carte-g").hidden) fermerCarteG(); });
 
 
 
@@ -1216,7 +1237,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "39";
+  var VERSION = "40";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
