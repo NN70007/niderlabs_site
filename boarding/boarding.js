@@ -579,7 +579,7 @@
           '<div class="cases">' + cas("TERMINAL", v.ta) + cas("GATE", v.ag) + tapisCase(v) + "</div>" + meteoHtml(v) + "</div>" +
           avionHtml(v) + "</section>" +
           '<section class="sec" data-sec="jour"><h3 class="sec-titre">My day</h3>' + journee(v) + "</section>" +
-          '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section>' +
+          '<section class="sec" data-sec="carte"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div><p class="carte-leg"></p></section>' +
           '<div class="pied-vol"><button class="lien" type="button" data-suppr>Remove flight</button></div>';
         d.querySelectorAll("[data-s]").forEach(function (bt) {
           bt.addEventListener("click", function () { var s = d.querySelector('[data-sec="' + bt.getAttribute("data-s") + '"]'); if (s) s.scrollIntoView({ behavior: "smooth", block: "start" }); });
@@ -741,8 +741,18 @@
       var p = pt(f), q = pt(Math.min(1, f + 0.01)), cap = Math.atan2(q[1] - p[1], q[0] - p[0]) / R;
       L.marker(p, { icon: L.divIcon({ className: "", html: '<span class="avion" style="transform:rotate(' + (cap - 90).toFixed(0) + 'deg)">✈</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), interactive: false }).addTo(m);
     }
-    m.fitBounds(L.latLngBounds(ligne), { padding: [36, 36] });
-    setTimeout(function () { m.invalidateSize(); m.fitBounds(L.latLngBounds(ligne), { padding: [36, 36] }); }, 60);
+    // position réelle (radar ADS-B) en plus de la position estimée d'après les horaires
+    var b = L.latLngBounds(ligne), a = v.ads;
+    if (a && a.la != null && a.lo != null) {
+      var reel = [a.la, a.lo];
+      L.marker(reel, { icon: L.divIcon({ className: "", html: '<span class="avion reel" style="transform:rotate(' + ((a.tr != null ? a.tr : 0) - 90) + 'deg)">✈</span>', iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, zIndexOffset: 1000 }).addTo(m);
+      b.extend(reel);
+    }
+    var leg = el.parentNode && el.parentNode.querySelector(".carte-leg");
+    if (leg) leg.innerHTML = (f > 0 && f < 1 ? '<span><i class="pt est"></i>Estimated from the timetable</span>' : "") +
+      (a && a.la != null ? '<span><i class="pt live"></i>Live radar · ' + (a.gr ? (a.gs > 3 ? "taxiing" : "on the ground") : (a.alt ? Number(a.alt).toLocaleString("en") + " ft" : "") + (a.gs ? " · " + Math.round(a.gs * 1.852) + " km/h" : "")) + (a.vu > 30 ? " · " + Math.round(a.vu / 60) + " min ago" : "") + "</span>" : "");
+    m.fitBounds(b, { padding: [36, 36] });
+    setTimeout(function () { m.invalidateSize(); m.fitBounds(b, { padding: [36, 36] }); }, 60);
   }
 
 
@@ -1187,7 +1197,7 @@
       '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h' + (v.al2 > 5 ? " ambre" : "") + '">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
       (arr ? '<div class="bandeau ' + (v.st === "Arrived" ? "bleu" : v.al2 > 5 ? "ambre" : "bleu") + '"><span>' + (v.st === "Arrived" ? "LANDED" : "LANDS AT") + "<small>local time in " + esc(v.ac2 || v.a) + " · " + retard + '</small></span><span class="grand">' + hm(v.ln || arr, v.az) + "</span></div>" : "") +
       '<div class="cases">' + cas("BELT", v.b) + cas("ARR. TERMINAL", v.ta) + cas("ARR. GATE", v.ag) + cas("TOOK OFF", v.tk ? hm(v.tk, v.oz) : "") + "</div>" +
-      meteoHtml(v, "Weather in " + (v.ac2 || v.a)) + '<section class="sec"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div></section></div>';
+      meteoHtml(v, "Weather in " + (v.ac2 || v.a)) + '<section class="sec"><h3 class="sec-titre">Map</h3><div class="carte-vol"></div><p class="carte-leg"></p></section></div>';
     carteVol(box.querySelector(".carte-vol"), v);
   }
   function chargerPartage(s) {
@@ -1206,7 +1216,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "38";
+  var VERSION = "39";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

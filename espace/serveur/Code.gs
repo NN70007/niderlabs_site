@@ -1143,7 +1143,7 @@ function adsLive_(hx) {
       if (!x) return false;
       var lp = x.lastPosition || {};
       a = { gr: x.alt_baro === 'ground', alt: x.alt_baro === 'ground' ? 0 : Number(x.alt_baro) || null, gs: isFinite(Number(x.gs)) ? Math.round(Number(x.gs)) : null,
-        la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, vu: Math.round(Number(x.seen) || 0), cs: String(x.flight || '').trim(), rg: x.r || '' };
+        la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, vu: Math.round(Number(x.seen) || 0), cs: String(x.flight || '').trim(), rg: x.r || '', tr: isFinite(Number(x.track)) ? Math.round(Number(x.track)) : isFinite(Number(x.true_heading)) ? Math.round(Number(x.true_heading)) : null };
       return true;
     } catch (e) { return false; }
   });
