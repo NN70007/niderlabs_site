@@ -1,0 +1,13 @@
+name: diag-site
+on: workflow_dispatch
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B=https://niderlabs.com/boarding
+          echo "VJSON $(curl -s $B/version.json?x=$RANDOM)"
+          curl -s "$B/?x=$RANDOM" -o i.html; echo "IDX $(grep -o 'v=[0-9]*' i.html | sort -u | tr '\n' ' ') cg=$(grep -c cg-retour i.html)"
+          curl -s "$B/boarding.js?v=40" -o b.js; echo "JS $(wc -c < b.js) $(grep -o 'VERSION = "[0-9]*"' b.js) cg=$(grep -c cg-retour b.js)"
+          node -e "new Function(require('fs').readFileSync('b.js','utf8'));console.log('SYNTAX ok')"
+          curl -sI "$B/boarding.css?v=40" | head -1 | sed 's/^/CSS /'
