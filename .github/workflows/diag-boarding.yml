@@ -1,8 +1,14 @@
 name: diag-boarding
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      q:
+        description: 'requête (ex. a=adiag&n=LG8257&d=2026-11-08)'
+        default: 'a=conso'
 jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in https://api.adsb.lol/v2/registration/LX-LBK https://api.adsb.lol/v2/reg/LX-LBK https://opendata.adsb.fi/api/v2/registration/LX-LBK; do echo "== $u"; curl -s -m 30 "$u" | head -c 400; echo; done
+          U='https://script.google.com/macros/s/AKfycbwjfALtYam9glF9Rb9pF_5IuImyFI4tler3PUiHPXBy5L3GOR-hItwuS33eI2wRHUQiAg/exec'
+          echo "RESULT $(curl -sL -m 60 "$U?${{ inputs.q }}")"
