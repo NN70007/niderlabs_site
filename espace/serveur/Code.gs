@@ -1279,7 +1279,7 @@ function foule_(n, d) {
   var l = listeLire_('cw:' + n + ':' + d), now = Date.now() / 1000, out = {};
   ['g', 'b'].forEach(function (k) {
     var par = {};
-    l.filter(function (r) { return r.k === k && now - r.t < 5400; }).forEach(function (r) { var o = par[r.v] = par[r.v] || { v: r.v, u: {}, t: 0 }; o.u[r.u] = 1; o.t = Math.max(o.t, r.t); });
+    l.filter(function (r) { return r.k === k && now - r.t < (k === 'b' ? 3 * 3600 : 5400); }).forEach(function (r) { var o = par[r.v] = par[r.v] || { v: r.v, u: {}, t: 0 }; o.u[r.u] = 1; o.t = Math.max(o.t, r.t); });
     var vals = Object.keys(par).map(function (v) { var o = par[v]; return { v: v, n: Object.keys(o.u).length, t: o.t }; }).sort(function (a, b) { return b.n - a.n || b.t - a.t; });
     if (vals.length) out[k] = { v: vals[0].v, n: vals[0].n, t: vals[0].t, c: vals.length > 1 && vals[1].t > vals[0].t ? vals[1].v : '' };
   });
