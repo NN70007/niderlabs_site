@@ -773,8 +773,8 @@
     try { history.pushState({ carte: 1 }, ""); } catch (e) {}
   }
   function fermerCarteG() { $("#carte-g").hidden = true; if (carteG) { carteG.remove(); carteG = null; } recaler(); }
-  $("#cg-retour").addEventListener("click", function () { if (history.state && history.state.carte) history.back(); else fermerCarteG(); });
-  window.addEventListener("popstate", function () { if (!$("#carte-g").hidden) fermerCarteG(); });
+  if ($("#cg-retour")) $("#cg-retour").addEventListener("click", function () { if (history.state && history.state.carte) history.back(); else fermerCarteG(); });
+  window.addEventListener("popstate", function () { if ($("#carte-g") && !$("#carte-g").hidden) fermerCarteG(); });
 
 
 
@@ -1237,7 +1237,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "40";
+  var VERSION = "41";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }
