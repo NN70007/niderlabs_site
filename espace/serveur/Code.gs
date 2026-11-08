@@ -101,7 +101,7 @@ function doGet(e) {
   }
   if (p.a === 'conso') return json_(consoJours_());
   if (p.a === 'adsdiag') {
-    if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
+    if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, cw: L.cw, raw: listeLire_('cw:' + String(p.n) + ':' + String(p.d)).map(function (r) { return [r.k, r.v, new Date(r.t * 1000).toISOString().slice(11, 16), String(r.u).slice(0, 4)]; }), b: L.b, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
     try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
     catch (err) { return json_({ ok: false, e: String(err && err.message || err).slice(0, 200) }); }
   }
