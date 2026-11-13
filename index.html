@@ -58,9 +58,9 @@
   footer .mail{color:var(--text)}
   footer .mail a{color:var(--blue);text-decoration:none;font-weight:500;margin-left:8px}
 
-  [data-en]{display:none}
-  html[lang="en"] [data-fr]{display:none}
-  html[lang="en"] [data-en]{display:revert}
+  [data-en],[data-es],[data-de]{display:none}
+  html:not([lang="fr"]) [data-fr]{display:none}
+  html[lang="en"] [data-en],html[lang="es"] [data-es],html[lang="de"] [data-de]{display:revert}
 
   @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
   .hero h1>span{animation:rise .8s ease-out both}
@@ -95,6 +95,8 @@
     <div class="lang" role="group" aria-label="Langue">
       <button type="button" data-lang="fr" aria-pressed="true">FR</button>
       <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="es" aria-pressed="false">ES</button>
+      <button type="button" data-lang="de" aria-pressed="false">DE</button>
     </div>
   </header>
 
@@ -102,20 +104,22 @@
     <img class="watermark" src="assets/niderlabs-n.svg?v=20261108" alt="" aria-hidden="true">
     <h1 data-fr><span>Conception</span><span>logicielle<span class="dot">.</span></span></h1>
     <h1 data-en><span>Software</span><span>design<span class="dot">.</span></span></h1>
+    <h1 data-es><span>Diseño</span><span>de software<span class="dot">.</span></span></h1>
+    <h1 data-de><span>Software-</span><span>entwicklung<span class="dot">.</span></span></h1>
     <div class="rule" aria-hidden="true"></div>
   </section>
 
   <section class="creations" id="creations">
-    <div class="eyebrow"><span data-fr>Créations</span><span data-en>Creations</span></div>
+    <div class="eyebrow"><span data-fr>Créations</span><span data-en>Creations</span><span data-es>Creaciones</span><span data-de>Kreationen</span></div>
     <div class="cards">
       <a class="card" href="https://nidervoice.com/" rel="noopener">
-        <div class="logo"><img src="assets/nidervoice-logo.svg?v=20261108" alt="NiderVoice"></div>
-        <div class="tag"><span data-fr>Dictée professionnelle · 100 % locale</span><span data-en>Professional dictation · 100% local</span></div>
+        <div class="logo"><img src="assets/nidervoice-logo.svg?v=20261113" alt="NiderVoice"></div>
+        <div class="tag"><span data-fr>Dictée professionnelle · 100 % locale</span><span data-en>Professional dictation · 100% local</span><span data-es>Dictado profesional · 100 % local</span><span data-de>Professionelles Diktat · 100 % lokal</span></div>
         <span class="link">nidervoice.com <span>↗</span></span>
       </a>
       <a class="card" href="https://caladrii.com/" rel="noopener">
         <div class="logo"><img class="vc" src="assets/vox-caladrii-logo.svg?v=20261108" alt="Vox Caladrii"></div>
-        <div class="tag"><span data-fr>Reconnaissance vocale · Radiologie</span><span data-en>Speech recognition · Radiology</span></div>
+        <div class="tag"><span data-fr>Reconnaissance vocale · Radiologie</span><span data-en>Speech recognition · Radiology</span><span data-es>Reconocimiento de voz · Radiología</span><span data-de>Spracherkennung · Radiologie</span></div>
         <span class="link">caladrii.com <span>↗</span></span>
       </a>
     </div>
@@ -123,16 +127,24 @@
 
   <footer>
     <span class="copy">© 2026 NiderLabs</span>
-    <span class="mail"><span data-fr>Correspondance</span><span data-en>Contact</span><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></span>
+    <span class="mail"><span data-fr>Correspondance</span><span data-en>Contact</span><span data-es>Contacto</span><span data-de>Kontakt</span><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></span>
   </footer>
 </div>
 <script>
-document.querySelectorAll('.lang button').forEach(function(b){
-  b.addEventListener('click',function(){
-    document.documentElement.lang=b.dataset.lang;
-    document.querySelectorAll('.lang button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+(function(){
+  var LANGS=['fr','en','es','de'];
+  function setLang(l){
+    document.documentElement.lang=l;
+    document.querySelectorAll('.lang button').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.lang===l)});
+  }
+  // Browser language by default (French, English, Spanish or German), else English.
+  var nav=(navigator.languages&&navigator.languages[0])||navigator.language||'fr';
+  var first=nav.slice(0,2).toLowerCase();
+  setLang(LANGS.indexOf(first)>=0?first:'en');
+  document.querySelectorAll('.lang button').forEach(function(b){
+    b.addEventListener('click',function(){setLang(b.dataset.lang)});
   });
-});
+})();
 </script>
 </body>
 </html>
