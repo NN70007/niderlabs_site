@@ -1,150 +1,156 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en" data-langs="en fr es de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NiderLabs — Conception logicielle</title>
-<meta name="description" content="NiderLabs — conception logicielle. Créations : NiderVoice et Vox Caladrii.">
-<meta name="theme-color" content="#F7FAFD">
+<title>NiderLabs — software you can verify</title>
+<meta name="description" content="NiderLabs designs software and AI models for professions where data must not leave: on-device speech recognition, chains of trust for models, applications that keep nothing.">
+<meta name="theme-color" content="#F3F5F7">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="NiderLabs">
-<meta property="og:title" content="NiderLabs — Conception logicielle">
+<meta property="og:title" content="NiderLabs — software you can verify">
+<meta property="og:description" content="NiderLabs designs software and AI models for professions where data must not leave: on-device speech recognition, chains of trust for models, applications that keep nothing.">
 <meta property="og:url" content="https://niderlabs.com/">
-<link rel="icon" type="image/svg+xml" href="assets/niderlabs-n.svg?v=20261108">
-<link rel="preload" href="assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<style>
-  @font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/inter-latin-400-normal.woff2) format('woff2')}
-  @font-face{font-family:Inter;font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/inter-latin-500-normal.woff2) format('woff2')}
-  @font-face{font-family:Inter;font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/inter-latin-600-normal.woff2) format('woff2')}
-  :root{--navy:#0C447C;--blue:#378ADD;--accent:#5FA4E8;--paper:#F7FAFD;--card:#FFFFFF;--line:#DCE6F0;--text:#536A82}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{overflow-x:clip}
-  body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--text);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.6}
-  .wrap{max-width:1160px;margin:0 auto;padding:0 56px;position:relative}
-  header{display:flex;align-items:center;justify-content:space-between;height:96px;position:relative;z-index:2}
-  .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-  .brand img{width:28px;height:auto}
-  .brand span{font-size:20px;font-weight:600;color:var(--navy);letter-spacing:-.01em}
-  .brand span b{font-weight:600;color:var(--blue)}
-  .lang{display:flex;gap:4px;font-size:13px;font-weight:500}
-  .lang button{border:1px solid var(--line);background:transparent;color:var(--text);padding:5px 10px;border-radius:999px;cursor:pointer;font:inherit}
-  .lang button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
-
-  /* Présentation : composition typographique, N en filigrane */
-  .hero{position:relative;padding:120px 0 140px}
-  .hero .watermark{position:absolute;right:-28px;top:50%;transform:translateY(-50%);width:min(462px,40vw);height:auto;opacity:.11;pointer-events:none;z-index:0}
-  .hero h1{position:relative;z-index:1;font-size:clamp(53px,8.5vw,120px);line-height:.96;font-weight:600;color:var(--navy);letter-spacing:-.045em}
-  .hero h1>span{display:block}
-  .hero h1 .dot{color:var(--blue)}
-  .hero .rule{position:relative;z-index:1;width:72px;height:3px;background:var(--blue);margin-top:44px;border-radius:2px}
-
-  /* Créations : deux surfaces blanches */
-  .creations{padding:0 0 112px}
-  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin-bottom:24px}
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-  .card{background:var(--card);border:1px solid transparent;border-radius:20px;padding:40px 44px 36px;display:flex;flex-direction:column;gap:16px;text-decoration:none;color:inherit;transition:border-color .2s}
-  .card:hover{border-color:var(--line)}
-  .card .logo{height:60px;display:flex;align-items:center}
-  .card .logo img{height:100%;width:auto;max-width:100%}
-  .card .logo img.vc{height:128%}
-  .tag{font-size:18px;color:#2C5E92;font-weight:500;letter-spacing:-.005em}
-  .link{margin-top:6px;font-size:14px;font-weight:500;color:var(--blue);display:inline-flex;gap:6px;align-items:center}
-  .card:hover .link span{transform:translate(2px,-2px)}
-  .link span{transition:transform .2s;display:inline-block}
-
-  /* Pied de page intégré */
-  footer{border-top:1px solid var(--line);padding:28px 0 44px;display:flex;justify-content:space-between;align-items:baseline;gap:12px 24px;flex-wrap:wrap;font-size:14px}
-  footer .copy{color:#A9B5C3}
-  footer .mail{color:var(--text)}
-  footer .mail a{color:var(--blue);text-decoration:none;font-weight:500;margin-left:8px}
-
-  [data-en],[data-es],[data-de]{display:none}
-  html:not([lang="fr"]) [data-fr]{display:none}
-  html[lang="en"] [data-en],html[lang="es"] [data-es],html[lang="de"] [data-de]{display:revert}
-
-  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-  .hero h1>span{animation:rise .8s ease-out both}
-  .hero h1>span+span{animation-delay:.12s}
-  .hero .rule{animation:rise .8s .3s ease-out both}
-  @media (prefers-reduced-motion:reduce){.hero *{animation:none!important}}
-
-  @media (max-width:760px){
-    .wrap{padding:0 16px}
-    header{height:72px}
-    .hero{padding:48px 16px 150px;overflow:hidden;margin:0 -16px}
-    .hero .watermark{right:16px;top:auto;bottom:40px;transform:none;width:150px;opacity:.12}
-    .hero h1{font-size:clamp(44px,13vw,64px)}
-    .hero .rule{margin-top:28px}
-    .creations{padding-bottom:64px}
-    .cards{grid-template-columns:1fr;gap:16px}
-    .card{padding:32px 24px 28px}
-    .card .logo{height:48px}
-    .tag{font-size:15.5px}
-    footer{flex-direction:column;align-items:flex-start}
-    footer .mail a{margin-left:0;display:block}
-  }
-</style>
+<meta property="og:image" content="https://niderlabs.com/assets/og-image.png">
+<link rel="icon" type="image/svg+xml" href="/assets/niderlabs-n.svg?v=20261108">
+<link rel="stylesheet" href="/assets/nl.css?v=20261116a">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <a class="brand" href="./" aria-label="NiderLabs">
-      <img src="assets/niderlabs-n.svg?v=20261108" alt="">
-      <span>Nider<b>Labs</b></span>
-    </a>
-    <div class="lang" role="group" aria-label="Langue">
-      <button type="button" data-lang="fr" aria-pressed="true">FR</button>
-      <button type="button" data-lang="en" aria-pressed="false">EN</button>
-      <button type="button" data-lang="es" aria-pressed="false">ES</button>
-      <button type="button" data-lang="de" aria-pressed="false">DE</button>
-    </div>
-  </header>
-
-  <section class="hero">
-    <img class="watermark" src="assets/niderlabs-n.svg?v=20261108" alt="" aria-hidden="true">
-    <h1 data-fr><span>Conception</span><span>logicielle<span class="dot">.</span></span></h1>
-    <h1 data-en><span>Software</span><span>design<span class="dot">.</span></span></h1>
-    <h1 data-es><span>Diseño</span><span>de software<span class="dot">.</span></span></h1>
-    <h1 data-de><span>Software-</span><span>entwicklung<span class="dot">.</span></span></h1>
-    <div class="rule" aria-hidden="true"></div>
-  </section>
-
-  <section class="creations" id="creations">
-    <div class="eyebrow"><span data-fr>Créations</span><span data-en>Creations</span><span data-es>Creaciones</span><span data-de>Kreationen</span></div>
-    <div class="cards">
-      <a class="card" href="https://nidervoice.com/" rel="noopener">
-        <div class="logo"><img src="assets/nidervoice-logo.svg?v=20261113" alt="NiderVoice"></div>
-        <div class="tag"><span data-fr>Dictée professionnelle · 100 % locale</span><span data-en>Professional dictation · 100% local</span><span data-es>Dictado profesional · 100 % local</span><span data-de>Professionelles Diktat · 100 % lokal</span></div>
-        <span class="link">nidervoice.com <span>↗</span></span>
-      </a>
-      <a class="card" href="https://caladrii.com/" rel="noopener">
-        <div class="logo"><img class="vc" src="assets/vox-caladrii-logo.svg?v=20261108" alt="Vox Caladrii"></div>
-        <div class="tag"><span data-fr>Reconnaissance vocale · Radiologie</span><span data-en>Speech recognition · Radiology</span><span data-es>Reconocimiento de voz · Radiología</span><span data-de>Spracherkennung · Radiologie</span></div>
-        <span class="link">caladrii.com <span>↗</span></span>
-      </a>
-    </div>
-  </section>
-
-  <footer>
-    <span class="copy">© 2026 NiderLabs</span>
-    <span class="mail"><span data-fr>Correspondance</span><span data-en>Contact</span><span data-es>Contacto</span><span data-de>Kontakt</span><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></span>
-  </footer>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="w bar">
+    <a class="brand" href="/" aria-label="NiderLabs"><img src="/assets/niderlabs-n.svg?v=20261108" width="26" height="26" alt=""><span>Nider<b>Labs</b></span></a>
+    <nav aria-label="Navigation"><a href="/#principes"><span data-fr>Principes</span><span data-en>Principles</span><span data-es>Principios</span><span data-de>Prinzipien</span></a><a href="/#creations"><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></a><a href="/notes/"><span data-fr>Notes</span><span data-en>Notes</span><span data-es>Notas</span><span data-de>Notizen</span></a><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></nav>
+    <div class="lang" role="group" aria-label="Language / Langue"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="fr" aria-pressed="false">FR</button><button type="button" data-lang="es" aria-pressed="false">ES</button><button type="button" data-lang="de" aria-pressed="false">DE</button></div>
+    <button class="menu-btn" type="button" aria-expanded="false">Menu</button>
+  </div>
+</header>
+<main id="main">
+<div class="w hero">
+  <svg class="trace" aria-hidden="true"></svg>
+  <h1><span data-fr><span class="l">Des logiciels</span><span class="l l2">qui se vérifient.</span></span><span data-en><span class="l">Software</span><span class="l l2">you can verify.</span></span><span data-es><span class="l">Software</span><span class="l l2">que usted puede verificar.</span></span><span data-de><span class="l">Software</span><span class="l l2">die Sie überprüfen können.</span></span></h1>
+  <p class="lead" data-fr>NiderLabs conçoit des logiciels et des modèles d'IA pour les métiers où les données ne doivent pas sortir : reconnaissance vocale sur le poste, chaîne de confiance des modèles, applications qui ne gardent rien. Chaque affirmation que nous faisons s'accompagne d'un moyen de la vérifier.</p>
+  <p class="lead" data-en>NiderLabs designs software and AI models for professions where data must not leave: on-device speech recognition, chains of trust for models, applications that keep nothing. Every claim we make comes with a way to check it.</p><p class="lead" data-es>NiderLabs diseña software y modelos de IA para profesiones en las que los datos no deben salir: reconocimiento de voz en el equipo, cadenas de confianza para modelos, aplicaciones que no guardan nada. Cada afirmación que hacemos viene con un modo de verificarlo.</p><p class="lead" data-de>NiderLabs entwickelt Software und KI-Modelle für Berufe, bei denen Daten nicht verlassen dürfen: Spracherkennung direkt auf dem Gerät, Vertrauensketten für Modelle, Anwendungen, die nichts speichern. Jede Aussage, die wir treffen, wird durch eine Möglichkeit zur Überprüfung gestützt.</p>
+  <div class="meta">
+    <span><b>Luxembourg</b></span>
+    <span><span data-fr>Distribution et licences : <b>GOKYO S.à r.l.-S</b></span><span data-en>Distribution and licences: <b>GOKYO S.à r.l.-S</b></span><span data-es>Distribución y licencias: <b>GOKYO S.à r.l.-S</b></span><span data-de>Vertrieb und Lizenzen: <b>GOKYO S.à r.l.-S</b></span></span>
+    <span><a href="/notes/"><span data-fr>4 notes techniques publiées</span><span data-en>4 technical notes published</span><span data-es>4 notas técnicas publicadas</span><span data-de>4 technische Notizen veröffentlicht</span></a></span>
+  </div>
 </div>
-<script>
-(function(){
-  var LANGS=['fr','en','es','de'];
-  function setLang(l){
-    document.documentElement.lang=l;
-    document.querySelectorAll('.lang button').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.lang===l)});
-  }
-  // Browser language by default (French, English, Spanish or German), else English.
-  var nav=(navigator.languages&&navigator.languages[0])||navigator.language||'fr';
-  var first=nav.slice(0,2).toLowerCase();
-  setLang(LANGS.indexOf(first)>=0?first:'en');
-  document.querySelectorAll('.lang button').forEach(function(b){
-    b.addEventListener('click',function(){setLang(b.dataset.lang)});
-  });
-})();
-</script>
+
+<section id="principes" style="padding-top:40px">
+  <div class="w">
+    <div class="sec-head">
+      <h2><span data-fr>Quatre principes, appliqués à chaque ligne.</span><span data-en>Four principles, applied to every line.</span><span data-es>Cuatro principios, aplicados a cada línea.</span><span data-de>Vier Prinzipien, die auf jede Zeile angewendet werden.</span></h2>
+      <p data-fr>Ce ne sont pas des slogans : chacun se traduit par une décision technique que l'on peut constater dans nos logiciels.</p>
+      <p data-en>These are not slogans: each one translates into a technical decision you can observe in our software.</p><p data-es>No son eslóganes: cada uno se traduce en una decisión técnica que puede observar en nuestro software.</p><p data-de>Das sind keine Slogans: Jedes Prinzip übersetzt sich in eine technische Entscheidung, die Sie in unserer Software beobachten können.</p>
+    </div>
+    <div class="sheet principles reveal">
+      <div>
+        <h3><span data-fr>Local d'abord</span><span data-en>Local first</span><span data-es>Primero lo local</span><span data-de>Lokal zuerst</span></h3>
+        <p data-fr>Le calcul se fait là où sont les données : sur l'ordinateur, dans le navigateur, dans l'établissement. Un serveur distant n'est jamais la solution par défaut.</p>
+        <p data-en>Computation happens where the data are: on the computer, in the browser, inside the organisation. A remote server is never the default answer.</p><p data-es>El cálculo se hace donde están los datos: en el ordenador, en el navegador, dentro de la organización. Un servidor remoto nunca es la respuesta por defecto.</p><p data-de>Gerechnet wird dort, wo die Daten sind: auf dem Computer, im Browser, innerhalb der Organisation. Ein entfernter Server ist nie die Standardlösung.</p>
+      </div>
+      <div>
+        <h3><span data-fr>Vérifiable</span><span data-en>Verifiable</span><span data-es>Verificable</span><span data-de>Überprüfbar</span></h3>
+        <p data-fr>Ce que nous affirmons doit pouvoir être contrôlé par un tiers : flux réseau, signature des modèles, empreintes, méthode de mesure publiée.</p>
+        <p data-en>What we claim must be checkable by a third party: network flows, model signatures, fingerprints, a published measurement method.</p><p data-es>Lo que afirmamos debe ser verificable por un tercero: flujos de red, firmas de modelos, huellas, un método de medición publicado.</p><p data-de>Was wir behaupten, muss von einer dritten Partei überprüfbar sein: Netzwerkflüsse, Modellsignaturen, Prüfsummen, eine veröffentlichte Messmethode.</p>
+      </div>
+      <div>
+        <h3><span data-fr>Sobre en données</span><span data-en>Data-minimal</span><span data-es>Mínimo de datos</span><span data-de>Datensparsam</span></h3>
+        <p data-fr>La meilleure protection d'une donnée est de ne pas la créer. Pas d'historique par défaut, pas de profil, pas de compte quand ce n'est pas nécessaire.</p>
+        <p data-en>The best protection for data is not to create it. No history by default, no profile, no account when none is needed.</p><p data-es>La mejor protección para los datos es no crearlos. Sin historial por defecto, sin perfil, sin cuenta cuando no sea necesario.</p><p data-de>Der beste Schutz für Daten ist, sie nicht zu erstellen. Keine Historie standardmäßig, kein Profil, kein Konto, wenn keines benötigt wird.</p>
+      </div>
+      <div>
+        <h3><span data-fr>Honnête sur les limites</span><span data-en>Honest about limits</span><span data-es>Honesto sobre los límites</span><span data-de>Ehrlich über Grenzen</span></h3>
+        <p data-fr>Nous publions nos mesures avec leurs réserves, et nous disons ce qui reste à faire. Une limite connue vaut mieux qu'une promesse.</p>
+        <p data-en>We publish our measurements with their caveats, and we say what remains to be done. A known limit is worth more than a promise.</p><p data-es>Publicamos nuestras mediciones con sus limitaciones y decimos qué queda por hacer. Un límite conocido vale más que una promesa.</p><p data-de>Wir veröffentlichen unsere Messungen mit ihren Einschränkungen und sagen, was noch zu tun bleibt. Eine bekannte Grenze ist mehr wert als ein Versprechen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="w">
+    <div class="sec-head">
+      <h2><span data-fr>Savoir-faire</span><span data-en>Expertise</span><span data-es>Conocimientos</span><span data-de>Fachwissen</span></h2>
+      <p data-fr>Des compétences étroites, approfondies, qui se combinent.</p>
+      <p data-en>Narrow, deep skills that combine.</p><p data-es>Competencias acotadas y profundas, que se combinan.</p><p data-de>Eng umrissene, tiefe Kompetenzen, die sich ergänzen.</p>
+    </div>
+    <div class="areas">
+      <div class="reveal"><h3><span data-fr>La parole sur le poste</span><span data-en>Speech on the device</span><span data-es>La voz en el equipo</span><span data-de>Sprache auf dem Gerät</span></h3><p data-fr>Reconnaissance vocale exécutée localement, sur processeur ou carte graphique, détection de la voix, intégration au poste de travail.</p><p data-en>Speech recognition running locally on CPU or GPU, voice activity detection, integration into the workstation.</p><p data-es>Reconocimiento de voz que se ejecuta localmente en CPU o GPU, detección de actividad vocal, integración en el equipo.</p><p data-de>Spracherkennung, die lokal auf CPU oder GPU läuft, Spracherkennung, Integration in den Arbeitsplatz.</p></div>
+      <div class="reveal"><h3><span data-fr>Entraîner et mesurer</span><span data-en>Training and measuring</span><span data-es>Entrenamiento y medición</span><span data-de>Training und Messen</span></h3><p data-fr>Spécialisation de modèles ouverts sur un vocabulaire métier, avec des données tracées et des jeux de test gelés.</p><p data-en>Specialising open models on a professional vocabulary, with traced data and frozen test sets.</p><p data-es>Especialización de modelos abiertos en un vocabulario profesional, con datos trazados y conjuntos de prueba congelados.</p><p data-de>Spezialisierung offener Modelle auf einen Fachwortschatz, mit nachverfolgbaren Daten und eingefrorenen Testdatensätzen.</p></div>
+      <div class="reveal"><h3><span data-fr>La chaîne de confiance</span><span data-en>Chains of trust</span><span data-es>Cadenas de confianza</span><span data-de>Vertrauensketten</span></h3><p data-fr>Signature des logiciels et des modèles, listes d'empreintes, vérification avant chargement, déploiement contrôlé par la DSI.</p><p data-en>Signing software and models, fingerprint lists, verification before loading, deployment controlled by IT.</p><p data-es>Firmado de software y modelos, listas de huellas, verificación antes de la carga, despliegue controlado por el departamento de informática.</p><p data-de>Signieren von Software und Modellen, Prüfsummenlisten, Verifizierung vor dem Laden, Bereitstellung durch die IT-Abteilung.</p></div>
+      <div class="reveal"><h3><span data-fr>Applications sobres</span><span data-en>Lean applications</span><span data-es>Aplicaciones ligeras</span><span data-de>Schlanke Anwendungen</span></h3><p data-fr>Applications web et mobiles sans traceur ni ressource tierce, qui fonctionnent sans garder les données de leurs utilisateurs.</p><p data-en>Web and mobile applications with no trackers or third-party resources, which work without keeping their users' data.</p><p data-es>Aplicaciones web y móviles sin rastreadores ni recursos de terceros, que funcionan sin guardar los datos de sus usuarios.</p><p data-de>Web- und Mobile-Anwendungen ohne Tracker oder Drittanbieter-Ressourcen, die ohne Speicherung der Nutzerdaten funktionieren.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="creations" style="padding-top:0">
+  <div class="w">
+    <div class="sec-head">
+      <h2><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></h2>
+      <p data-fr>Deux réalisations publiques, chacune avec son propre site, sa documentation et ses mesures.</p>
+      <p data-en>Two public works, each with its own site, documentation and measurements.</p><p data-es>Dos obras públicas, cada una con su propio sitio, documentación y mediciones.</p><p data-de>Zwei öffentliche Arbeiten, jeweils mit eigener Website, Dokumentation und Messungen.</p>
+    </div>
+    <div class="works">
+      <a class="sheet reveal" href="https://nidervoice.com/">
+        <div class="logo"><img src="/assets/nidervoice-logo.svg" width="200" height="52" alt="NiderVoice"></div>
+        <p data-fr>Le logiciel qui fait entrer la reconnaissance vocale, Whisper compris, dans les organisations exigeantes : la voix ne sort pas, seuls les modèles vérifiés se chargent, et tout se vérifie.</p>
+        <p data-en>The software that brings speech recognition, Whisper included, into demanding organisations: the voice never leaves, only verified models load, and everything can be checked.</p><p data-es>El software que lleva el reconocimiento de voz, incluido Whisper, a organizaciones exigentes: la voz nunca sale, solo se cargan modelos verificados y todo puede ser verificado.</p><p data-de>Die Software, die Spracherkennung, einschließlich Whisper, in anspruchsvolle Organisationen bringt: Die Stimme verlässt das Gerät nie, nur geprüfte Modelle werden geladen, und alles lässt sich überprüfen.</p>
+        <span class="go">nidervoice.com</span>
+      </a>
+      <a class="sheet reveal" href="https://caladrii.com/">
+        <div class="logo"><img src="/assets/vox-caladrii-logo.svg" width="200" height="52" alt="Vox Caladrii"></div>
+        <p data-fr>Des modèles de reconnaissance vocale entraînés pour la radiologie, construits sans aucune donnée de patient et mesurés sur des phrases qu'ils n'ont jamais entendues.</p>
+        <p data-en>Speech-recognition models trained for radiology, built without any patient data and measured on sentences they have never heard.</p><p data-es>Modelos de reconocimiento de voz entrenados para radiología, construidos sin ningún dato de paciente y medidos en frases que nunca han escuchado.</p><p data-de>Spracherkennungsmodelle, die für die Radiologie trainiert wurden, ohne Patientendaten erstellt und an Sätzen gemessen, die sie nie gehört haben.</p>
+        <span class="go">caladrii.com</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="w">
+    <div class="sec-head">
+      <h2><span data-fr>Notes techniques</span><span data-en>Technical notes</span><span data-es>Notas técnicas</span><span data-de>Technische Notizen</span></h2>
+      <p data-fr>Ce que nous avons appris, écrit pour être utile, même à ceux qui n'utiliseront jamais nos logiciels.</p>
+      <p data-en>What we have learned, written to be useful, even to people who will never use our software.</p><p data-es>Lo que hemos aprendido, escrito para ser útil, incluso a personas que nunca usarán nuestro software.</p><p data-de>Was wir gelernt haben, geschrieben, um nützlich zu sein, auch für Menschen, die unsere Software nie nutzen werden.</p>
+    </div>
+    <ul class="notes-list reveal">
+      <li><a href="/notes/verifier-dictee-hors-ligne/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Comment vérifier qu'un logiciel de dictée n'envoie rien</span><span data-en>How to check that dictation software sends nothing</span><span data-es>Cómo verificar que el software de dictado no envía nada</span><span data-de>Wie man überprüft, dass Diktiersoftware nichts sendet</span></h3></span><span class="tag"><span data-fr>Sécurité</span><span data-en>Security</span><span data-es>Seguridad</span><span data-de>Sicherheit</span></span></a></li>
+      <li><a href="/notes/signer-modele-ia/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Signer un modèle d'IA : pourquoi et comment</span><span data-en>Signing an AI model: why and how</span><span data-es>Firmar un modelo de IA: por qué y cómo</span><span data-de>Ein KI-Modell signieren: warum und wie</span></h3></span><span class="tag"><span data-fr>Chaîne de confiance</span><span data-en>Chain of trust</span><span data-es>Cadena de confianza</span><span data-de>Vertrauenskette</span></span></a></li>
+      <li><a href="/notes/mesurer-taux-erreur/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Mesurer le taux d'erreur d'une dictée avec sa propre voix</span><span data-en>Measuring a dictation error rate with your own voice</span><span data-es>Medir una tasa de error de dictado con su propia voz</span><span data-de>Die Fehlerrate eines Diktats mit der eigenen Stimme messen</span></h3></span><span class="tag"><span data-fr>Mesure</span><span data-en>Measurement</span><span data-es>Medición</span><span data-de>Messung</span></span></a></li>
+      <li><a href="/notes/whisper-silence/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Pourquoi Whisper invente parfois du texte dans le silence</span><span data-en>Why Whisper sometimes invents text in silence</span><span data-es>Por qué Whisper a veces inventa texto en silencio</span><span data-de>Warum Whisper in der Stille manchmal Text erfindet</span></h3></span><span class="tag"><span data-fr>Modèles</span><span data-en>Models</span><span data-es>Modelos</span><span data-de>Modelle</span></span></a></li>
+    </ul>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="w">
+    <div class="sheet" style="padding:48px 52px;display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:32px;align-items:end">
+      <div>
+        <h2 style="margin-bottom:14px"><span data-fr>Licences, autorisations, presse.</span><span data-en>Licences, permissions, press.</span><span data-es>Licencias, autorizaciones, prensa.</span><span data-de>Lizenzen, Genehmigungen, Presse.</span></h2>
+        <p class="lead" data-fr>Pour utiliser un modèle, citer une mesure, intégrer un logiciel ou écrire sur nos travaux.</p>
+        <p class="lead" data-en>To use a model, cite a measurement, integrate software or write about our work.</p><p class="lead" data-es>Para usar un modelo, citar una medición, integrar software o escribir sobre nuestro trabajo.</p><p class="lead" data-de>Um ein Modell zu verwenden, eine Messung zu zitieren, Software zu integrieren oder über unsere Arbeit zu schreiben.</p>
+      </div>
+      <div><a href="/licences/" style="font-size:22px;font-weight:600"><span data-fr>Licences et droits</span><span data-en>Licensing and rights</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a><br><a href="mailto:contact@niderlabs.com" style="font-size:22px;font-weight:600">contact@niderlabs.com</a></div>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="w">
+    <div class="cols">
+      <div><a class="brand" href="/"><img src="/assets/niderlabs-n.svg?v=20261108" width="24" height="24" alt=""><span>Nider<b>Labs</b></span></a><p style="margin-top:14px;max-width:34ch"><span data-fr>Conception logicielle, depuis le Luxembourg. Distribution, licences et assistance : GOKYO S.à r.l.-S.</span><span data-en>Software design, from Luxembourg. Distribution, licences and support: GOKYO S.à r.l.-S.</span><span data-es>Diseño de software, desde Luxemburgo. Distribución, licencias y asistencia: GOKYO S.à r.l.-S.</span><span data-de>Softwareentwicklung aus Luxemburg. Vertrieb, Lizenzen und Support: GOKYO S.à r.l.-S.</span></p></div>
+      <div><h4><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></h4><ul><li><a href="https://nidervoice.com/">NiderVoice</a></li><li><a href="https://caladrii.com/">Vox Caladrii</a></li></ul></div>
+      <div><h4><span data-fr>Notes techniques</span><span data-en>Technical notes</span><span data-es>Notas técnicas</span><span data-de>Technische Notizen</span></h4><ul><li><a href="/notes/"><span data-fr>Toutes les notes</span><span data-en>All notes</span><span data-es>Todas las notas</span><span data-de>Alle Notizen</span></a></li><li><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing and rights</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></li></ul></div>
+      <div><h4><span data-fr>Légal</span><span data-en>Legal</span><span data-es>Legal</span><span data-de>Rechtliches</span></h4><ul><li><a href="/mentions-legales/"><span data-fr>Mentions légales</span><span data-en>Legal notice</span><span data-es>Aviso legal</span><span data-de>Impressum</span></a></li><li><a href="/mentions-legales/#confidentialite"><span data-fr>Confidentialité du site</span><span data-en>Site privacy</span><span data-es>Privacidad del sitio</span><span data-de>Datenschutz der Website</span></a></li><li><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 NiderLabs</span><span><span data-fr>Aucun cookie, aucun traceur.</span><span data-en>No cookies, no trackers.</span><span data-es>Ningún cookie, ningún rastreador.</span><span data-de>Keine Cookies, keine Tracker.</span></span></div>
+  </div>
+</footer>
+<script src="/assets/nl.js?v=20261116a"></script>
 </body>
 </html>

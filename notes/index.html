@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" data-langs="en fr es de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Technical notes — NiderLabs</title>
+<meta name="description" content="Technical notes from NiderLabs on on-device AI, model signing, measuring speech recognition and its pitfalls.">
+<meta name="theme-color" content="#F3F5F7">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Technical notes — NiderLabs">
+<meta property="og:description" content="Technical notes from NiderLabs on on-device AI, model signing, measuring speech recognition and its pitfalls.">
+<meta property="og:url" content="https://niderlabs.com/notes/">
+<meta property="og:image" content="https://niderlabs.com/assets/og-image.png">
+<link rel="icon" type="image/svg+xml" href="/assets/niderlabs-n.svg?v=20261108">
+<link rel="stylesheet" href="/assets/nl.css?v=20261116a">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="w bar">
+    <a class="brand" href="/" aria-label="NiderLabs"><img src="/assets/niderlabs-n.svg?v=20261108" width="26" height="26" alt=""><span>Nider<b>Labs</b></span></a>
+    <nav aria-label="Navigation"><a href="/#principes"><span data-fr>Principes</span><span data-en>Principles</span><span data-es>Principios</span><span data-de>Prinzipien</span></a><a href="/#creations"><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></a><a href="/notes/" aria-current=page><span data-fr>Notes</span><span data-en>Notes</span><span data-es>Notas</span><span data-de>Notizen</span></a><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></nav>
+    <div class="lang" role="group" aria-label="Language / Langue"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="fr" aria-pressed="false">FR</button><button type="button" data-lang="es" aria-pressed="false">ES</button><button type="button" data-lang="de" aria-pressed="false">DE</button></div>
+    <button class="menu-btn" type="button" aria-expanded="false">Menu</button>
+  </div>
+</header>
+<main id="main">
+<div class="w page-head">
+  <div class="crumbs"><a href="/">NiderLabs</a> / Notes</div>
+  <h1><span data-fr>Notes techniques</span><span data-en>Technical notes</span><span data-es>Notas técnicas</span><span data-de>Technische Notizen</span></h1>
+  <p class="lead" data-fr>Ce que nous apprenons en construisant des logiciels qui gardent les données chez leurs utilisateurs. Écrit pour être utile à tous, y compris à ceux qui n'utiliseront jamais nos produits.</p>
+  <p class="lead" data-en>What we learn while building software that keeps data with its users. Written to be useful to everyone, including those who will never use our products.</p><p class="lead" data-es>¿Qué aprendemos al construir software que mantiene los datos con sus usuarios? Escrito para ser útil a todos, incluidos aquellos que nunca utilizarán nuestros productos.</p><p class="lead" data-de>Was wir beim Bau von Software lernen, die die Daten bei ihren Nutzern lässt. Geschrieben, um allen nützlich zu sein, auch denen, die unsere Produkte nie verwenden werden.</p>
+</div>
+<section style="padding-top:24px">
+  <div class="w">
+    <ul class="notes-list">
+      <li><a href="/notes/verifier-dictee-hors-ligne/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Comment vérifier qu'un logiciel de dictée n'envoie rien</span><span data-en>How to check that dictation software sends nothing</span><span data-es>Cómo verificar que el software de dictado no envía nada</span><span data-de>Wie man überprüft, dass Diktiersoftware nichts sendet</span></h3></span><span class="tag"><span data-fr>Sécurité</span><span data-en>Security</span><span data-es>Seguridad</span><span data-de>Sicherheit</span></span></a></li>
+      <li><a href="/notes/signer-modele-ia/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Signer un modèle d'IA : pourquoi et comment</span><span data-en>Signing an AI model: why and how</span><span data-es>Firmar un modelo de IA: por qué y cómo</span><span data-de>Ein KI-Modell signieren: warum und wie</span></h3></span><span class="tag"><span data-fr>Chaîne de confiance</span><span data-en>Chain of trust</span><span data-es>Cadena de confianza</span><span data-de>Vertrauenskette</span></span></a></li>
+      <li><a href="/notes/mesurer-taux-erreur/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Mesurer le taux d'erreur d'une dictée avec sa propre voix</span><span data-en>Measuring a dictation error rate with your own voice</span><span data-es>Medir una tasa de error de dictado con su propia voz</span><span data-de>Die Fehlerrate eines Diktats mit der eigenen Stimme messen</span></h3></span><span class="tag"><span data-fr>Mesure</span><span data-en>Measurement</span><span data-es>Medición</span><span data-de>Messung</span></span></a></li>
+      <li><a href="/notes/whisper-silence/"><span class="d"><span data-fr>Nov. 2026</span><span data-en>Nov 2026</span><span data-es>Nov 2026</span><span data-de>Nov 2026</span></span><span><h3><span data-fr>Pourquoi Whisper invente parfois du texte dans le silence</span><span data-en>Why Whisper sometimes invents text in silence</span><span data-es>Por qué Whisper a veces inventa texto en silencio</span><span data-de>Warum Whisper in der Stille manchmal Text erfindet</span></h3></span><span class="tag"><span data-fr>Modèles</span><span data-en>Models</span><span data-es>Modelos</span><span data-de>Modelle</span></span></a></li>
+    </ul>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="w">
+    <div class="cols">
+      <div><a class="brand" href="/"><img src="/assets/niderlabs-n.svg?v=20261108" width="24" height="24" alt=""><span>Nider<b>Labs</b></span></a><p style="margin-top:14px;max-width:34ch"><span data-fr>Conception logicielle, depuis le Luxembourg. Distribution, licences et assistance : GOKYO S.à r.l.-S.</span><span data-en>Software design, from Luxembourg. Distribution, licences and support: GOKYO S.à r.l.-S.</span><span data-es>Diseño de software, desde Luxemburgo. Distribución, licencias y asistencia: GOKYO S.à r.l.-S.</span><span data-de>Softwareentwicklung aus Luxemburg. Vertrieb, Lizenzen und Support: GOKYO S.à r.l.-S.</span></p></div>
+      <div><h4><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></h4><ul><li><a href="https://nidervoice.com/">NiderVoice</a></li><li><a href="https://caladrii.com/">Vox Caladrii</a></li></ul></div>
+      <div><h4><span data-fr>Notes techniques</span><span data-en>Technical notes</span><span data-es>Notas técnicas</span><span data-de>Technische Notizen</span></h4><ul><li><a href="/notes/"><span data-fr>Toutes les notes</span><span data-en>All notes</span><span data-es>Todas las notas</span><span data-de>Alle Notizen</span></a></li><li><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing and rights</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></li></ul></div>
+      <div><h4><span data-fr>Légal</span><span data-en>Legal</span><span data-es>Legal</span><span data-de>Rechtliches</span></h4><ul><li><a href="/mentions-legales/"><span data-fr>Mentions légales</span><span data-en>Legal notice</span><span data-es>Aviso legal</span><span data-de>Impressum</span></a></li><li><a href="/mentions-legales/#confidentialite"><span data-fr>Confidentialité du site</span><span data-en>Site privacy</span><span data-es>Privacidad del sitio</span><span data-de>Datenschutz der Website</span></a></li><li><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 NiderLabs</span><span><span data-fr>Aucun cookie, aucun traceur.</span><span data-en>No cookies, no trackers.</span><span data-es>Ningún cookie, ningún rastreador.</span><span data-de>Keine Cookies, keine Tracker.</span></span></div>
+  </div>
+</footer>
+<script src="/assets/nl.js?v=20261116a"></script>
+</body>
+</html>

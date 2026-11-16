@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-langs="en fr es de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Measuring a dictation error rate with your own voice — NiderLabs</title>
+<meta name="description" content="A simple, rigorous method to measure how well a dictation tool understands your own voice: sentences, recordings, normalisation and word error rate.">
+<meta name="theme-color" content="#F3F5F7">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Measuring a dictation error rate with your own voice — NiderLabs">
+<meta property="og:description" content="A simple, rigorous method to measure how well a dictation tool understands your own voice: sentences, recordings, normalisation and word error rate.">
+<meta property="og:url" content="https://niderlabs.com/notes/mesurer-taux-erreur/">
+<meta property="og:image" content="https://niderlabs.com/assets/og-image.png">
+<link rel="icon" type="image/svg+xml" href="/assets/niderlabs-n.svg?v=20261108">
+<link rel="stylesheet" href="/assets/nl.css?v=20261116a">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="w bar">
+    <a class="brand" href="/" aria-label="NiderLabs"><img src="/assets/niderlabs-n.svg?v=20261108" width="26" height="26" alt=""><span>Nider<b>Labs</b></span></a>
+    <nav aria-label="Navigation"><a href="/#principes"><span data-fr>Principes</span><span data-en>Principles</span><span data-es>Principios</span><span data-de>Prinzipien</span></a><a href="/#creations"><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></a><a href="/notes/" aria-current=page><span data-fr>Notes</span><span data-en>Notes</span><span data-es>Notas</span><span data-de>Notizen</span></a><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></nav>
+    <div class="lang" role="group" aria-label="Language / Langue"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="fr" aria-pressed="false">FR</button><button type="button" data-lang="es" aria-pressed="false">ES</button><button type="button" data-lang="de" aria-pressed="false">DE</button></div>
+    <button class="menu-btn" type="button" aria-expanded="false">Menu</button>
+  </div>
+</header>
+<main id="main">
+<div class="w page-head">
+  <div class="crumbs"><a href="/notes/">Notes</a> / <span data-fr>Mesure</span><span data-en>Measurement</span><span data-es>Medición</span><span data-de>Messung</span></div>
+  <h1><span data-fr>Mesurer le taux d'erreur d'une dictée avec sa propre voix</span><span data-en>Measuring a dictation error rate with your own voice</span><span data-es>Medir una tasa de error de dictado con su propia voz</span><span data-de>Die Fehlerrate eines Diktats mit der eigenen Stimme messen</span></h1>
+  <p class="lead" data-fr>Les chiffres publiés par les éditeurs portent sur d'autres voix, d'autres micros, d'autres phrases. Le seul chiffre qui compte pour vous est celui de votre dictée. Voici comment l'obtenir proprement, en une soirée.</p>
+  <p class="lead" data-en>Figures published by vendors concern other voices, other microphones, other sentences. The only figure that matters to you is that of your own dictation. Here is how to obtain it properly, in one evening.</p><p class="lead" data-es>Las cifras publicadas por los proveedores se refieren a otras voces, otros micrófonos, otras frases. La única cifra que le importa es la de su propio dictado. Aquí tiene cómo obtenerla correctamente, en una sola tarde.</p><p class="lead" data-de>Die von Anbietern veröffentlichten Zahlen betreffen andere Stimmen, andere Mikrofone, andere Sätze. Für Sie zählt nur die Zahl Ihres eigenen Diktats. So ermitteln Sie sie sauber, an einem Abend.</p>
+</div>
+<div class="w article-wrap" style="padding-bottom:96px">
+  <article class="sheet article">
+    <h2><span data-fr>Le principe : le taux de mots erronés</span><span data-en>The principle: word error rate</span><span data-es>El principio: tasa de error de palabras</span><span data-de>Das Prinzip: Wortfehlerrate</span></h2>
+    <p data-fr>On compare la transcription à un texte de référence, mot à mot, et on compte trois sortes d'erreurs : les mots remplacés (S), oubliés (D) et ajoutés (I). On divise par le nombre de mots de la référence (N).</p>
+    <p data-en>You compare the transcript with a reference text, word by word, and count three kinds of errors: words substituted (S), deleted (D) and inserted (I). You divide by the number of words in the reference (N).</p><p data-es>Usted compara el transcript con un texto de referencia, palabra por palabra, y cuenta tres tipos de errores: palabras sustituidas (S), eliminadas (D) e insertadas (I). Divide por el número de palabras en la referencia (N).</p><p data-de>Sie vergleichen das Transkript mit einem Referenztext, Wort für Wort, und zählen drei Arten von Fehlern: ersetzte Wörter (S), gelöschte Wörter (D) und eingefügte Wörter (I). Sie teilen durch die Anzahl der Wörter im Referenztext (N).</p>
+    <div class="formula">WER = (S + D + I) / N</div>
+    <p data-fr>Exemple : 44 erreurs sur un texte de 1 004 mots donnent 4,4 %. Comptez aussi les phrases sans aucune erreur : c'est souvent le chiffre le plus parlant au quotidien, car une phrase parfaite n'a pas besoin d'être retouchée.</p>
+    <p data-en>Example: 44 errors in a 1,004-word text give 4.4%. Also count the sentences with no error at all: it is often the most telling figure in daily use, because a perfect sentence needs no retouching.</p><p data-es>Ejemplo: 44 errores en un texto de 1.004 palabras dan un 4,4 %. Cuente también las frases sin ningún error: a menudo es la cifra más reveladora en el uso diario, porque una frase perfecta no necesita retoques.</p><p data-de>Beispiel: 44 Fehler in einem Text mit 1.004 Wörtern ergeben 4,4 %. Zählen Sie auch die Sätze ganz ohne Fehler: Im Alltag ist das oft die aussagekräftigste Zahl, denn ein fehlerfreier Satz muss nicht nachbearbeitet werden.</p>
+
+    <h2><span data-fr>1. Écrire les phrases</span><span data-en>1. Write the sentences</span><span data-es>1. Escriba las frases</span><span data-de>1. Schreiben Sie die Sätze</span></h2>
+    <ul>
+      <li data-fr>Entre 50 et 100 phrases, soit environ 500 à 1 000 mots : en dessous, le hasard pèse trop.</li>
+      <li data-en>Between 50 and 100 sentences, about 500 to 1,000 words: below that, chance weighs too much.</li><li data-es>Entre 50 y 100 frases, unas 500 a 1,000 palabras: por debajo de eso, el azar pesa demasiado.</li><li data-de>Zwischen 50 und 100 Sätzen, etwa 500 bis 1.000 Wörter: darunter wiegt der Zufall zu stark.</li>
+      <li data-fr>Des phrases représentatives de ce que vous dictez vraiment, avec le vocabulaire difficile de votre métier, mais aussi des phrases ordinaires.</li>
+      <li data-en>Sentences representative of what you really dictate, with your profession's difficult vocabulary, but also ordinary sentences.</li><li data-es>Frases representativas de lo que realmente dicta, con el vocabulario difícil de su profesión, pero también frases ordinarias.</li><li data-de>Sätze, die repräsentativ für das sind, was Sie wirklich diktieren, mit dem schwierigen Vokabular Ihres Berufs, aber auch Alltagssätzen.</li>
+      <li data-fr>Des phrases inventées. Jamais de documents réels : ni données de patients, ni de clients, ni de dossiers.</li>
+      <li data-en>Invented sentences. Never real documents: no patient, client or case data.</li><li data-es>Frases inventadas. Nunca documentos reales: no hay datos de pacientes, clientes o casos.</li><li data-de>Erfundene Sätze. Niemals echte Dokumente: keine Patientendaten, keine Kundendaten oder Fallakten.</li>
+      <li data-fr>Écrivez les nombres comme vous voulez les voir écrits, et fixez vos conventions (traits d'union, sigles) avant de commencer.</li>
+      <li data-en>Write numbers the way you want to see them written, and fix your conventions (hyphens, acronyms) before you start.</li><li data-es>Escriba los números de la manera que desee verlos escritos, y fije sus convenciones (guiones, acrónimos) antes de comenzar.</li><li data-de>Schreiben Sie Zahlen so, wie Sie sie geschrieben haben möchten, und legen Sie Ihre Konventionen (Bindestriche, Akronyme) vor dem Start fest.</li>
+    </ul>
+
+    <h2><span data-fr>2. Enregistrer une fois, comparer autant de fois que voulu</span><span data-en>2. Record once, compare as often as you like</span><span data-es>2. Grabe una vez, compare tantas veces como desee</span><span data-de>2. Einmal aufnehmen, beliebig oft vergleichen</span></h2>
+    <p data-fr>Lisez les phrases à votre rythme habituel, avec votre micro habituel, dans votre pièce habituelle, et enregistrez le tout. Un petit signal sonore entre les phrases facilite le découpage. Ensuite, faites passer le même enregistrement dans chaque logiciel ou modèle à comparer. C'est la seule façon d'une comparaison équitable : deux dictées en direct ne sont jamais identiques.</p>
+    <p data-en>Read the sentences at your usual pace, with your usual microphone, in your usual room, and record it all. A short beep between sentences makes splitting easier. Then run the same recording through every program or model you want to compare. It is the only way to compare fairly: two live dictations are never identical.</p><p data-es>Lea las frases a su ritmo habitual, con su micrófono habitual, en su habitación habitual, y grabe todo. Un pitido corto entre frases facilita la división. Luego ejecute la misma grabación a través de cada programa o modelo que desee comparar. Es la única manera de comparar de forma justa: dos dictados en vivo nunca son idénticos.</p><p data-de>Lesen Sie die Sätze in Ihrem gewohnten Tempo, mit Ihrem gewohnten Mikrofon, in Ihrem gewohnten Raum, und nehmen Sie alles auf. Ein kurzer Signalton zwischen den Sätzen erleichtert das Zerlegen. Lassen Sie dann dieselbe Aufnahme durch jedes Programm oder Modell laufen, das Sie vergleichen möchten. Nur so ist der Vergleich fair: Zwei Live-Diktate sind nie identisch.</p>
+
+    <h2><span data-fr>3. Normaliser avant de compter</span><span data-en>3. Normalise before counting</span><span data-es>3. Normalice antes de contar</span><span data-de>3. Vor dem Zählen normalisieren</span></h2>
+    <p data-fr>Sans précaution, on compte comme erreurs des différences qui n'en sont pas. Appliquez la même normalisation à la référence et à la transcription :</p>
+    <p data-en>Without care, you count as errors differences that are not errors. Apply the same normalisation to the reference and the transcript:</p><p data-es>Sin cuidado, cuenta como errores diferencias que no lo son. Aplique la misma normalización a la referencia y a la transcripción:</p><p data-de>Ohne Sorgfalt zählen Sie als Fehler Unterschiede, die keine Fehler sind. Wenden Sie dieselbe Normalisierung auf die Referenz und das Transkript an:</p>
+    <ul>
+      <li data-fr>ignorer la ponctuation et les majuscules, sauf si elles font partie de ce que vous évaluez ;</li>
+      <li data-en>ignore punctuation and capitals, unless they are part of what you are evaluating;</li><li data-es>ignore la puntuación y las mayúsculas, a menos que sean parte de lo que está evaluando;</li><li data-de>ignorieren Sie Interpunktion und Großschreibung, es sei denn, sie sind Teil dessen, was Sie bewerten;</li>
+      <li data-fr>rapprocher chiffres et nombres en lettres (« 3 » et « trois ») ;</li>
+      <li data-en>reconcile digits and spelt-out numbers ("3" and "three");</li><li data-es>conciliar cifras y números escritos en letras («3» y «tres»);</li><li data-de>Ziffern und ausgeschriebene Zahlen angleichen („3“ und „drei“);</li>
+      <li data-fr>appliquer vos conventions des deux côtés, pour ne pas punir un modèle qui écrit correctement d'une autre façon.</li>
+      <li data-en>apply your conventions on both sides, so as not to penalise a model that writes correctly in another way.</li><li data-es>aplique sus convenciones en ambos lados, para no penalizar un modelo que escribe correctamente de otra manera.</li><li data-de>Wenden Sie Ihre Konventionen auf beiden Seiten an, um ein Modell nicht zu benachteiligen, das auf andere Weise korrekt schreibt.</li>
+    </ul>
+    <p data-fr>Annoncez vos règles avec le résultat. Un taux d'erreur sans ses règles de normalisation n'est pas comparable.</p>
+    <p data-en>State your rules with the result. An error rate without its normalisation rules cannot be compared.</p><p data-es>Indique sus reglas junto con el resultado. Una tasa de error sin sus reglas de normalización no se puede comparar.</p><p data-de>Geben Sie Ihre Regeln zusammen mit dem Ergebnis an. Eine Fehlerrate ohne ihre Normalisierungsregeln lässt sich nicht vergleichen.</p>
+
+    <h2><span data-fr>4. Garder un jeu intact</span><span data-en>4. Keep one set untouched</span><span data-es>4. Mantenga un conjunto intacto</span><span data-de>4. Einen Datensatz unberührt lassen</span></h2>
+    <p data-fr>Si vous réglez un logiciel (dictionnaire, corrections, choix de modèle) en regardant ses erreurs sur vos phrases, ces phrases ne mesurent plus rien d'objectif : vous avez adapté l'outil à elles. Gardez donc deux jeux : un pour régler, un autre, gelé, que vous ne regardez qu'au moment de mesurer.</p>
+    <p data-en>If you tune a program (dictionary, corrections, choice of model) by looking at its errors on your sentences, those sentences no longer measure anything objective: you have fitted the tool to them. So keep two sets: one for tuning, another, frozen, that you look at only when measuring.</p><p data-es>Si ajusta un programa (diccionario, correcciones, elección de modelo) mirando sus errores en sus frases, esas frases ya no miden nada objetivo: ha adaptado la herramienta a ellas. Conserve, por tanto, dos conjuntos: uno para ajustar y otro, congelado, que solo mira en el momento de medir.</p><p data-de>Wenn Sie ein Programm (Wörterbuch, Korrekturen, Modellauswahl) durch die Analyse seiner Fehler in Ihren Sätzen anpassen, messen diese Sätze nichts mehr Objektives: Sie haben das Werkzeug an sie angepasst. Bewahren Sie daher zwei Datensätze auf: einen zum Abstimmen und einen anderen, eingefrorenen, den Sie nur zur Messung heranziehen.</p>
+
+    <h2><span data-fr>5. Lire les erreurs, pas seulement le chiffre</span><span data-en>5. Read the errors, not just the figure</span><span data-es>5. Lea los errores, no solo la cifra</span><span data-de>5. Lesen Sie die Fehler, nicht nur die Zahl</span></h2>
+    <p data-fr>Deux outils à 5 % peuvent être très différents : l'un se trompe sur des accords, l'autre sur des noms propres qui changent le sens. Classez les erreurs par type. C'est ce classement qui vous dira lequel vous fera gagner du temps.</p>
+    <p data-en>Two tools at 5% can be very different: one gets agreements wrong, the other gets proper names wrong in ways that change the meaning. Sort the errors by type. That sorting will tell you which one saves you time.</p><p data-es>Dos herramientas con un 5 % de error pueden ser muy diferentes: una puede cometer errores en los acuerdos, la otra puede equivocarse en los nombres propios de manera que alteran el significado. Clasifique los errores por tipo. Esa clasificación le indicará cuál le ahorra tiempo.</p><p data-de>Zwei Tools mit 5 % Fehlerquote können sich stark unterscheiden: eines macht Fehler bei Vereinbarungen, das andere bei Eigennamen, die die Bedeutung verändern. Sortieren Sie die Fehler nach Typ. Diese Sortierung zeigt Ihnen, welches Tool Ihnen Zeit spart.</p>
+    <p class="src" data-fr>C'est la méthode appliquée aux modèles Vox Caladrii ; résultats et limites sur <a href="https://caladrii.com/evaluation/">caladrii.com</a>.</p>
+    <p class="src" data-en>This is the method applied to the Vox Caladrii models; results and limits on <a href="https://caladrii.com/evaluation/">caladrii.com</a>.</p><p class="src" data-es>Este es el método aplicado a los modelos de Vox Caladrii; resultados y límites en <a href="https://caladrii.com/evaluation/">caladrii.com</a>.</p><p class="src" data-de>Diese Methode wird auf die Modelle von Vox Caladrii angewendet; Ergebnisse und Grenzen auf <a href="https://caladrii.com/evaluation/">caladrii.com</a>.</p>
+  </article>
+  <aside class="aside"><h4><span data-fr>Autres notes</span><span data-en>Other notes</span><span data-es>Otras notas</span><span data-de>Weitere Notizen</span></h4><a href="/notes/verifier-dictee-hors-ligne/"><span data-fr>Vérifier qu'une dictée n'envoie rien</span><span data-en>Checking dictation sends nothing</span><span data-es>Comprobar que un dictado no envía nada</span><span data-de>Prüfen, dass ein Diktat nichts sendet</span></a><a href="/notes/signer-modele-ia/"><span data-fr>Signer un modèle d'IA</span><span data-en>Signing an AI model</span><span data-es>Firmar un modelo de IA</span><span data-de>Ein KI-Modell signieren</span></a><a href="/notes/whisper-silence/"><span data-fr>Whisper et le silence</span><span data-en>Whisper and silence</span><span data-es>Whisper y el silencio</span><span data-de>Whisper und Stille</span></a></aside>
+</div>
+
+</main>
+<footer>
+  <div class="w">
+    <div class="cols">
+      <div><a class="brand" href="/"><img src="/assets/niderlabs-n.svg?v=20261108" width="24" height="24" alt=""><span>Nider<b>Labs</b></span></a><p style="margin-top:14px;max-width:34ch"><span data-fr>Conception logicielle, depuis le Luxembourg. Distribution, licences et assistance : GOKYO S.à r.l.-S.</span><span data-en>Software design, from Luxembourg. Distribution, licences and support: GOKYO S.à r.l.-S.</span><span data-es>Diseño de software, desde Luxemburgo. Distribución, licencias y asistencia: GOKYO S.à r.l.-S.</span><span data-de>Softwareentwicklung aus Luxemburg. Vertrieb, Lizenzen und Support: GOKYO S.à r.l.-S.</span></p></div>
+      <div><h4><span data-fr>Créations</span><span data-en>Work</span><span data-es>Creaciones</span><span data-de>Arbeiten</span></h4><ul><li><a href="https://nidervoice.com/">NiderVoice</a></li><li><a href="https://caladrii.com/">Vox Caladrii</a></li></ul></div>
+      <div><h4><span data-fr>Notes techniques</span><span data-en>Technical notes</span><span data-es>Notas técnicas</span><span data-de>Technische Notizen</span></h4><ul><li><a href="/notes/"><span data-fr>Toutes les notes</span><span data-en>All notes</span><span data-es>Todas las notas</span><span data-de>Alle Notizen</span></a></li><li><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing and rights</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a></li></ul></div>
+      <div><h4><span data-fr>Légal</span><span data-en>Legal</span><span data-es>Legal</span><span data-de>Rechtliches</span></h4><ul><li><a href="/mentions-legales/"><span data-fr>Mentions légales</span><span data-en>Legal notice</span><span data-es>Aviso legal</span><span data-de>Impressum</span></a></li><li><a href="/mentions-legales/#confidentialite"><span data-fr>Confidentialité du site</span><span data-en>Site privacy</span><span data-es>Privacidad del sitio</span><span data-de>Datenschutz der Website</span></a></li><li><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 NiderLabs</span><span><span data-fr>Aucun cookie, aucun traceur.</span><span data-en>No cookies, no trackers.</span><span data-es>Ningún cookie, ningún rastreador.</span><span data-de>Keine Cookies, keine Tracker.</span></span></div>
+  </div>
+</footer>
+<script src="/assets/nl.js?v=20261116a"></script>
+</body>
+</html>
