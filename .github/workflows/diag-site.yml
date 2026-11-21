@@ -11,3 +11,8 @@ jobs:
           curl -s "$B/boarding.js?v=40" -o b.js; echo "JS $(wc -c < b.js) $(grep -o 'VERSION = "[0-9]*"' b.js) cg=$(grep -c cg-retour b.js)"
           node -e "new Function(require('fs').readFileSync('b.js','utf8'));console.log('SYNTAX ok')"
           curl -sI "$B/boarding.css?v=40" | head -1 | sed 's/^/CSS /'
+          A=https://niderlabs.com/aviator
+          curl -s "$A/?x=$RANDOM" -o a.html; echo "AVIATOR IDX $(grep -o 'aviator.js?v=[0-9]*' a.html) qr=$(grep -c 'Scan its QR' a.html)"
+          curl -s "$A/aviator.js?v=7" -o a.js; echo "AVIATOR JS $(wc -c < a.js) qr=$(grep -c 'niderlabs.com/A/' a.js)"
+          node -e "new Function(require('fs').readFileSync('a.js','utf8'));console.log('AVIATOR SYNTAX ok')"
+          curl -sI "https://niderlabs.com/A/123456" | grep -i -E '^(HTTP|location)' | sed 's/^/QR /'
