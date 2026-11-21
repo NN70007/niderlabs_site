@@ -54,7 +54,9 @@ var ONGLETS = {
   Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte'],
   Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj'],
   // Boarding : comptes du site public (adresse e-mail seule)
-  Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols']
+  Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols'],
+  // Avis laissés sur les pages publiques (Aviator…)
+  Avis: ['Date', 'Produit', 'Type', 'Message', 'Email', 'Page']
 };
 
 /* ======================= Points d'entrée ======================= */
@@ -149,6 +151,7 @@ function route_(req) {
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
+  if (a === 'avis') return avis_(req);
   // Aviator METAR Pro (page expérimentale niderlabs.com/aviator/pro)
   if (a === 'pro.charger') return proCharger_(req.jeton);
   if (a === 'pro.enregistrer') return proEnregistrer_(req.jeton, req.pro);
@@ -833,6 +836,28 @@ function aeroportsConnus_(liste) {
     ajouter_('Aeroports', o); connus[ic] = o;
   });
   return connus;
+}
+
+
+/** Avis laissé depuis une page publique : enregistré dans l'onglet Avis + copie à contact@niderlabs.com.
+ *  Anti-abus : champ piège, 5 avis par heure (global par appareil impossible sans IP : plafond global 60/jour). */
+function avis_(req) {
+  if (req.piege) return { ok: true };                       // robot : on fait comme si
+  var msg = texte_(String(req.message || '').replace(/\r/g, ''), 2000);
+  if (msg.length < 3) throw refus_('Please write a few words.', 'donnees');
+  var type = ({ love: 'Love it', idee: 'Idea', bug: 'Problem' })[req.type] || 'Other';
+  var produit = texte_(req.produit || 'Aviator METAR', 40);
+  var email = texte_(req.email, 120);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw refus_('This e-mail address looks wrong.', 'donnees');
+  var cache = CacheService.getScriptCache(), jour = 'avis:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
+  var n = Number(cache.get(jour) || 0);
+  if (n >= 60) throw refus_('Too many messages today. Please try again tomorrow.', 'limite');
+  cache.put(jour, String(n + 1), 86400);
+  ajouter_('Avis', { Date: Utilities.formatDate(new Date(), CONFIG.FUSEAU, 'yyyy-MM-dd HH:mm'), Produit: produit, Type: type, Message: msg, Email: email, Page: texte_(req.page, 120) });
+  try {
+    MailApp.sendEmail({ to: 'contact@niderlabs.com', subject: produit + ' – avis : ' + type, body: msg + (email ? '\n\nRéponse possible à : ' + email : '\n\n(pas d\'adresse laissée)'), replyTo: email || undefined, name: 'NiderLabs avis' });
+  } catch (e) {}
+  return { ok: true };
 }
 
 /** Nom et pistes d'un aéroport pour la page de réglages (gardé 1 jour en cache). */

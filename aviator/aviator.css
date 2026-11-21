@@ -388,3 +388,11 @@ body{overflow-x:clip}
 #recit-fleche{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .5s}
 .recit.fleche-seule #recit-fleche{opacity:1}
 .recit.fleche-seule .recit-voile i{opacity:0}
+
+/* Offre de lancement et avis */
+.offre{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0 4px;padding:14px 18px;border:1px solid var(--ambre);border-radius:14px;font-size:17px;color:var(--encre-2)}
+.badge-pro{background:#FFB228;color:#111;font-weight:800;font-size:12px;letter-spacing:.08em;padding:5px 10px;border-radius:8px}
+.avis-form{display:flex;flex-direction:column;gap:14px}
+.avis-form textarea,.avis-form input[type=email]{font:inherit;font-size:17px;background:var(--champ);color:var(--encre);border:1px solid var(--bord);border-radius:12px;padding:12px 14px}
+.avis-type{flex-wrap:wrap}.avis-type label{font-size:16px;min-height:56px}
+.piege{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}

@@ -234,6 +234,20 @@ console.log('Aviator METAR : montres');
   ok(c.ok && c.points.length === 3 && c.points.every((p) => p.t === '1-4' && isFinite(p.lat)), 'carte : 3 aéroports, nombre en tranches');
 }
 
+
+console.log('Avis depuis les pages publiques');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  const r = av.post({ action: 'avis', type: 'idee', message: 'Add TAF please', email: 'a@b.co', page: '/aviator/' });
+  ok(r.ok, 'avis accepté');
+  ok(av.mails.some((m) => m.to === 'contact@niderlabs.com' && /Idea/.test(m.subject) && /Add TAF/.test(m.body)), 'copie envoyée à contact@niderlabs.com');
+  ok(av.post({ action: 'avis', message: 'x' }).ok === false, 'message trop court refusé');
+  ok(av.post({ action: 'avis', message: 'hello', email: 'pas-un-mail' }).ok === false, 'e-mail invalide refusé');
+  const avant = av.mails.length;
+  ok(av.post({ action: 'avis', message: 'spam spam', piege: 'x' }).ok && av.mails.length === avant, 'robot (champ piège) ignoré');
+}
+
 console.log('Aviator METAR : téléphone mémorisé');
 {
   const av = charger({ props: { SITE_NOM: 'NiderLabs' } });

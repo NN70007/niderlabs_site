@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Aviator METAR – the METAR on your Garmin watch</title>
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=18">
+<link rel="stylesheet" href="aviator.css?v=19">
 <script src="commun.js?v=1"></script>
-<script src="aviator.js?v=9" defer></script>
+<script src="aviator.js?v=10" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
 <script src="intro.js?v=6" defer></script>
@@ -32,6 +32,7 @@
       <div class="eyebrow">Garmin watch face · for VFR pilots</div>
       <h1>The METAR, <em>on your wrist.</em></h1>
       <p class="lead">Flight category, QNH, wind and gusts, and a wind arrow relative to the runway you fly – for up to 3 airports, read at a glance before you walk to the aircraft.</p>
+      <div class="offre"><span class="badge-pro">LAUNCH OFFER</span><span><b>Free forever if you install before 31 December 2026.</b> After that: $9.99, one-time.</span></div>
       <div class="ctas">
         <a class="pill plein" href="https://apps.garmin.com/apps/1d33b7b5-b517-4991-a8f2-ce8a70097dc3" rel="noopener">Get it on Connect IQ <span aria-hidden="true">→</span></a>
         <a class="pill vide" href="#lier">Link your watch</a>
@@ -143,6 +144,26 @@
         <div><span class="n">02</span><div><b>Press START</b><p>for runway wind, the decoded METAR and settings. Up and down change page; START switches airport.</p></div></div>
         <div><span class="n">03</span><div><b>Link it once</b><p>scan the QR code shown by the app: it uses the airports and settings of your watch face.</p></div></div>
       </div>
+    </section>
+    <section class="reglage" id="avis">
+      <div>
+        <div class="eyebrow">Feedback</div>
+        <h2 class="serif" style="margin-top:14px">Tell us <em>what you think.</em></h2>
+        <p class="chapeau" style="margin-top:20px">A bug, an idea, a missing airport? It goes straight to the developer. No e-mail needed.</p>
+      </div>
+      <form class="carte avis-form" id="form-avis" novalidate>
+        <div class="choix avis-type" role="radiogroup" aria-label="Type of feedback">
+          <label><input type="radio" name="avis-type" value="love" checked>👍 Love it</label>
+          <label><input type="radio" name="avis-type" value="idee">💡 Idea</label>
+          <label><input type="radio" name="avis-type" value="bug">🐞 Problem</label>
+        </div>
+        <label class="titre" for="avis-msg">YOUR MESSAGE</label>
+        <textarea id="avis-msg" rows="4" maxlength="2000" placeholder="Your message…" required></textarea>
+        <input type="email" id="avis-email" maxlength="120" autocomplete="email" placeholder="E-mail (optional, for a reply)" aria-label="E-mail (optional, for a reply)">
+        <input type="text" id="avis-piege" name="site" tabindex="-1" autocomplete="off" aria-hidden="true" class="piege">
+        <button class="bouton" type="submit" id="avis-envoyer">Send</button>
+        <div class="message" id="avis-retour" role="status" hidden></div>
+      </form>
     </section>
   </div>
 

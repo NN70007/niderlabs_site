@@ -244,3 +244,25 @@
     }).then(function () { if (b.textContent === "Opening…") b.textContent = b.getAttribute("data-t"); });
   })();
 })();
+
+/* Avis : envoyé au serveur, sans e-mail à écrire */
+(function () {
+  var f = document.getElementById("form-avis");
+  if (!f) return;
+  var r = document.getElementById("avis-retour"), b = document.getElementById("avis-envoyer");
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById("avis-msg").value.trim();
+    var t = f.querySelector("input[name=avis-type]:checked");
+    r.hidden = false;
+    if (msg.length < 3) { r.className = "message err"; r.textContent = "Please write a few words."; return; }
+    b.disabled = true; b.textContent = "Sending…";
+    AVIATOR.appel({ action: "avis", produit: "Aviator METAR", type: t ? t.value : "", message: msg,
+      email: document.getElementById("avis-email").value.trim(), piege: document.getElementById("avis-piege").value, page: location.pathname })
+      .then(function () {
+        r.className = "message ok"; r.textContent = "Thank you! Your message has been sent.";
+        document.getElementById("avis-msg").value = ""; b.textContent = "Sent";
+      })
+      .catch(function (x) { r.className = "message err"; r.textContent = x.message || "Error."; b.disabled = false; b.textContent = "Send"; });
+  });
+})();
