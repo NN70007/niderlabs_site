@@ -371,3 +371,10 @@ body{overflow-x:clip}
 .recit.calcul .recit-lien path{stroke-dasharray:4 6!important;stroke:var(--ambre);filter:drop-shadow(0 0 6px var(--ambre))}
 .recit.calcul .recit-lien circle{fill:var(--ambre)}
 .recit.calcul .recit-brut span.actif{background:var(--ambre)}
+/* récit : la zone d'intérêt reste nette, le reste de l'écran est grisé (plus de cadre bleu) */
+.recit-voile{position:absolute;left:16.99%;top:20.87%;width:67.66%;height:56.40%;border-radius:50%;overflow:hidden;pointer-events:none}
+.recit-voile i{position:absolute;border-radius:26px;
+  box-shadow:0 0 0 1000px rgba(6,10,18,.66),0 0 28px 14px rgba(6,10,18,.66);
+  transition:left .7s cubic-bezier(.25,.8,.25,1),top .7s cubic-bezier(.25,.8,.25,1),width .7s cubic-bezier(.25,.8,.25,1),height .7s cubic-bezier(.25,.8,.25,1),border-radius .7s}
+.recit-voile i.trou-rond{border-radius:50%}
+.recit .spot,.recit .spot.on{opacity:0!important;box-shadow:none;border-color:transparent;background:none}

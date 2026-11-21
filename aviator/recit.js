@@ -25,7 +25,7 @@
   ];
   var brut = document.getElementById("recit-brut"), montre = document.getElementById("recit-montre"), spot = document.getElementById("recit-spot");
   var titre = document.getElementById("recit-titre"), para = document.getElementById("recit-p"), num = document.getElementById("recit-n"), barre = document.getElementById("recit-barre");
-  var calc = document.getElementById("recit-calc");
+  var calc = document.getElementById("recit-calc"), trou = document.getElementById("recit-trou");
   var svg = document.getElementById("recit-lien"), chemin = document.getElementById("recit-chemin"), bout = document.getElementById("recit-bout");
   var spans = JETONS.map(function (t) { var s = document.createElement("span"); s.textContent = t; brut.appendChild(s); brut.appendChild(document.createTextNode(" ")); return s; });
   var calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -44,6 +44,11 @@
     spot.style.left = px(z[0]) + "%"; spot.style.top = py(z[1]) + "%";
     spot.style.width = (px(z[2]) - px(z[0])) + "%"; spot.style.height = (py(z[3]) - py(z[1])) + "%";
     spot.classList.toggle("spot-rond", !!e.rond);
+    // la zone reste nette, le reste de l'écran est grisé (pourcentages de l'écran de 454 px)
+    var m = 10, q = function (v) { return (v / 454 * 100).toFixed(2) + "%"; };
+    trou.style.left = q(z[0] - m); trou.style.top = q(z[1] - m);
+    trou.style.width = q(z[2] - z[0] + 2 * m); trou.style.height = q(z[3] - z[1] + 2 * m);
+    trou.classList.toggle("trou-rond", !!e.rond);
     spot.classList.toggle("on", !e.sansCadre);
     sec.classList.toggle("calcul", !!e.calc);
     calc.hidden = !e.calc;
