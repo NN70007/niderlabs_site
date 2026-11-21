@@ -7,17 +7,17 @@
   // zone : coordonnées de l'écran de 454 px ; p = page METAR ; z = grossissement
   // t : groupes du METAR ; page : d = cadran, r = page RWY, m = page METAR ; zone : écran de 454 px ; z : grossissement
   var ETAPES = [
-    { t: [1], page: "d", titre: "Your airport", p: "ELLX at the bottom of the dial, with the runway you fly. Tap it to switch: airport 1, 2, 3, then the nearest one.", zone: [192, 346, 266, 422], z: 1.7 },
-    { t: [5, 7, 8], page: "d", titre: "Flight category", p: "Visibility and cloud base add up to one word in colour at the top of the dial: VFR, MVFR, IFR or LIFR.", zone: [184, 76, 270, 107], z: 1.7 },
     { t: [10], page: "d", titre: "QNH", p: "1018 hPa in the largest digits of the dial – or in inHg if you prefer.", zone: [96, 136, 194, 304], z: 1.6 },
-    { t: [3], page: "d", titre: "Wind and gusts", p: "14 knots, gusting 22. The digits turn amber when the crosswind on your runway goes above your limit.", zone: [258, 134, 356, 302], z: 1.6 },
-    { t: [3], page: "d", titre: "Where it comes from", p: "The blue arrow shows the wind direction, 040°, relative to runway 06: you read at once if it is ahead, across or behind.", zone: [182, 116, 290, 356], z: 1.35 },
-    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued and runs to the next one. Amber when the report is late, red when it is too old.", zone: [30, 30, 110, 110], z: 1.6, rond: 1 },
+    { t: [3], page: "d", titre: "Wind speed", p: "14 knots, gusting 22. The digits turn amber when the crosswind on your runway goes above your limit.", zone: [258, 134, 356, 302], z: 1.6 },
+    { t: [3], page: "d", titre: "Wind direction", p: "The blue arrow shows where the wind comes from, 040°, relative to runway 06: you see at once if it is ahead, across or behind.", zone: [182, 116, 290, 356], z: 1.35 },
+    { t: [1], page: "d", titre: "Your airport", p: "ELLX at the bottom of the dial, with the runway you fly. Tap it to switch: airport 1, 2, 3, then the nearest one.", zone: [192, 346, 266, 422], z: 1.7 },
     { t: [], page: "d", titre: "Zulu time", p: "The Z on the rim marks the hour in UTC, next to your local time – no mental arithmetic before you file or read a report.", zone: [366, 92, 438, 164], z: 1.6, rond: 1 },
-    { t: [], page: "d", titre: "Daylight", p: "Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [118, 356, 224, 452], z: 1.5, rond: 1 },
-    { t: [3], page: "r", titre: "Your runway, computed", p: "Tap once: headwind 13 kt, crosswind 5 kt from the left, for runway 06 – no mental trigonometry.", zone: [100, 136, 356, 250], z: 1.35 },
-    { t: [4], page: "r", titre: "The worst case", p: "Gusts and a variable direction (010° to 080°) are both taken into account: here up to 17 kt of crosswind – and the alert follows.", zone: [114, 258, 364, 294], z: 1.55 },
-    { t: [9, 10], page: "r", titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [144, 306, 314, 340], z: 1.65 },
+    { t: [], page: "d", titre: "Sunrise and sunset", p: "Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [118, 356, 224, 452], z: 1.5, rond: 1 },
+    { t: [5, 7, 8], page: "d", titre: "Flight category", p: "Visibility and cloud base add up to one word in colour at the top of the dial: VFR, MVFR, IFR or LIFR.", zone: [184, 76, 270, 107], z: 1.7, sansCadre: 1 },
+    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued and runs to the next one. Amber when the report is late, red when it is too old.", zone: [30, 30, 110, 110], z: 1.6, rond: 1 },
+    { t: [3], page: "r", calc: 1, titre: "Your runway, computed", p: "Tap once. Not in the METAR: the watch works it out from the wind and your runway. Headwind 13 kt, XWIND (crosswind) 5 kt from the left, for runway 06.", zone: [100, 136, 356, 250], z: 1.35 },
+    { t: [3, 4], page: "r", calc: 1, titre: "The worst case", p: "Also computed: with the gusts and the variable direction (010° to 080°), the crosswind can reach 17 kt – XW is short for crosswind. Your alert uses this value.", zone: [114, 258, 364, 294], z: 1.55 },
+    { t: [9, 10], page: "r", calc: 1, titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [144, 306, 314, 340], z: 1.65 },
     { t: [5, 6], page: "m", titre: "Visibility and weather", p: "Tap twice: the METAR in plain words. 10 km or more, light rain.", zone: [108, 146, 346, 290], z: 1.4 },
     { t: [7, 8], page: "m", titre: "Clouds, in feet", p: "Each layer with its base: few at 3000 ft, broken at 4500 ft.", zone: [68, 202, 386, 238], z: 1.5 },
     { t: [9], page: "m", titre: "Temperature and dew point", p: "12° and 6°: how close you are to mist and fog.", zone: [148, 296, 306, 330], z: 1.6 },
@@ -25,6 +25,7 @@
   ];
   var brut = document.getElementById("recit-brut"), montre = document.getElementById("recit-montre"), spot = document.getElementById("recit-spot");
   var titre = document.getElementById("recit-titre"), para = document.getElementById("recit-p"), num = document.getElementById("recit-n"), barre = document.getElementById("recit-barre");
+  var calc = document.getElementById("recit-calc");
   var svg = document.getElementById("recit-lien"), chemin = document.getElementById("recit-chemin"), bout = document.getElementById("recit-bout");
   var spans = JETONS.map(function (t) { var s = document.createElement("span"); s.textContent = t; brut.appendChild(s); brut.appendChild(document.createTextNode(" ")); return s; });
   var calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -43,6 +44,9 @@
     spot.style.left = px(z[0]) + "%"; spot.style.top = py(z[1]) + "%";
     spot.style.width = (px(z[2]) - px(z[0])) + "%"; spot.style.height = (py(z[3]) - py(z[1])) + "%";
     spot.classList.toggle("spot-rond", !!e.rond);
+    spot.classList.toggle("on", !e.sansCadre);
+    sec.classList.toggle("calcul", !!e.calc);
+    calc.hidden = !e.calc;
     montre.style.transformOrigin = cx + "% " + cy + "%";
     montre.style.transform = calme ? "none" : "scale(" + (1 + (e.z - 1) * 0.8).toFixed(2) + ")";
     var t0 = performance.now();
