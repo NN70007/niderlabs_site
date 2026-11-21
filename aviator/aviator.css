@@ -307,3 +307,13 @@ main{flex-direction:column;align-items:center}
 #plan{border-radius:18px}
 .rond{background:var(--ciel)!important;box-shadow:0 0 12px var(--ciel);opacity:1}
 .ou{width:100%}
+/* Montre de l'ouverture : la zone décodée s'allume sur la montre */
+.montre-av{position:relative;width:100%;max-width:440px;justify-self:center;filter:drop-shadow(0 40px 80px rgba(0,0,0,.55))}
+.montre-av img{display:block;width:100%;height:auto}
+.montre-av .page-metar{position:absolute;inset:0;opacity:0;transition:opacity .45s}
+.montre-av.metar .page-metar{opacity:1}
+.spot{position:absolute;border-radius:12px;border:1.5px solid var(--ciel);background:color-mix(in srgb,var(--ciel) 14%,transparent);
+  box-shadow:0 0 22px color-mix(in srgb,var(--ciel) 70%,transparent),inset 0 0 14px color-mix(in srgb,var(--ciel) 35%,transparent);
+  opacity:0;transition:left .45s cubic-bezier(.3,.7,.2,1),top .45s cubic-bezier(.3,.7,.2,1),width .45s,height .45s,opacity .3s,border-radius .3s;pointer-events:none}
+.spot.on{opacity:1}
+.spot.rond{border-radius:50%}

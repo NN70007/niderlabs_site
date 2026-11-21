@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Aviator METAR – the METAR on your Garmin watch</title>
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=10">
+<link rel="stylesheet" href="aviator.css?v=11">
 <script src="commun.js?v=1"></script>
 <script src="aviator.js?v=8" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
-<script src="intro.js?v=2" defer></script>
+<script src="intro.js?v=3" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -41,7 +41,11 @@
           <div class="brut" id="brut"></div>
           <div class="lignes" id="lignes"></div>
         </div>
-        <img class="montre" src="img/watch-dial.webp" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
+        <div class="montre montre-av" id="montre-av">
+          <img src="img/watch-dial.webp" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
+          <img class="page-metar" src="img/watch-metar.webp" width="480" height="575" alt="" aria-hidden="true">
+          <div class="spot" id="spot" aria-hidden="true"></div>
+        </div>
       </div>
       <p class="illus">Animated example – sample METAR</p>
     </section>
