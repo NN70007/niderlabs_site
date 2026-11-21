@@ -57,6 +57,15 @@
       .then(function () { b.disabled = false; b.textContent = "Open my settings"; });
   });
 
+  // QR code de la montre : niderlabs.com/A/482917 -> ?c=482917, ouverture directe
+  (function () {
+    var m = /[?&]c=(\d{6})(?:&|$)/.exec(location.search);
+    if (!m) return;
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    $("#code").value = m[1].slice(0, 3) + " " + m[1].slice(3);
+    $("#form-code").requestSubmit ? $("#form-code").requestSubmit() : $("#form-code").dispatchEvent(new Event("submit", { cancelable: true }));
+  })();
+
   function afficher(o) {
     var r = o.reglages, box = $("#aeroports");
     box.innerHTML = "";
