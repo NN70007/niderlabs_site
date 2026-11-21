@@ -1064,7 +1064,7 @@ function classeur_(creerSiAbsent) {
 function feuille_(nom) {
   var ss = classeur_(false), sh = ss.getSheetByName(nom);
   // Onglets ajoutés après l'installation (Aviator METAR) : créés au premier besoin, sans relancer « installer »
-  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes')) {
+  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes' || nom === 'Avis')) {
     sh = ss.insertSheet(nom);
     sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
     sh.setFrozenRows(1);
