@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Aviator METAR – the METAR on your Garmin watch</title>
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=11">
+<link rel="stylesheet" href="aviator.css?v=13">
 <script src="commun.js?v=1"></script>
 <script src="aviator.js?v=8" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
-<script src="intro.js?v=3" defer></script>
+<script src="intro.js?v=4" defer></script>
+<script src="recit.js?v=2" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -43,8 +44,6 @@
         </div>
         <div class="montre montre-av" id="montre-av">
           <img src="img/watch-dial.webp" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
-          <img class="page-metar" src="img/watch-metar.webp" width="480" height="575" alt="" aria-hidden="true">
-          <div class="spot" id="spot" aria-hidden="true"></div>
         </div>
       </div>
       <p class="illus">Animated example – sample METAR</p>
@@ -56,6 +55,31 @@
       <div><strong>6 digits</strong><span>shown on the watch: no account, no password</span></div>
       <div><strong>0</strong><span>personal data: no name, no e-mail, no position stored</span></div>
     </div>
+
+    <section class="recit" id="recit" aria-label="How to read the METAR on the watch">
+      <div class="recit-scene">
+        <div class="recit-haut">
+          <div class="eyebrow">Read it like a pilot · scroll</div>
+          <div class="recit-brut" id="recit-brut" aria-hidden="true"></div>
+        </div>
+        <div class="recit-corps">
+          <div class="recit-texte">
+            <div class="recit-n" id="recit-n">01 / 10</div>
+            <h2 class="serif" id="recit-titre">Your airport</h2>
+            <p id="recit-p"></p>
+            <div class="recit-barre"><i id="recit-barre"></i></div>
+          </div>
+          <div class="recit-montre-cadre">
+            <div class="recit-montre" id="recit-montre">
+              <img src="img/watch-dial.webp" width="480" height="575" alt="Aviator METAR dial">
+              <img class="page-metar" src="img/watch-metar.webp" width="480" height="575" alt="" aria-hidden="true">
+              <div class="spot on" id="recit-spot" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+        <svg class="recit-lien" id="recit-lien" aria-hidden="true"><path id="recit-chemin" d=""/><circle id="recit-bout" r="4"/></svg>
+      </div>
+    </section>
 
     <section class="ecrans">
       <div class="eyebrow">Four screens</div>

@@ -317,3 +317,46 @@ main{flex-direction:column;align-items:center}
   opacity:0;transition:left .45s cubic-bezier(.3,.7,.2,1),top .45s cubic-bezier(.3,.7,.2,1),width .45s,height .45s,opacity .3s,border-radius .3s;pointer-events:none}
 .spot.on{opacity:1}
 .spot.rond{border-radius:50%}
+/* ---- Récit au défilement : le METAR relié à la montre ---- */
+.recit{position:relative;height:calc(10 * 70vh + 100vh);width:100vw;margin-left:calc(50% - 50vw)}
+.recit-scene{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:96px clamp(20px,5vw,72px) 32px}
+.recit-haut{text-align:center}
+.recit-brut{margin:14px auto 0;max-width:980px;font-family:var(--mono);font-size:clamp(15px,1.6vw,21px);line-height:1.8;color:var(--encre-3);word-spacing:3px}
+.recit-brut span{padding:2px 4px;border-radius:5px;transition:color .35s,background .35s,box-shadow .35s}
+.recit-brut span.lu{color:var(--encre-2)}
+.recit-brut span.actif{color:var(--fond);background:var(--ciel);box-shadow:0 0 24px color-mix(in srgb,var(--ciel) 70%,transparent)}
+.recit-corps{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:40px;align-items:center;max-width:1160px;width:100%;margin:0 auto}
+.recit-texte .recit-n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--encre-3)}
+.recit-texte h2.serif{font-family:var(--titre);font-weight:300;text-transform:none;letter-spacing:-.025em;color:var(--encre);font-size:clamp(36px,4.4vw,60px);line-height:1.05;margin-top:12px}
+.recit-texte p{margin-top:16px;font-size:19px;color:var(--encre-3);max-width:26em;min-height:5.2em}
+.recit-barre{margin-top:26px;height:2px;background:var(--trait);max-width:320px;border-radius:2px;overflow:hidden}
+.recit-barre i{display:block;height:100%;width:0;background:var(--ciel)}
+.recit-montre-cadre{height:100%;max-height:70vh;display:flex;align-items:center;justify-content:center;overflow:visible}
+.recit-montre{position:relative;height:100%;aspect-ratio:480/575;transition:transform .8s cubic-bezier(.25,.8,.25,1),transform-origin .8s cubic-bezier(.25,.8,.25,1);filter:drop-shadow(0 40px 80px rgba(0,0,0,.6))}
+.recit-montre img{display:block;width:100%;height:100%}
+.recit-montre .page-metar{position:absolute;inset:0;opacity:0;transition:opacity .5s}
+.recit-montre.metar .page-metar{opacity:1}
+.recit.fin .spot{border-radius:999px}
+.recit-lien{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.recit-lien path{fill:none;stroke:var(--ciel);stroke-width:1.5;filter:drop-shadow(0 0 6px var(--ciel))}
+.recit-lien circle{fill:var(--ciel);filter:drop-shadow(0 0 8px var(--ciel))}
+@media (max-width:900px){
+  .recit{height:calc(10 * 80vh + 100vh)}
+  .recit-scene{padding:80px 18px 20px}
+  .recit-corps{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:10px}
+  .recit-montre-cadre{order:-1;max-height:46vh}
+  .recit-texte{text-align:center}
+  .recit-texte p{margin:10px auto 0;font-size:16px;min-height:4.8em}
+  .recit-texte h2.serif{font-size:32px}
+  .recit-barre{margin:14px auto 0}
+  .recit-lien{display:none}
+  .recit-brut{font-size:12.5px;line-height:1.7}
+}
+body{overflow-x:clip}
+/* récit : la montre reste dans sa fenêtre, bords fondus ; le METAR et le texte passent devant */
+.recit-montre-cadre{overflow:hidden;max-height:64vh;height:64vh;
+  -webkit-mask-image:radial-gradient(closest-side,#000 72%,transparent 100%);mask-image:radial-gradient(closest-side,#000 72%,transparent 100%)}
+.recit-montre{height:92%}
+.recit-haut,.recit-texte{position:relative;z-index:3}
+.recit-lien{z-index:4}
+@media (max-width:900px){.recit-montre-cadre{height:46vh;max-height:46vh}}

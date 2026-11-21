@@ -64,14 +64,14 @@
       ajoute("VFR", false, true); boite.classList.add("fini"); vise("vfr");
       setTimeout(function () { // on recommence après une pause
         boite.classList.remove("fini"); lignes.innerHTML = ""; spans.forEach(function (s) { s.className = ""; }); i = 0; vise(null); setTimeout(suivant, 700);
-      }, 7000);
+      }, 9000);
       return;
     }
     spans[i].className = "actif";
     if (GROUPES[i][1]) ajoute(GROUPES[i][1]);
     if (GROUPES[i][2]) vise(GROUPES[i][2]);
     i++;
-    setTimeout(suivant, GROUPES[i - 1][1] ? 900 : 300);
+    setTimeout(suivant, GROUPES[i - 1][1] ? 1400 : 450);
   }
   setTimeout(suivant, 900);
 })();
