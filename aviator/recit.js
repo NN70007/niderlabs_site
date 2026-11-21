@@ -14,7 +14,7 @@
     { t: [2], page: "d", titre: "Zulu time", p: "The METAR is written in Zulu time (210750Z, 07:50 UTC). The Z on the rim marks the hour in UTC, next to your local time – no mental arithmetic before you file or read a report.", zone: [20, 292, 92, 364], z: 1.6, rond: 1 },
     { t: [1, 2], page: "d", calc: 1, titre: "Sunrise and sunset", p: "Not in the METAR: the watch works them out from the position of ELLX and the date. Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [276, 356, 372, 448], z: 1.5, rond: 1 },
     { t: [5, 7, 8], page: "d", titre: "Flight category", p: "Visibility and cloud base add up to one word in colour at the top of the dial: VFR, MVFR, IFR or LIFR.", zone: [184, 76, 270, 107], z: 1.7, sansCadre: 1 },
-    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued (minute 50) and runs to the next one, due at minute 20. Amber when the report is late, red when it is too old.", zone: [2, 80, 78, 156], z: 1.6, rond: 1 },
+    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued (minute 50) and runs to the next one, due at minute 20. Amber when the report is late, red when it is too old.", zone: [2, 80, 78, 156], z: 1.12, rond: 1, arc: 1 },
     { t: [3], page: "r", calc: 1, titre: "Your runway, computed", p: "Tap once. Not in the METAR: the watch works it out from the wind and your runway. Headwind 13 kt, XWIND (crosswind) 5 kt from the left, for runway 06.", zone: [100, 136, 356, 250], z: 1.35 },
     { t: [3, 4], page: "r", calc: 1, titre: "The worst case", p: "Also computed: with the gusts and the variable direction (010° to 080°), the crosswind can reach 17 kt – XW is short for crosswind. Your alert uses this value.", zone: [114, 258, 364, 294], z: 1.55 },
     { t: [9, 10], page: "r", calc: 1, titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [144, 306, 314, 340], z: 1.65 },
@@ -49,6 +49,7 @@
     trou.style.left = q(z[0] - m); trou.style.top = q(z[1] - m);
     trou.style.width = q(z[2] - z[0] + 2 * m); trou.style.height = q(z[3] - z[1] + 2 * m);
     trou.classList.toggle("trou-rond", !!e.rond);
+    sec.classList.toggle("arc-entier", !!e.arc);
     spot.classList.toggle("on", !e.sansCadre);
     sec.classList.toggle("calcul", !!e.calc);
     calc.hidden = !e.calc;
