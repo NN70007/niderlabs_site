@@ -266,3 +266,10 @@
       .catch(function (x) { r.className = "message err"; r.textContent = x.message || "Error."; b.disabled = false; b.textContent = "Send"; });
   });
 })();
+
+/* Confidentialité : en accordéon sur téléphone */
+(function () {
+  document.querySelectorAll(".liste.acc>div").forEach(function (d) {
+    d.addEventListener("click", function () { d.classList.toggle("ouvert"); });
+  });
+})();

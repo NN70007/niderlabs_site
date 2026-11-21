@@ -396,3 +396,28 @@ body{overflow-x:clip}
 .avis-form textarea,.avis-form input[type=email]{font:inherit;font-size:17px;background:var(--champ);color:var(--encre);border:1px solid var(--bord);border-radius:12px;padding:12px 14px}
 .avis-type{flex-wrap:wrap}.avis-type label{font-size:16px;min-height:56px}
 .piege{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+
+/* PRO, FAQ, compatibilité, CTA final, accordéon confidentialité (21/11/2026) */
+.badge-marque{font-size:11px;padding:3px 7px;margin-left:2px;letter-spacing:.06em;vertical-align:2px}
+.faq{display:flex;flex-direction:column}
+.faq details{border-top:1px solid var(--trait);padding:18px 0}
+.faq details:last-child{border-bottom:1px solid var(--trait)}
+.faq summary{cursor:pointer;font-weight:600;font-size:18px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--encre-3);font-weight:400;font-size:22px;line-height:1}
+.faq details[open] summary::after{content:"–"}
+.faq p{margin:10px 0 0;font-size:16px;color:var(--encre-3)}
+.reglage .liste a{color:var(--accent)}
+.cta-fin{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:40px 20px;border:1px solid var(--trait);border-radius:20px;background:linear-gradient(180deg,var(--surface),var(--champ))}
+.cta-fin p{margin:0;font-size:18px;color:var(--encre-2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.decode{min-height:0}
+@media (max-width:900px){
+  .liste.acc>div{cursor:pointer}
+  .liste.acc>div>div>b::after{content:" +";color:var(--encre-3);font-weight:400}
+  .liste.acc>div.ouvert>div>b::after{content:" –"}
+  .liste.acc>div:not(.ouvert) p{display:none}
+  .nav .nav-avis{display:none}
+}
+.marque{white-space:nowrap}
+@media (max-width:600px){.marque small{display:none}}
+#montres .liste .n{font-size:20px;line-height:1;color:var(--encre-3)}#montres .liste>div:first-child .n{color:var(--vert)}

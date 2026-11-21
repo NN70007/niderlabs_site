@@ -3,11 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Aviator METAR – the METAR on your Garmin watch</title>
+<title>Aviator METAR Pro – the METAR on your Garmin watch</title>
+<link rel="icon" type="image/svg+xml" href="img/icon.svg?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png?v=1">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Aviator">
+<meta name="theme-color" content="#0B0F14">
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=19">
+<link rel="stylesheet" href="aviator.css?v=22">
 <script src="commun.js?v=1"></script>
-<script src="aviator.js?v=10" defer></script>
+<script src="aviator.js?v=11" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
 <script src="intro.js?v=6" defer></script>
@@ -15,11 +21,12 @@
 </head>
 <body>
 <header class="entete">
-  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR<small>by NiderLabs</small></a>
+  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR <span class="badge-pro badge-marque">PRO</span><small>by NiderLabs</small></a>
   <nav class="nav" aria-label="Pages">
     <a href="./" aria-current="page">Watch face</a>
     <a href="#lier">Settings</a>
     <a href="map/">Airports map</a>
+    <a href="#avis" class="nav-avis">Feedback</a>
     <span class="statut" id="lie" hidden><span class="pastille"></span>Watch linked · <a href="./" id="quitter">Sign out</a></span>
     <button type="button" class="theme">Day mode</button>
   </nav>
@@ -54,7 +61,7 @@
       <div><strong>3 + 1</strong><span>airports: three of your choice, plus the nearest one</span></div>
       <div><strong>Worldwide</strong><span>any airport that publishes a METAR</span></div>
       <div><strong>6 digits</strong><span>shown on the watch: no account, no password</span></div>
-      <div><strong>0</strong><span>personal data: no name, no e-mail, no position stored</span></div>
+      <div><strong>0</strong><span>personal data needed: no name, no account, no position stored</span></div>
     </div>
 
     <section class="recit" id="recit" aria-label="How to read the METAR on the watch">
@@ -111,7 +118,7 @@
         <p class="chapeau" style="margin-top:20px">To put your airports on your watch, we have to know which airports you chose. That is the only thing about you we keep – no name, no e-mail, no Garmin account, no phone number, no payment details.</p>
         <p style="margin-top:18px"><a class="pill vide" href="privacy/">Read the privacy policy <span aria-hidden="true">→</span></a></p>
       </div>
-      <div class="liste">
+      <div class="liste acc">
         <div><span class="n">01</span><div><b>What we keep, and why</b><p>A random number your watch makes up for itself, your settings (airports, runways, units, crosswind limit) and the date the watch last called in. With that, this page can send your settings to your watch, and the watch can show each airport's local time.</p></div></div>
         <div><span class="n">02</span><div><b>Your position stays on your wrist</b><p>The watch uses it only to find the nearest airport. If you use NEAREST, we receive that airport's code – ELLX, for example – never your coordinates.</p></div></div>
         <div><span class="n">03</span><div><b>The weather does not go through us</b><p>Your watch asks NOAA's aviationweather.gov directly, through your phone. We never see the weather you read.</p></div></div>
@@ -125,7 +132,7 @@
       <div>
         <div class="eyebrow">How it works</div>
         <h2 class="serif" style="margin-top:14px">Set it up <em>your way.</em></h2>
-        <p class="chapeau" style="margin-top:20px">On this page, or in the Connect IQ app on your phone. Nothing to install, nothing to remember.</p>
+        <p class="chapeau" style="margin-top:20px">Everything is set on this page, from your phone. Nothing to install, nothing to remember.</p>
       </div>
       <div class="liste">
         <div><span class="n">01</span><div><b>Tap the airport code</b><p>at the bottom of the dial to switch airport: 1 → 2 → 3 → nearest.</p></div></div>
@@ -145,6 +152,35 @@
         <div><span class="n">03</span><div><b>Link it once</b><p>scan the QR code shown by the app: it uses the airports and settings of your watch face.</p></div></div>
       </div>
     </section>
+    <section class="reglage" id="montres">
+      <div>
+        <div class="eyebrow">Compatible watches</div>
+        <h2 class="serif" style="margin-top:14px">Made for <em>the fēnix 8 Pro.</em></h2>
+        <p class="chapeau" style="margin-top:20px">Designed and tested on the fēnix 8 Pro's AMOLED screen. More round Garmin watches are coming – AMOLED first, then MIP.</p>
+      </div>
+      <div class="liste">
+        <div><span class="n">✓</span><div><b>fēnix 8 Pro</b><p>Watch face and Aviator METAR App – available now.</p></div></div>
+        <div><span class="n">→</span><div><b>Other round AMOLED watches</b><p>fēnix, epix, Forerunner, Venu… coming next.</p></div></div>
+        <div><span class="n">→</span><div><b>Round MIP watches</b><p>Instinct and older fēnix models, after that. <a href="#avis">Tell us which watch you have.</a></p></div></div>
+      </div>
+    </section>
+    <section class="reglage" id="faq">
+      <div>
+        <div class="eyebrow">Questions</div>
+        <h2 class="serif" style="margin-top:14px">Good to <em>know.</em></h2>
+      </div>
+      <div class="faq">
+        <details><summary>How much does it cost?</summary><p>Free forever if you install before 31 December 2026 – yours to keep. From 1 January 2027: $9.99, one-time, no subscription.</p></details>
+        <details><summary>Watch face or app – which one do I need?</summary><p>The watch face, if your watch has a touch screen. The Aviator METAR App is for watches with buttons only: it shows the same pages and is free for owners of the watch face.</p></details>
+        <details><summary>My watch has no touch screen. Does it work?</summary><p>Yes, with the Aviator METAR App: a glance in the widget loop, then the runway and METAR pages with the up, down and START buttons.</p></details>
+        <details><summary>Does it need a connection?</summary><p>Your watch gets the METAR through your phone (Bluetooth), every few minutes. Without your phone nearby, the watch keeps the last report and shows how old it is.</p></details>
+        <details><summary>Can I use it to fly?</summary><p>No. Aviator METAR is for situational awareness only – NOT FOR NAVIGATION. Always get an official weather briefing; the pilot in command remains responsible for every decision.</p></details>
+      </div>
+    </section>
+    <div class="cta-fin">
+      <p><span class="badge-pro">LAUNCH OFFER</span> Free forever if you install before 31 December 2026.</p>
+      <a class="pill plein" href="https://apps.garmin.com/apps/1d33b7b5-b517-4991-a8f2-ce8a70097dc3" rel="noopener">Get it on Connect IQ <span aria-hidden="true">→</span></a>
+    </div>
     <section class="reglage" id="avis">
       <div>
         <div class="eyebrow">Feedback</div>
@@ -187,7 +223,7 @@
     </form>
     <div class="carte" style="flex-direction:row;align-items:flex-start;gap:16px">
       <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;color:var(--encre-3);margin-top:3px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-      <p class="aide">No account, no password. The code only works for a few minutes and only for your watch. You can also change every setting in the Connect IQ app on your phone.</p>
+      <p class="aide">No account, no password. The code only works for a few minutes and only for your watch.</p>
     </div>
   </div>
 
@@ -269,7 +305,7 @@
 
 <footer class="pied"><span class="marque-pied">NiderLabs</span> ·
   NOT FOR NAVIGATION – for situational awareness only. Weather data: aviationweather.gov (NOAA). ·
-  <a href="terms/">Terms</a> · <a href="privacy/">Privacy</a> · <a href="legal/">Legal notice</a> · © <span data-annee></span> NiderLabs
+  <a href="terms/">Terms</a> · <a href="privacy/">Privacy</a> · <a href="legal/">Legal notice</a> · <a href="mailto:contact@niderlabs.com">Contact</a> · © <span data-annee></span> NiderLabs
 </footer>
 </body>
 </html>
