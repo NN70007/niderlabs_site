@@ -2097,7 +2097,7 @@ function pushEnvoyer_(subs, titre, texte) {
   var k = pushCles_();
   var r = UrlFetchApp.fetch(PUSH_URL + '?a=send', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ vapid: k, subject: 'mailto:labs@nider.com', subs: subs,
+    payload: JSON.stringify({ vapid: k, subject: 'mailto:contact@niderlabs.com', subs: subs,
       payload: JSON.stringify({ title: titre, body: texte, url: 'https://niderlabs.com/boarding/' }) })
   });
   if (r.getResponseCode() !== 200) { console.error('push ' + r.getResponseCode()); return []; }

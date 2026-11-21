@@ -59,7 +59,7 @@ $req = json_decode(file_get_contents('php://input'), true);
 if (!is_array($req) || !isset($req['vapid']['pub'], $req['vapid']['priv'], $req['subs'], $req['payload'])) { http_response_code(400); echo '{"ok":false}'; exit; }
 $payload = (string)$req['payload'];
 if (strlen($payload) > 2000 || !is_array($req['subs']) || count($req['subs']) > 10) { http_response_code(400); echo '{"ok":false}'; exit; }
-$subject = isset($req['subject']) ? (string)$req['subject'] : 'mailto:labs@nider.com';
+$subject = isset($req['subject']) ? (string)$req['subject'] : 'mailto:contact@niderlabs.com';
 $res = array();
 foreach ($req['subs'] as $s) {
   $ep = isset($s['endpoint']) ? (string)$s['endpoint'] : '';
