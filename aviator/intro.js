@@ -13,63 +13,40 @@
     setTimeout(go, 3000); // filet de sécurité : la carte se charge de toute façon après 3 s
   }
   var GROUPES = [
-    ["METAR", null], ["ELLX", "Luxembourg (ELLX)", "aero"], ["210000Z", "Observed 00:00 UTC", "arc"],
-    ["04014G22KT", "Wind 040° · 14 kt, gusts 22", "vent"], ["010V080", "Variable 010°–080°", "fleche"],
-    ["9999", "Visibility 10 km or more", "vis"], ["-RA", "Light rain", "wx"],
-    ["FEW030", "Few clouds · 3000 ft", "nuages"], ["BKN045", "Broken · 4500 ft", "nuages"],
-    ["12/06", "Temperature 12° · dew point 6°", "temp"], ["Q1018", "QNH 1018 hPa", "qnh"],
-    ["TEMPO", null, "tendance"], ["4000", null, "tendance"], ["RA", null, "tendance"], ["BKN012", "Tempo: 4 km in rain, broken 1200 ft", "tendance"]
+    ["METAR", null], ["ELLX", "Luxembourg (ELLX)"], ["210000Z", "Observed 00:00 UTC"],
+    ["04014G22KT", "Wind 040° · 14 kt, gusts 22"], ["010V080", "Variable 010°–080°"],
+    ["9999", "Visibility 10 km or more"], ["-RA", "Light rain"],
+    ["FEW030", "Few clouds · 3000 ft"], ["BKN045", "Broken · 4500 ft"],
+    ["12/06", "Temperature 12° · dew point 6°"], ["Q1018", "QNH 1018 hPa"],
+    ["TEMPO", null], ["4000", null], ["RA", null], ["BKN012", "Tempo: 4 km in rain, broken 1200 ft"]
   ];
-  // Zones de la montre (coordonnées de l'écran de 454 px) ; p = page METAR affichée
-  var ZONES = {
-    aero: [192, 346, 266, 422], arc: [36, 36, 104, 104], vent: [258, 134, 356, 302], fleche: [182, 116, 290, 356],
-    qnh: [96, 136, 194, 304], vfr: [184, 76, 270, 107],
-    vis: [108, 146, 346, 184, 1], wx: [196, 250, 260, 286, 1], nuages: [68, 202, 386, 238, 1], temp: [148, 296, 306, 330, 1], tendance: [58, 340, 396, 374, 1]
-  };
-  var montre = document.getElementById("montre-av"), spot = document.getElementById("spot");
-  function vise(cle) {
-    if (!montre || !spot) return;
-    if (!cle) { spot.classList.remove("on"); montre.classList.remove("metar"); return; }
-    var z = ZONES[cle];
-    montre.classList.toggle("metar", !!z[4]);
-    var px = function (x) { return (x + 114) / 671 * 100; }, py = function (y) { return (y + 168) / 805 * 100; };
-    spot.style.left = px(z[0]) + "%"; spot.style.top = py(z[1]) + "%";
-    spot.style.width = (px(z[2]) - px(z[0])) + "%"; spot.style.height = (py(z[3]) - py(z[1])) + "%";
-    spot.classList.toggle("rond", cle === "arc");
-    spot.classList.add("on");
-  }
   var brut = document.getElementById("brut"), lignes = document.getElementById("lignes"), boite = document.getElementById("decode");
   if (!brut || !lignes) return;
   var spans = GROUPES.map(function (g) {
     var s = document.createElement("span"); s.textContent = g[0]; brut.appendChild(s); brut.appendChild(document.createTextNode(" ")); return s;
   });
-  function fin() {
-    spans.forEach(function (s) { s.className = "lu"; });
-    lignes.innerHTML = "";
-    GROUPES.forEach(function (g) { if (g[1]) ajoute(g[1], true); });
-    ajoute("VFR", true, true);
-    boite.classList.add("fini");
-    vise("vfr");
+  // toutes les lignes sont créées d'emblée (invisibles) : le panneau garde sa taille, la page ne bouge pas
+  var vues = GROUPES.map(function (g) {
+    if (!g[1]) return null;
+    var d = document.createElement("div"); d.className = "l"; d.textContent = g[1]; lignes.appendChild(d); return d;
+  });
+  var cat = document.createElement("div"); cat.className = "l cat"; cat.textContent = "VFR"; lignes.appendChild(cat);
+  function tout(etat) { vues.forEach(function (d) { if (d) d.classList.toggle("vu", etat); }); cat.classList.toggle("vu", etat); }
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    spans.forEach(function (s) { s.className = "lu"; }); tout(true); boite.classList.add("fini"); return;
   }
-  function ajoute(t, direct, cat) {
-    var d = document.createElement("div"); d.className = "l" + (cat ? " cat" : "") + (direct ? " vu" : "");
-    d.textContent = t; lignes.appendChild(d);
-    if (!direct) requestAnimationFrame(function () { requestAnimationFrame(function () { d.classList.add("vu"); }); });
-  }
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fin(); return; }
   var i = 0;
   function suivant() {
     if (i > 0) spans[i - 1].className = "lu";
     if (i >= GROUPES.length) {
-      ajoute("VFR", false, true); boite.classList.add("fini"); vise("vfr");
+      cat.classList.add("vu"); boite.classList.add("fini");
       setTimeout(function () { // on recommence après une pause
-        boite.classList.remove("fini"); lignes.innerHTML = ""; spans.forEach(function (s) { s.className = ""; }); i = 0; vise(null); setTimeout(suivant, 700);
+        boite.classList.remove("fini"); tout(false); spans.forEach(function (s) { s.className = ""; }); i = 0; setTimeout(suivant, 700);
       }, 9000);
       return;
     }
     spans[i].className = "actif";
-    if (GROUPES[i][1]) ajoute(GROUPES[i][1]);
-    if (GROUPES[i][2]) vise(GROUPES[i][2]);
+    if (vues[i]) vues[i].classList.add("vu");
     i++;
     setTimeout(suivant, GROUPES[i - 1][1] ? 1400 : 450);
   }

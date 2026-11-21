@@ -316,7 +316,7 @@ main{flex-direction:column;align-items:center}
   box-shadow:0 0 22px color-mix(in srgb,var(--ciel) 70%,transparent),inset 0 0 14px color-mix(in srgb,var(--ciel) 35%,transparent);
   opacity:0;transition:left .45s cubic-bezier(.3,.7,.2,1),top .45s cubic-bezier(.3,.7,.2,1),width .45s,height .45s,opacity .3s,border-radius .3s;pointer-events:none}
 .spot.on{opacity:1}
-.spot.rond{border-radius:50%}
+.spot.spot-rond{border-radius:50%}
 /* ---- Récit au défilement : le METAR relié à la montre ---- */
 .recit{position:relative;height:calc(10 * 70vh + 100vh);width:100vw;margin-left:calc(50% - 50vw)}
 .recit-scene{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:96px clamp(20px,5vw,72px) 32px}
@@ -360,3 +360,8 @@ body{overflow-x:clip}
 .recit-haut,.recit-texte{position:relative;z-index:3}
 .recit-lien{z-index:4}
 @media (max-width:900px){.recit-montre-cadre{height:46vh;max-height:46vh}}
+.recit{height:calc(15 * 55vh + 100vh)}
+.recit-montre .page-rwy{position:absolute;inset:0;opacity:0;transition:opacity .5s}
+.recit-montre.rwy .page-rwy{opacity:1}
+@media (max-width:900px){.recit{height:calc(15 * 60vh + 100vh)}}
+.recit .spot{box-shadow:0 0 22px color-mix(in srgb,var(--ciel) 70%,transparent),inset 0 0 6px color-mix(in srgb,var(--ciel) 30%,transparent);background:color-mix(in srgb,var(--ciel) 8%,transparent)}
