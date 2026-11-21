@@ -9,19 +9,19 @@
   var ETAPES = [
     { t: [10], page: "d", titre: "QNH", p: "1018 hPa in the largest digits of the dial – or in inHg if you prefer.", zone: [96, 136, 194, 304], z: 1.6 },
     { t: [3], page: "d", titre: "Wind speed", p: "14 knots, gusting 22. The digits turn amber when the crosswind on your runway goes above your limit.", zone: [258, 134, 356, 302], z: 1.6 },
-    { t: [3], page: "d", titre: "Wind direction", p: "The blue arrow shows where the wind comes from, 040°, relative to runway 06: you see at once if it is ahead, across or behind.", zone: [182, 116, 290, 356], z: 1.35 },
+    { t: [3], page: "d", titre: "Wind direction", p: "The blue arrow shows where the wind comes from, 040°, relative to runway 06: you see at once if it is ahead, across or behind.", zone: [182, 122, 277, 346], z: 1.35, forme: "fleche" },
     { t: [1], page: "d", titre: "Your airport", p: "ELLX at the bottom of the dial, with the runway you fly. Tap it to switch: airport 1, 2, 3, then the nearest one.", zone: [192, 346, 266, 422], z: 1.7 },
     { t: [2], page: "d", titre: "Zulu time", p: "The METAR is written in Zulu time (210750Z, 07:50 UTC). The Z on the rim marks the hour in UTC, next to your local time – no mental arithmetic before you file or read a report.", zone: [20, 292, 92, 364], z: 1.6, rond: 1 },
     { t: [1, 2], page: "d", calc: 1, titre: "Sunrise and sunset", p: "Not in the METAR: the watch works them out from the position of ELLX and the date. Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [276, 356, 372, 448], z: 1.5, rond: 1 },
     { t: [5, 7, 8], page: "d", titre: "Flight category", p: "Visibility and cloud base add up to one word in colour at the top of the dial: VFR, MVFR, IFR or LIFR.", zone: [184, 76, 270, 107], z: 1.7, sansCadre: 1 },
     { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued (minute 50) and runs to the next one, due at minute 20. Amber when the report is late, red when it is too old.", zone: [2, 80, 78, 156], z: 1.12, rond: 1, arc: 1 },
-    { t: [3], page: "r", calc: 1, titre: "Your runway, computed", p: "Tap once. Not in the METAR: the watch works it out from the wind and your runway. Headwind 13 kt, XWIND (crosswind) 5 kt from the left, for runway 06.", zone: [100, 136, 356, 250], z: 1.35 },
-    { t: [3, 4], page: "r", calc: 1, titre: "The worst case", p: "Also computed: with the gusts and the variable direction (010° to 080°), the crosswind can reach 17 kt – XW is short for crosswind. Your alert uses this value.", zone: [114, 258, 364, 294], z: 1.55 },
-    { t: [9, 10], page: "r", calc: 1, titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [144, 306, 314, 340], z: 1.65 },
-    { t: [5, 6], page: "m", titre: "Visibility and weather", p: "Tap twice: the METAR in plain words. 10 km or more, light rain.", zone: [108, 146, 346, 290], z: 1.4 },
-    { t: [7, 8], page: "m", titre: "Clouds, in feet", p: "Each layer with its base: few at 3000 ft, broken at 4500 ft.", zone: [68, 202, 386, 238], z: 1.5 },
-    { t: [9], page: "m", titre: "Temperature and dew point", p: "12° and 6°: how close you are to mist and fog.", zone: [148, 296, 306, 330], z: 1.6 },
-    { t: [11, 12, 13, 14], page: "m", titre: "What comes next", p: "The trend, in full and in amber: temporarily 4 km in rain, broken at 1200 ft.", zone: [58, 340, 396, 374], z: 1.45 }
+    { t: [3], page: "r", calc: 1, titre: "Your runway, computed", p: "Tap once. Not in the METAR: the watch works it out from the wind and your runway. Headwind 13 kt, XWIND (crosswind) 5 kt from the left, for runway 06.", zone: [106, 144, 352, 246], z: 1.35 },
+    { t: [3, 4], page: "r", calc: 1, titre: "The worst case", p: "Also computed: with the gusts and the variable direction (010° to 080°), the crosswind can reach 17 kt – XW is short for crosswind. Your alert uses this value.", zone: [97, 266, 359, 288], z: 1.45 },
+    { t: [9, 10], page: "r", calc: 1, titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [152, 311, 306, 335], z: 1.65 },
+    { t: [5, 6], page: "m", titre: "Visibility and weather", p: "Tap twice: the METAR in plain words. 10 km or more, light rain.", zone: [80, 149, 376, 280], z: 1.3 },
+    { t: [7, 8], page: "m", titre: "Clouds, in feet", p: "Each layer with its base: few at 3000 ft, broken at 4500 ft.", zone: [80, 206, 376, 232], z: 1.4 },
+    { t: [9], page: "m", titre: "Temperature and dew point", p: "12° and 6°: how close you are to mist and fog.", zone: [161, 301, 294, 323], z: 1.6 },
+    { t: [11, 12, 13, 14], page: "m", titre: "What comes next", p: "The trend, in full and in amber: temporarily 4 km in rain, broken at 1200 ft.", zone: [81, 342, 373, 362], z: 1.4 }
   ];
   var brut = document.getElementById("recit-brut"), montre = document.getElementById("recit-montre"), spot = document.getElementById("recit-spot");
   var titre = document.getElementById("recit-titre"), para = document.getElementById("recit-p"), num = document.getElementById("recit-n"), barre = document.getElementById("recit-barre");
@@ -50,6 +50,7 @@
     trou.style.width = q(z[2] - z[0] + 2 * m); trou.style.height = q(z[3] - z[1] + 2 * m);
     trou.classList.toggle("trou-rond", !!e.rond);
     sec.classList.toggle("arc-entier", !!e.arc);
+    sec.classList.toggle("fleche-seule", e.forme === "fleche");
     spot.classList.toggle("on", !e.sansCadre);
     sec.classList.toggle("calcul", !!e.calc);
     calc.hidden = !e.calc;

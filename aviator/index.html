@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Aviator METAR – the METAR on your Garmin watch</title>
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=17">
+<link rel="stylesheet" href="aviator.css?v=18">
 <script src="commun.js?v=1"></script>
 <script src="aviator.js?v=8" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
 <script src="intro.js?v=6" defer></script>
-<script src="recit.js?v=8" defer></script>
+<script src="recit.js?v=9" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -75,7 +75,7 @@
               <img src="img/watch-dial.webp?v=2" width="480" height="575" alt="Aviator METAR dial">
               <img class="page-rwy" src="img/watch-rwy.webp?v=2" width="480" height="575" alt="" aria-hidden="true">
               <img class="page-metar" src="img/watch-metar.webp?v=2" width="480" height="575" alt="" aria-hidden="true">
-              <div class="recit-voile" aria-hidden="true"><i id="recit-trou"></i><svg id="recit-arc" viewBox="0 0 454 454" preserveAspectRatio="none"><defs><filter id="recit-flou"><feGaussianBlur stdDeviation="6"/></filter></defs><path d="M0 0H454V454H0Z M27.8 112.0A230 230 0 0 1 426.2 342.0L395.0 324.0A194 194 0 0 0 59.0 130.0Z" fill-rule="evenodd" filter="url(#recit-flou)"/></svg></div>
+              <div class="recit-voile" aria-hidden="true"><i id="recit-trou"></i><img id="recit-fleche" src="img/voile-fleche.png?v=1" alt=""><svg id="recit-arc" viewBox="0 0 454 454" preserveAspectRatio="none"><defs><filter id="recit-flou"><feGaussianBlur stdDeviation="6"/></filter></defs><path d="M0 0H454V454H0Z M27.8 112.0A230 230 0 0 1 426.2 342.0L395.0 324.0A194 194 0 0 0 59.0 130.0Z" fill-rule="evenodd" filter="url(#recit-flou)"/></svg></div>
               <div class="spot on" id="recit-spot" aria-hidden="true"></div>
             </div>
           </div>
