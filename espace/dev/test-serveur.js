@@ -257,6 +257,37 @@ console.log('Aviator METAR : téléphone mémorisé');
   ok(av.post({ action: 'aviator.reprendre', memo: o3.memo }).ok, 'un nouveau téléphone peut être mémorisé ensuite');
 }
 
+console.log('Aviator METAR : appli liée au cadran');
+{
+  const av = charger({ props: { SITE_NOM: 'NiderLabs' } });
+  av.run('installer');
+  const FID = 'faceWatch01234567', FK = 'faceKey0123456789ABCDEF', AID = 'appWatch012345678', AK = 'appKey0123456789ABCDEF';
+  const f = av.get({ a: 'w', id: FID, k: FK, v: '0.7.0', r: '0' });
+  const fo = av.post({ action: 'aviator.ouvrir', code: f.c, garder: true });
+  av.post({ action: 'aviator.enregistrer', jeton: fo.jeton, reglages: Object.assign({}, fo.reglages, { icao: 'LFSB', rwy: 15 }), accepte: true });
+  let a = av.get({ a: 'w', id: AID, k: AK, v: 'A0.1.0', r: '0' });
+  ok(a.ok && /^\d{6}$/.test(a.c) && a.l === 0 && a.u === 0 && !a.s, 'appli non liée : code à 6 chiffres, verrouillée, pas de réglages');
+  const ao = av.post({ action: 'aviator.ouvrir', code: a.c });
+  ok(ao.ok && ao.appli === 'alier' && ao.jetonApp && !ao.reglages, 'code de l\'appli : la page propose de la lier au cadran');
+  ok(av.post({ action: 'aviator.lier', jetonApp: 'faux', memo: fo.memo }).code === 'session', 'lier : jeton inventé refusé');
+  ok(av.post({ action: 'aviator.lier', jetonApp: ao.jetonApp }).code === 'code', 'lier : il faut le téléphone mémorisé ou le code du cadran');
+  const b = av.get({ a: 'w', id: 'boardWatch0123456', k: 'boardKey0123456789ABC', v: 'B0.1.0', r: '0' });
+  ok(av.post({ action: 'aviator.lier', jetonApp: ao.jetonApp, code: b.c }).code === 'code', 'lier : un cadran Boarding ne débloque pas l\'appli');
+  const l = av.post({ action: 'aviator.lier', jetonApp: ao.jetonApp, memo: fo.memo });
+  ok(l.ok && l.appli === 'liee' && l.reglages.icao === 'LFSB', 'téléphone mémorisé : un clic, réglages du cadran');
+  a = av.get({ a: 'w', id: AID, k: AK, v: 'A0.1.0', r: '0' });
+  ok(a.l === 1 && a.u === 1 && a.s && a.s.icao === 'LFSB' && a.rv === 1, 'appli liée : débloquée, reçoit les réglages du cadran');
+  ok(a.tz && 'LFSB' in a.tz, 'appli liée : fuseau des aérodromes du cadran');
+  const ao2 = av.post({ action: 'aviator.ouvrir', code: a.c });
+  ok(ao2.ok && ao2.appli === 'liee' && ao2.reglages.icao === 'LFSB', 'code de l\'appli liée : ouvre les réglages du cadran');
+  av.post({ action: 'aviator.enregistrer', jeton: ao2.jeton, reglages: Object.assign({}, ao2.reglages, { icao: 'LSGS' }), accepte: true });
+  ok(av.get({ a: 'w', id: FID, k: FK, v: '0.7.0', r: '1' }).s.icao === 'LSGS' && av.get({ a: 'w', id: AID, k: AK, v: 'A0.1.0', r: '1' }).s.icao === 'LSGS', 'un seul enregistrement met à jour le cadran et l\'appli');
+  const a2 = av.get({ a: 'w', id: 'app2Watch01234567', k: 'app2Key0123456789ABCD', v: 'A0.1.0', r: '0' });
+  const ao3 = av.post({ action: 'aviator.ouvrir', code: a2.c });
+  const f2 = av.get({ a: 'w', id: FID, k: FK, v: '0.7.0', r: '2' });
+  ok(av.post({ action: 'aviator.lier', jetonApp: ao3.jetonApp, code: f2.c }).ok, 'sans téléphone mémorisé : lier avec le code du cadran');
+}
+
 console.log('Aviator METAR : fuseau horaire des aérodromes');
 {
   const av = charger({ props: { SITE_NOM: 'NiderLabs' } });

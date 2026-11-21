@@ -142,6 +142,8 @@ function route_(req) {
   if (a === 'auth.verifierCode') return verifierCode_(req.email, req.code);
   // Aviator METAR : page publique niderlabs.com/aviator (pas de compte, code affiché sur la montre)
   if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code, req.garder === true);
+  // Appli Aviator METAR (montres sans écran tactile) : liée au cadran, elle en reprend les réglages
+  if (a === 'aviator.lier') return aviatorLier_(req.jetonApp, req.memo, req.code, req.garder === true);
   if (a === 'aviator.reprendre') return aviatorReprendre_(req.memo);
   if (a === 'aviator.oublier') return aviatorOublier_(req.memo, req.jeton, req.tous === true);
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
@@ -613,6 +615,18 @@ function montreAppel_(p) {
   var c = codeMontre_(id);
   var out = { ok: true, c: c.code, ce: Math.round((c.exp - Date.now()) / 1000), st: STATUTS.indexOf(m.Statut) > -1 ? m.Statut : 'beta', rv: Number(m.Rev) || 0 };
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
+  // Appli Aviator METAR (version « A… ») : réglages du cadran lié ; débloquée si ce cadran a été vu depuis 60 jours
+  if (/^A/.test(ver)) {
+    var fid = lienAppli_(id), f = fid ? montre_(fid) : null;
+    delete out.s;
+    out.l = f ? 1 : 0;
+    out.u = f && Date.now() - Number(f.Vu || 0) < 60 * 86400000 ? 1 : 0;
+    if (f) {
+      out.rv = Number(f.Rev) || 0;
+      if (out.rv > rev && f.Reglages) { try { out.s = JSON.parse(f.Reglages); } catch (e) { /* ignorés */ } }
+      m = f;
+    }
+  }
   // Cadran Pro (version « P… ») : résumé TAF et rappels pilote, prêts à afficher
   if (/^P/.test(ver)) { try { out.p = proMontre_(m); } catch (e) { console.error(e && e.stack || e); } }
   // Cadran Boarding (version « B… ») : vols suivis, prêts à afficher
@@ -683,8 +697,46 @@ function aviatorOuvrir_(code, garder) {
   if (!id) throw refus_('Unknown or expired code. Check the code on your watch (it changes every few minutes).', 'code');
   var m = montre_(id);
   if (!m) throw refus_('Unknown watch.', 'code');
+  var appli = estAppli_(m);
+  if (appli) {
+    var fid = lienAppli_(m.Id), f = fid ? montre_(fid) : null;
+    // Appli pas encore liée : jeton court pour la lier au cadran du même pilote
+    if (!f) return { ok: true, appli: 'alier', jetonApp: jetonAppli_(m.Id) };
+    m = f;
+  }
   var o = sessionMontre_(m);
+  if (appli) o.appli = 'liee';
   if (garder) { var mm = memoCreer_(m.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
+  return o;
+}
+
+/* ----- Appli Aviator METAR : liée à un cadran, elle en reprend les réglages (stockés une seule fois, côté cadran) ----- */
+function estAppli_(m) { return /^A/.test(String(m && m.Version || '')); }
+function lienAppli_(id) { return PropertiesService.getScriptProperties().getProperty('mlien:' + id) || ''; }
+function jetonAppli_(id) {
+  var t = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  CacheService.getScriptCache().put('matok:' + hash_(t), id, CONFIG.MONTRE_SESSION_MINUTES * 60);
+  return t;
+}
+function aviatorLier_(jetonApp, memo, code, garder) {
+  var cache = CacheService.getScriptCache();
+  var appId = cache.get('matok:' + hash_(String(jetonApp || '')));
+  if (!appId) throw refus_('Your session has expired. Scan the QR code shown by the app again.', 'session');
+  var fid = null;
+  if (memo) { var r = memoLire_(memo); if (r) fid = r.id; }
+  if (!fid && code) {
+    code = String(code).replace(/\D/g, '');
+    var minute = 'mtry:' + Math.floor(Date.now() / 60000), n = Number(cache.get(minute) || 0);
+    if (n >= CONFIG.MONTRE_ESSAIS_PAR_MINUTE) throw refus_('Too many attempts. Please wait a minute and try again.', 'limite');
+    cache.put(minute, String(n + 1), 120);
+    if (code.length === 6) fid = cache.get('mcode:' + code);
+  }
+  if (!fid) throw refus_('Enter the 6-digit code shown on your watch face (tap the dial twice to reach SETTINGS).', 'code');
+  var f = montre_(fid);
+  if (!f || /^[AB]/.test(String(f.Version || ''))) throw refus_('This code is not from an Aviator METAR watch face.', 'code');
+  PropertiesService.getScriptProperties().setProperty('mlien:' + appId, fid);
+  var o = sessionMontre_(f); o.appli = 'liee';
+  if (garder) { var mm = memoCreer_(f.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
   return o;
 }
 

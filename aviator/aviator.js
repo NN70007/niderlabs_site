@@ -31,7 +31,37 @@
       $("#memo-txt").textContent = "This phone is remembered" + (exp ? " until " + pad(d.getDate()) + " " + mois[d.getMonth()] + " " + d.getFullYear() : "") + ": no code needed. Lost it? Forget all phones from another device.";
     }
   }
+  var jetonApp = null;
+  function lierAppli(o) {
+    jetonApp = o.jetonApp;
+    $("#vue-code").hidden = true; $("#vue-appli").hidden = false;
+    $("#lier-memo").hidden = !memoLire();
+    $("#vue-appli").scrollIntoView({ block: "start" });
+  }
+  function lier(req, b) {
+    var err = $("#err-lier"), t = b.textContent;
+    b.disabled = true; b.textContent = "Linking…"; err.hidden = true;
+    req.action = "aviator.lier"; req.jetonApp = jetonApp;
+    AVIATOR.appel(req).then(function (o) {
+      if (o.memo) memoEcrire(o.memo, o.memoExp);
+      $("#vue-appli").hidden = true;
+      ouvert(o);
+    }).catch(function (x) {
+      if (x.code === "memo" || (req.memo && x.code === "code")) { memoEcrire(null); $("#lier-memo").hidden = true; }
+      msg(err, x.message, false);
+    }).then(function () { b.disabled = false; b.textContent = t; });
+  }
+  $("#lier-memo").addEventListener("click", function (e) { lier({ memo: memoLire() }, e.target); });
+  $("#form-lier").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var c = $("#code-cadran").value.replace(/\D/g, "");
+    if (c.length !== 6) { msg($("#err-lier"), "Enter the 6 digits shown on your watch face.", false); return; }
+    lier({ code: c, garder: !!($("#garder") && $("#garder").checked) }, e.target.querySelector("button"));
+  });
+  $("#code-cadran").addEventListener("input", function (e) { var v = e.target.value.replace(/\D/g, "").slice(0, 6); e.target.value = v.length > 3 ? v.slice(0, 3) + " " + v.slice(3) : v; });
   function ouvert(o) {
+    if (o.appli === "alier") { lierAppli(o); return; }
+    $("#note-appli").hidden = o.appli !== "liee";
     jeton = o.jeton; reglages = o.reglages;
     if (window.onAviatorOpen) window.onAviatorOpen(o.jeton, o);
     afficher(o);

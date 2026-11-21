@@ -7,7 +7,7 @@
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
 <link rel="stylesheet" href="aviator.css?v=18">
 <script src="commun.js?v=1"></script>
-<script src="aviator.js?v=8" defer></script>
+<script src="aviator.js?v=9" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
 <script src="intro.js?v=6" defer></script>
@@ -132,6 +132,18 @@
         <div><span class="n">03</span><div><b>On a page</b><p>tap the right half for the next page, the left half to go back.</p></div></div>
       </div>
     </section>
+    <section class="reglage" id="appli">
+      <div>
+        <div class="eyebrow">Watch with buttons only?</div>
+        <h2 class="serif" style="margin-top:14px">The <em>Aviator METAR App.</em></h2>
+        <p class="chapeau" style="margin-top:20px">Free for owners of the watch face. A glance and the same pages, with the buttons – it follows your watch face settings.</p>
+      </div>
+      <div class="liste">
+        <div><span class="n">01</span><div><b>From the watch face, press up or down</b><p>to the Aviator METAR glance: airport, runway, flight category, crosswind and QNH.</p></div></div>
+        <div><span class="n">02</span><div><b>Press START</b><p>for runway wind, the decoded METAR and settings. Up and down change page; START switches airport.</p></div></div>
+        <div><span class="n">03</span><div><b>Link it once</b><p>scan the QR code shown by the app: it uses the airports and settings of your watch face.</p></div></div>
+      </div>
+    </section>
   </div>
 
   <!-- Étape 1 : code de la montre -->
@@ -158,9 +170,25 @@
     </div>
   </div>
 
+  <!-- Appli Aviator METAR (montres à boutons) : la lier au cadran -->
+  <div class="col etroit" id="vue-appli" hidden>
+    <div class="separateur"><span class="eyebrow">Aviator METAR app</span></div>
+    <h1>Link the app to your watch face</h1>
+    <p class="aide">The app shows the same airports and settings as your Aviator METAR watch face. Link it once; after that, every change you make here applies to both.</p>
+    <button class="bouton" type="button" id="lier-memo" hidden>Use the same airports as my watch face</button>
+    <form id="form-lier" style="display:flex;flex-direction:column;gap:18px" novalidate>
+      <label class="titre" for="code-cadran">CODE SHOWN ON YOUR WATCH FACE</label>
+      <p class="aide">On the watch face, tap twice to reach <b>SETTINGS</b>.</p>
+      <input class="code" id="code-cadran" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">
+      <button class="bouton" type="submit">Link the app</button>
+    </form>
+    <div class="message err" id="err-lier" role="alert" hidden></div>
+  </div>
+
   <!-- Étape 2 : réglages -->
   <form class="col" id="vue-reglages" hidden novalidate>
     <h1>My watch settings</h1>
+    <p class="aide" id="note-appli" hidden>These settings apply to your watch face and to the Aviator METAR app.</p>
 
     <section style="display:flex;flex-direction:column;gap:18px">
       <h2>Airports</h2>
