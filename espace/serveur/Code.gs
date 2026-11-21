@@ -855,8 +855,10 @@ function avis_(req) {
   cache.put(jour, String(n + 1), 86400);
   ajouter_('Avis', { Date: Utilities.formatDate(new Date(), CONFIG.FUSEAU, 'yyyy-MM-dd HH:mm'), Produit: produit, Type: type, Message: msg, Email: email, Page: texte_(req.page, 120) });
   try {
-    MailApp.sendEmail({ to: 'contact@niderlabs.com', subject: produit + ' – avis : ' + type, body: msg + (email ? '\n\nRéponse possible à : ' + email : '\n\n(pas d\'adresse laissée)'), replyTo: email || undefined, name: 'NiderLabs avis' });
-  } catch (e) {}
+    var mail = { to: 'contact@niderlabs.com', subject: produit + ' – avis : ' + type, body: msg + (email ? '\n\nRéponse possible à : ' + email : '\n\n(pas d\'adresse laissée)'), name: 'NiderLabs avis' };
+    if (email) mail.replyTo = email;
+    MailApp.sendEmail(mail);
+  } catch (e) { try { journal_('avis', 'mail-erreur', String(e)); } catch (e2) {} }
   return { ok: true };
 }
 
