@@ -94,6 +94,8 @@
     $("#carte").checked = o.carte !== false;
     $("#accepte").checked = false;
     $("#vue-code").hidden = true; $("#vue-reglages").hidden = false; $("#lie").hidden = false;
+    if ($("#produit")) $("#produit").hidden = true;
+    try { window.scrollTo(0, 0); } catch (e) {}
     $("#msg").hidden = true;
     window.scrollTo(0, 0);
   }

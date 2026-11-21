@@ -134,3 +134,176 @@ select{-webkit-appearance:none;appearance:none;padding-right:48px;
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;text-align:left;line-height:normal}
 input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
 input[type=date]::-webkit-datetime-edit{padding:0}
+
+/* =====================================================================
+   Identité NiderLabs (nov. 2026) — même famille visuelle que nidervoice.com :
+   bleu nuit, titres en Source Serif 4 léger, Inter, petites étiquettes en Plex Mono.
+   Polices servies par le site (plus d'appel à Google Fonts).
+   ===================================================================== */
+@font-face{font-family:Inter;font-weight:400;font-display:swap;src:url(/aviator/fonts/inter-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:Inter;font-weight:500;font-display:swap;src:url(/aviator/fonts/inter-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:Inter;font-weight:600 700;font-display:swap;src:url(/aviator/fonts/inter-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:Display;font-style:normal;font-weight:300;font-display:swap;src:url(/aviator/fonts/source-serif-4-latin-300-normal.woff2) format('woff2')}
+@font-face{font-family:Display;font-style:italic;font-weight:300;font-display:swap;src:url(/aviator/fonts/source-serif-4-latin-300-italic.woff2) format('woff2')}
+@font-face{font-family:Mono;font-weight:400;font-display:swap;src:url(/aviator/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2')}
+:root{
+  --fond:#0A0E15;--surface:#121A27;--surface-2:#182233;--champ:#0D131D;--encre:#F2F5F9;--encre-2:#C9D2DD;--encre-3:#9AA6B6;
+  --trait:rgba(255,255,255,.09);--bord:rgba(255,255,255,.18);--accent:#4F94E3;--ciel:#8CC0F2;--sur-accent:#0A0E15;
+  --ambre:#E5B567;--vert:#5CC08E;--rouge:#EC7A70;
+  --titre:Display,Georgia,"Times New Roman",serif;--texte:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:Mono,ui-monospace,Consolas,monospace;
+}
+:root[data-theme="light"]{
+  --fond:#F5F7FA;--surface:#FFFFFF;--surface-2:#EEF2F7;--champ:#FFFFFF;--encre:#0A0E15;--encre-2:#2B3442;--encre-3:#56606E;
+  --trait:rgba(10,14,21,.10);--bord:rgba(10,14,21,.22);--accent:#1F5FC9;--ciel:#1F5FC9;--sur-accent:#FFFFFF;
+  --ambre:#9A6300;--vert:#1C7C4E;--rouge:#B42318;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --fond:#F5F7FA;--surface:#FFFFFF;--surface-2:#EEF2F7;--champ:#FFFFFF;--encre:#0A0E15;--encre-2:#2B3442;--encre-3:#56606E;
+    --trait:rgba(10,14,21,.10);--bord:rgba(10,14,21,.22);--accent:#1F5FC9;--ciel:#1F5FC9;--sur-accent:#FFFFFF;
+    --ambre:#9A6300;--vert:#1C7C4E;--rouge:#B42318;
+  }
+}
+body{font-size:20px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 50% -10%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),var(--fond) no-repeat}
+h1{font-family:var(--titre);font-weight:300;letter-spacing:-.025em;line-height:1.04;font-size:clamp(46px,7vw,88px)}
+h1 em,.serif em{font-style:italic}
+h2{font-family:var(--mono);font-weight:400;font-size:13px;letter-spacing:.14em;color:var(--encre-3)}
+.serif{font-family:var(--titre);font-weight:300;letter-spacing:-.02em;line-height:1.08}
+
+/* En-tête */
+.entete{position:sticky;top:0;z-index:20;padding:16px clamp(16px,4vw,48px);border-bottom:1px solid var(--trait);
+  background:color-mix(in srgb,var(--fond) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.marque{font-family:var(--texte);font-weight:600;font-size:19px;letter-spacing:.02em;gap:10px}
+.marque small{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.12em;color:var(--encre-3);text-transform:uppercase;margin-left:4px}
+.nav{font-size:15px;gap:4px}
+.nav a{padding:8px 14px;border-radius:999px;font-weight:500}
+.nav a:hover,.nav a[aria-current]{background:color-mix(in srgb,var(--encre) 7%,transparent)}
+.theme{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--bord);font:500 14px var(--texte)}
+
+/* Boutons, cartes, champs */
+.bouton{border-radius:999px;background:var(--encre);color:var(--fond);font:600 24px var(--texte);min-height:72px;
+  box-shadow:0 10px 34px -12px color-mix(in srgb,var(--ciel) 60%,transparent);transition:transform .15s}
+.bouton:hover{transform:translateY(-1px)}
+.bouton.second{background:transparent;color:var(--encre);border:1px solid var(--bord);box-shadow:none;font-size:18px}
+.carte,.case,fieldset.carte{border:1px solid var(--bord);border-radius:18px;background:linear-gradient(180deg,var(--surface),var(--champ))}
+.code{border:1px solid var(--bord);border-radius:18px;background:var(--champ);font-family:var(--mono);font-weight:400;letter-spacing:.18em}
+.code:focus{outline:2px solid var(--ciel);outline-offset:3px}
+.icao,.nombre{font-family:var(--mono);font-weight:400;border:1px solid var(--bord)}
+.recherche,select{border:1px solid var(--bord)}
+.choix label{border:1px solid var(--bord);font-weight:600;font-size:22px}
+.choix label:has(input:checked){background:var(--encre);border-color:var(--encre);color:var(--fond)}
+label.titre{font-family:var(--mono);font-weight:400;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.avert{border:1px solid color-mix(in srgb,var(--ambre) 60%,transparent);border-left:3px solid var(--ambre);background:color-mix(in srgb,var(--ambre) 7%,transparent);font-size:17px}
+.message{border-radius:14px;font-weight:500;font-size:19px}
+.chapeau{font-size:20px;color:var(--encre-3);max-width:36em}
+ol.etapes{font-size:20px}
+.pied{font-size:14px;color:var(--encre-3)}
+.pied .marque-pied{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+
+/* ---- Page produit (haut de /aviator/) ---- */
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ciel)}
+.produit{width:100%;max-width:1160px;display:flex;flex-direction:column;gap:96px;margin-bottom:96px}
+.hero-av{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:48px;align-items:center}
+.hero-av .lead{margin-top:24px;font-size:20px;color:var(--encre-2);max-width:32em}
+.hero-av .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+.pill{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 24px;border-radius:999px;font:500 16px var(--texte);text-decoration:none}
+.pill.plein{background:var(--encre);color:var(--fond);box-shadow:0 10px 34px -12px color-mix(in srgb,var(--ciel) 60%,transparent)}
+.pill.vide{border:1px solid var(--bord);color:var(--encre)}
+.hero-av .montre{justify-self:center;width:min(100%,440px);filter:drop-shadow(0 40px 80px rgba(0,0,0,.55))}
+.preuves{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--trait);border-bottom:1px solid var(--trait)}
+.preuves div{padding:30px 24px;border-right:1px solid var(--trait)}
+.preuves div:last-child{border-right:0}
+.preuves strong{display:block;font-family:var(--titre);font-weight:300;font-size:clamp(34px,3.6vw,50px);letter-spacing:-.03em;line-height:1}
+.preuves span{display:block;margin-top:10px;color:var(--encre-3);font-size:15px;line-height:1.5}
+.ecrans h2.serif,.reglage h2.serif,.ou h2.serif{font-family:var(--titre);font-size:clamp(34px,4.6vw,58px);letter-spacing:-.025em;text-transform:none;color:var(--encre);font-weight:300;line-height:1.08}
+.ecrans .grille-ecrans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:40px}
+.ecran{border:1px solid var(--trait);border-radius:18px;background:linear-gradient(180deg,var(--surface),var(--champ));padding:18px 18px 22px;display:flex;flex-direction:column;gap:12px}
+.ecran img{width:100%;height:auto;display:block}
+.ecran .n{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--encre-3)}
+.ecran h3{margin:0;font-family:var(--titre);font-weight:300;font-size:26px;letter-spacing:-.02em}
+.ecran p{margin:0;font-size:15.5px;color:var(--encre-3);line-height:1.55}
+.reglage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:start}
+.reglage .liste{display:flex;flex-direction:column}
+.reglage .liste>div{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:20px 0;border-top:1px solid var(--trait)}
+.reglage .liste>div:last-child{border-bottom:1px solid var(--trait)}
+.reglage .liste .n{font-family:var(--mono);font-size:12px;color:var(--encre-3);padding-top:4px}
+.reglage .liste b{font-weight:600;font-size:18px}
+.reglage .liste p{margin:4px 0 0;font-size:16px;color:var(--encre-3)}
+.separateur{display:flex;align-items:center;gap:16px;width:100%;max-width:760px;margin-bottom:28px}
+.separateur::after{content:"";flex:1;height:1px;background:var(--trait)}
+@media (max-width:900px){
+  .hero-av,.reglage{grid-template-columns:1fr}
+  .hero-av .montre{width:min(80%,360px);order:-1}
+  .ecrans .grille-ecrans{grid-template-columns:repeat(2,1fr)}
+  .preuves{grid-template-columns:repeat(2,1fr)}
+  .preuves div:nth-child(2){border-right:0}
+  .preuves div:nth-child(-n+2){border-bottom:1px solid var(--trait)}
+  .produit{gap:64px;margin-bottom:64px}
+}
+@media (max-width:600px){
+  h1{font-size:44px}
+  .entete{position:sticky}
+  .ecrans .grille-ecrans{gap:12px}
+  .ecran{padding:12px 12px 16px}
+  .ecran h3{font-size:21px}
+  .ecran p{font-size:14px}
+  .preuves div{padding:22px 16px}
+  .preuves span{font-size:13.5px}
+  .bouton{font-size:21px;min-height:64px}
+  .theme{font-size:0;width:44px;height:44px;min-height:44px;padding:0;border-radius:22px}
+}
+main{flex-direction:column;align-items:center}
+/* Ouverture : titre centré, puis le METAR qui se décode à côté de la montre */
+.hero-av{display:block;text-align:center;padding-top:40px}
+.hero-av h1{margin-top:20px;font-size:clamp(50px,8vw,112px)}
+.hero-av .lead{margin:26px auto 0;max-width:34em;color:var(--encre-3)}
+.hero-av .ctas{justify-content:center}
+.scene-av{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:24px;align-items:center;margin:72px auto 0;max-width:1100px;text-align:left}
+.decode{border:1px solid var(--bord);border-radius:18px;background:linear-gradient(180deg,var(--surface),var(--champ));padding:22px 26px 24px;min-height:440px;
+  box-shadow:0 40px 120px -50px color-mix(in srgb,var(--accent) 55%,transparent)}
+.d-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--encre-3)}
+.d-top .live{display:flex;align-items:center;gap:8px}
+.d-top .live i{width:7px;height:7px;border-radius:50%;background:var(--vert);box-shadow:0 0 0 4px color-mix(in srgb,var(--vert) 18%,transparent);animation:pouls 1.6s ease-in-out infinite}
+.decode.fini .d-top .live i{animation:none}
+@keyframes pouls{50%{opacity:.3}}
+.brut{margin-top:16px;padding:16px 18px;border:1px solid var(--trait);border-radius:12px;background:color-mix(in srgb,#000 22%,transparent);
+  font-family:var(--mono);font-size:16.5px;line-height:1.75;color:var(--encre-3);word-spacing:2px}
+.brut span{transition:color .25s,background .25s;border-radius:4px;padding:1px 2px}
+.brut span.actif{color:var(--fond);background:var(--ciel)}
+.brut span.lu{color:var(--encre)}
+.lignes{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
+.lignes .l{font-size:15.5px;color:var(--encre-2);padding:7px 0;border-bottom:1px solid var(--trait);opacity:0;transform:translateY(6px);transition:opacity .45s,transform .45s}
+.lignes .l.vu{opacity:1;transform:none}
+.lignes .l.cat{grid-column:1/-1;border:0;padding-top:12px}
+.lignes .l.cat::before{content:"Flight category ";color:var(--encre-3);font-size:14px}
+.lignes .l.cat{font-family:var(--mono);font-size:22px;color:var(--vert);letter-spacing:.16em}
+.scene-av .montre{width:100%;max-width:440px;justify-self:center;filter:drop-shadow(0 40px 80px rgba(0,0,0,.55))}
+.illus{margin-top:14px;font-size:12px;color:var(--encre-3);font-family:var(--mono);letter-spacing:.06em}
+@media (max-width:900px){
+  .scene-av{grid-template-columns:1fr;margin-top:48px}
+  .scene-av .montre{order:-1;max-width:300px}
+  .decode{min-height:0}
+}
+@media (max-width:600px){
+  .hero-av{padding-top:10px}
+  .brut{font-size:14px}
+  .lignes{grid-template-columns:1fr}
+  .lignes .l{font-size:14.5px}
+}
+/* Carte en points des aéroports */
+.dotmap{position:relative;width:100%;height:clamp(320px,44vw,520px);margin-top:36px;border:1px solid var(--trait);border-radius:18px;overflow:hidden;
+  background:radial-gradient(800px 400px at 50% 40%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--surface),var(--champ))}
+.dotmap.grande{height:min(70vh,640px);margin-top:0}
+.dotmap canvas{display:block}
+.dotmap .bulle{position:absolute;transform:translate(-50%,calc(-100% - 16px));pointer-events:none;white-space:nowrap;padding:8px 12px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--bord);font-size:14px;color:var(--encre)}
+.dotmap .bulle b{font-family:var(--mono);font-weight:400;letter-spacing:.08em;margin-right:6px}
+.dotmap .bulle span{display:block;color:var(--encre-3);font-size:12.5px}
+.legende-ou{display:flex;flex-wrap:wrap;align-items:center;gap:10px 26px;margin-top:16px;font-size:15px;color:var(--encre-3)}
+.legende-ou span{display:inline-flex;align-items:center;gap:9px}
+.legende-ou i{display:inline-block;border-radius:50%;background:var(--ciel);box-shadow:0 0 12px var(--ciel)}
+.legende-ou a{margin-left:auto;color:var(--ciel);text-decoration:none;font-weight:500}
+#plan{border-radius:18px}
+.rond{background:var(--ciel)!important;box-shadow:0 0 12px var(--ciel);opacity:1}
+.ou{width:100%}
