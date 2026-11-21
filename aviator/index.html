@@ -11,13 +11,14 @@
 <meta name="apple-mobile-web-app-title" content="Aviator">
 <meta name="theme-color" content="#0B0F14">
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
-<link rel="stylesheet" href="aviator.css?v=22">
+<link rel="stylesheet" href="aviator.css?v=23">
 <script src="commun.js?v=1"></script>
 <script src="aviator.js?v=11" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=1" defer></script>
 <script src="intro.js?v=6" defer></script>
 <script src="recit.js?v=9" defer></script>
+<script src="fond.js?v=1" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -36,22 +37,25 @@
   <!-- Présentation du cadran (cachée une fois la montre liée) -->
   <div class="produit" id="produit">
     <section class="hero-av">
-      <div class="eyebrow">Garmin watch face · for VFR pilots</div>
-      <h1>The METAR, <em>on your wrist.</em></h1>
-      <p class="lead">Flight category, QNH, wind and gusts, and a wind arrow relative to the runway you fly – for up to 3 airports, read at a glance before you walk to the aircraft.</p>
-      <div class="offre"><span class="badge-pro">LAUNCH OFFER</span><span><b>Free forever if you install before 31 December 2026.</b> After that: $9.99, one-time.</span></div>
-      <div class="ctas">
-        <a class="pill plein" href="https://apps.garmin.com/apps/1d33b7b5-b517-4991-a8f2-ce8a70097dc3" rel="noopener">Get it on Connect IQ <span aria-hidden="true">→</span></a>
-        <a class="pill vide" href="#lier">Link your watch</a>
+      <canvas class="fond-vent" id="fond-vent" aria-hidden="true"></canvas>
+      <div class="hero-grille">
+        <div class="eyebrow">Garmin watch face · for VFR pilots</div>
+        <h1>The METAR, <em>on your wrist.</em></h1>
+        <div class="montre montre-av h-montre" id="montre-av">
+          <img src="img/watch-dial.webp?v=2" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
+        </div>
+        <p class="lead">Flight category, QNH, wind and gusts, and a wind arrow relative to the runway you fly – for up to 3 airports, read at a glance before you walk to the aircraft.</p>
+        <div class="offre"><span class="badge-pro">LAUNCH OFFER</span><span><b>Free forever if you install before 31 December 2026.</b> After that: $9.99, one-time.</span></div>
+        <div class="ctas">
+          <a class="pill plein" href="https://apps.garmin.com/apps/1d33b7b5-b517-4991-a8f2-ce8a70097dc3" rel="noopener">Get it on Connect IQ <span aria-hidden="true">→</span></a>
+          <a class="pill vide" href="#lier">Link your watch</a>
+        </div>
       </div>
       <div class="scene-av">
         <div class="decode" id="decode" aria-hidden="true">
           <div class="d-top"><span>METAR · ELLX</span><span class="live"><i></i>Decoding</span></div>
           <div class="brut" id="brut"></div>
           <div class="lignes" id="lignes"></div>
-        </div>
-        <div class="montre montre-av" id="montre-av">
-          <img src="img/watch-dial.webp?v=2" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
         </div>
       </div>
       <p class="illus">Animated example – sample METAR</p>

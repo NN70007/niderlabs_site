@@ -421,3 +421,29 @@ body{overflow-x:clip}
 .marque{white-space:nowrap}
 @media (max-width:600px){.marque small{display:none}}
 #montres .liste .n{font-size:20px;line-height:1;color:var(--encre-3)}#montres .liste>div:first-child .n{color:var(--vert)}
+
+/* Ouverture v2 : la montre visible dès l'arrivée, fond « METAR + vent » */
+.hero-av{position:relative;padding-top:8px;text-align:left}
+.fond-vent{position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:100vw;height:calc(100% + 60px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent)}
+.hero-grille,.hero-av .scene-av,.hero-av .illus{position:relative;z-index:1}
+.hero-grille{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);column-gap:48px;align-items:center;
+  grid-template-areas:"eyebrow montre" "titre montre" "lead montre" "offre montre" "ctas montre";grid-template-rows:auto auto auto auto 1fr}
+.hero-grille>.eyebrow{grid-area:eyebrow;align-self:end}
+.hero-grille>h1{grid-area:titre;margin-top:16px;font-size:clamp(48px,5.8vw,88px)}
+.hero-grille>.lead{grid-area:lead;margin:22px 0 0;max-width:30em}
+.hero-grille>.offre{grid-area:offre;margin-top:22px}
+.hero-grille>.ctas{grid-area:ctas;justify-content:flex-start;align-self:start;margin-top:26px}
+.hero-grille>.h-montre{grid-area:montre;justify-self:center;width:100%;max-width:460px;filter:drop-shadow(0 40px 80px rgba(0,0,0,.55))}
+.hero-grille>.h-montre img{width:100%;height:auto;display:block}
+.hero-av .scene-av{display:block;max-width:900px;margin:64px auto 0}
+.hero-av .illus{text-align:center}
+@media (max-width:900px){
+  .hero-av{text-align:center}
+  .hero-grille{grid-template-columns:1fr;grid-template-areas:"eyebrow" "titre" "montre" "lead" "offre" "ctas";grid-template-rows:none}
+  .hero-grille>h1{font-size:clamp(40px,11vw,64px);margin-top:12px}
+  .hero-grille>.h-montre{max-width:min(78vw,330px);margin-top:18px}
+  .hero-grille>.lead{margin:18px auto 0}
+  .hero-grille>.ctas{justify-content:center}
+  .hero-av .scene-av{margin-top:44px}
+}
