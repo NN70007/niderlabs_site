@@ -4,11 +4,13 @@
   // carte des aéroports : chargée seulement quand elle arrive à l'écran
   var ca = document.getElementById("carte-accueil");
   if (ca && window.AVIATOR_CARTE) {
-    var go = function () { window.AVIATOR_CARTE(ca, { total: document.getElementById("total-accueil") }); };
+    var lance = false;
+    var go = function () { if (lance) return; lance = true; window.AVIATOR_CARTE(ca, { total: document.getElementById("total-accueil") }); };
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { io.disconnect(); go(); } }, { rootMargin: "200px" });
       io.observe(ca);
-    } else go();
+    }
+    setTimeout(go, 3000); // filet de sécurité : la carte se charge de toute façon après 3 s
   }
   var GROUPES = [
     ["METAR", null], ["ELLX", "Luxembourg (ELLX)"], ["211450Z", "Observed 14:50 UTC"],
