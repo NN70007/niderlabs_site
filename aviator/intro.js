@@ -13,7 +13,7 @@
     setTimeout(go, 3000); // filet de sécurité : la carte se charge de toute façon après 3 s
   }
   var GROUPES = [
-    ["METAR", null], ["ELLX", "Luxembourg (ELLX)"], ["210000Z", "Observed 00:00 UTC"],
+    ["METAR", null], ["ELLX", "Luxembourg (ELLX)"], ["210750Z", "Observed 07:50 UTC"],
     ["04014G22KT", "Wind 040° · 14 kt, gusts 22"], ["010V080", "Variable 010°–080°"],
     ["9999", "Visibility 10 km or more"], ["-RA", "Light rain"],
     ["FEW030", "Few clouds · 3000 ft"], ["BKN045", "Broken · 4500 ft"],

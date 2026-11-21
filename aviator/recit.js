@@ -3,7 +3,7 @@
 (function () {
   "use strict";
   var sec = document.getElementById("recit"); if (!sec) return;
-  var JETONS = ["METAR", "ELLX", "210000Z", "04014G22KT", "010V080", "9999", "-RA", "FEW030", "BKN045", "12/06", "Q1018", "TEMPO", "4000", "RA", "BKN012"];
+  var JETONS = ["METAR", "ELLX", "210750Z", "04014G22KT", "010V080", "9999", "-RA", "FEW030", "BKN045", "12/06", "Q1018", "TEMPO", "4000", "RA", "BKN012"];
   // zone : coordonnées de l'écran de 454 px ; p = page METAR ; z = grossissement
   // t : groupes du METAR ; page : d = cadran, r = page RWY, m = page METAR ; zone : écran de 454 px ; z : grossissement
   var ETAPES = [
@@ -11,10 +11,10 @@
     { t: [3], page: "d", titre: "Wind speed", p: "14 knots, gusting 22. The digits turn amber when the crosswind on your runway goes above your limit.", zone: [258, 134, 356, 302], z: 1.6 },
     { t: [3], page: "d", titre: "Wind direction", p: "The blue arrow shows where the wind comes from, 040°, relative to runway 06: you see at once if it is ahead, across or behind.", zone: [182, 116, 290, 356], z: 1.35 },
     { t: [1], page: "d", titre: "Your airport", p: "ELLX at the bottom of the dial, with the runway you fly. Tap it to switch: airport 1, 2, 3, then the nearest one.", zone: [192, 346, 266, 422], z: 1.7 },
-    { t: [2], page: "d", titre: "Zulu time", p: "The METAR is written in Zulu time (210000Z). The Z on the rim marks the hour in UTC, next to your local time – no mental arithmetic before you file or read a report.", zone: [366, 92, 438, 164], z: 1.6, rond: 1 },
-    { t: [1, 2], page: "d", calc: 1, titre: "Sunrise and sunset", p: "Not in the METAR: the watch works them out from the position of ELLX and the date. Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [118, 356, 224, 452], z: 1.5, rond: 1 },
+    { t: [2], page: "d", titre: "Zulu time", p: "The METAR is written in Zulu time (210750Z, 07:50 UTC). The Z on the rim marks the hour in UTC, next to your local time – no mental arithmetic before you file or read a report.", zone: [20, 292, 92, 364], z: 1.6, rond: 1 },
+    { t: [1, 2], page: "d", calc: 1, titre: "Sunrise and sunset", p: "Not in the METAR: the watch works them out from the position of ELLX and the date. Amber marks on the edge show sunrise or sunset at their exact times, and civil twilight in between.", zone: [276, 356, 372, 448], z: 1.5, rond: 1 },
     { t: [5, 7, 8], page: "d", titre: "Flight category", p: "Visibility and cloud base add up to one word in colour at the top of the dial: VFR, MVFR, IFR or LIFR.", zone: [184, 76, 270, 107], z: 1.7, sansCadre: 1 },
-    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued and runs to the next one. Amber when the report is late, red when it is too old.", zone: [30, 30, 110, 110], z: 1.6, rond: 1 },
+    { t: [2], page: "d", titre: "How fresh it is", p: "The arc on the rim starts when the METAR was issued (minute 50) and runs to the next one, due at minute 20. Amber when the report is late, red when it is too old.", zone: [2, 80, 78, 156], z: 1.6, rond: 1 },
     { t: [3], page: "r", calc: 1, titre: "Your runway, computed", p: "Tap once. Not in the METAR: the watch works it out from the wind and your runway. Headwind 13 kt, XWIND (crosswind) 5 kt from the left, for runway 06.", zone: [100, 136, 356, 250], z: 1.35 },
     { t: [3, 4], page: "r", calc: 1, titre: "The worst case", p: "Also computed: with the gusts and the variable direction (010° to 080°), the crosswind can reach 17 kt – XW is short for crosswind. Your alert uses this value.", zone: [114, 258, 364, 294], z: 1.55 },
     { t: [9, 10], page: "r", calc: 1, titre: "Density altitude", p: "Computed from the temperature, the QNH and the field elevation.", zone: [144, 306, 314, 340], z: 1.65 },
