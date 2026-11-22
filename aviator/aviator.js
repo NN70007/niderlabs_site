@@ -80,7 +80,7 @@
     if (code.length !== 6) { msg(err, "Enter the 6 digits shown on your watch.", false); return; }
     b.disabled = true; b.textContent = "Checking…"; err.hidden = true;
     var garder = !!($("#garder") && $("#garder").checked);
-    AVIATOR.appel({ action: "aviator.ouvrir", code: code, garder: garder }).then(function (o) {
+    AVIATOR.appel({ action: "aviator.ouvrir", code: code, garder: garder, memo: memoLire() || undefined }).then(function (o) {
       if (o.memo) memoEcrire(o.memo, o.memoExp);
       ouvert(o);
     }).catch(function (x) { msg(err, x.message, false); })

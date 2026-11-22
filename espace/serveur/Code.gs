@@ -143,7 +143,7 @@ function route_(req) {
   if (a === 'auth.demanderCode') return demanderCode_(req.email);
   if (a === 'auth.verifierCode') return verifierCode_(req.email, req.code);
   // Aviator METAR : page publique niderlabs.com/aviator (pas de compte, code affiché sur la montre)
-  if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code, req.garder === true);
+  if (a === 'aviator.ouvrir') return aviatorOuvrir_(req.code, req.garder === true, req.memo);
   // Appli Aviator METAR (montres sans écran tactile) : liée au cadran, elle en reprend les réglages
   if (a === 'aviator.lier') return aviatorLier_(req.jetonApp, req.memo, req.code, req.garder === true);
   if (a === 'aviator.reprendre') return aviatorReprendre_(req.memo);
@@ -621,9 +621,10 @@ function montreAppel_(p) {
   // Appli Aviator METAR (version « A… ») : réglages du cadran lié ; débloquée si ce cadran a été vu depuis 60 jours
   if (/^A/.test(ver)) {
     var fid = lienAppli_(id), f = fid ? montre_(fid) : null;
-    delete out.s;
     out.l = f ? 1 : 0;
-    out.u = f && Date.now() - Number(f.Vu || 0) < 60 * 86400000 ? 1 : 0;
+    // Offre de lancement : l'appli est débloquée pour tous (liée ou non)
+    out.u = 1;
+    if (f) delete out.s;
     if (f) {
       out.rv = Number(f.Rev) || 0;
       if (out.rv > rev && f.Reglages) { try { out.s = JSON.parse(f.Reglages); } catch (e) { /* ignorés */ } }
@@ -689,7 +690,7 @@ function codeMontre_(id) {
   return { code: code, exp: exp };
 }
 
-function aviatorOuvrir_(code, garder) {
+function aviatorOuvrir_(code, garder, memo) {
   code = String(code || '').replace(/\D/g, '');
   if (code.length !== 6) throw refus_('Enter the 6-digit code shown on your watch.', 'code');
   var cache = CacheService.getScriptCache();
@@ -703,12 +704,16 @@ function aviatorOuvrir_(code, garder) {
   var appli = estAppli_(m);
   if (appli) {
     var fid = lienAppli_(m.Id), f = fid ? montre_(fid) : null;
-    // Appli pas encore liée : jeton court pour la lier au cadran du même pilote
-    if (!f) return { ok: true, appli: 'alier', jetonApp: jetonAppli_(m.Id) };
-    m = f;
+    // Appli pas encore liée : si ce téléphone est mémorisé pour un cadran, on la lie toute seule ;
+    // sinon on ouvre directement ses propres réglages (le QR suffit, comme pour le cadran).
+    if (!f && memo) {
+      var r = memoLire_(memo), cf = r ? montre_(r.id) : null;
+      if (cf && !estAppli_(cf)) { PropertiesService.getScriptProperties().setProperty('mlien:' + m.Id, cf.Id); f = cf; }
+    }
+    if (f) m = f;
   }
   var o = sessionMontre_(m);
-  if (appli) o.appli = 'liee';
+  if (appli) o.appli = f ? 'liee' : 'seule';
   if (garder) { var mm = memoCreer_(m.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
   return o;
 }

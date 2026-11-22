@@ -280,9 +280,10 @@ console.log('Aviator METAR : appli liée au cadran');
   const fo = av.post({ action: 'aviator.ouvrir', code: f.c, garder: true });
   av.post({ action: 'aviator.enregistrer', jeton: fo.jeton, reglages: Object.assign({}, fo.reglages, { icao: 'LFSB', rwy: 15 }), accepte: true });
   let a = av.get({ a: 'w', id: AID, k: AK, v: 'A0.1.0', r: '0' });
-  ok(a.ok && /^\d{6}$/.test(a.c) && a.l === 0 && a.u === 0 && !a.s, 'appli non liée : code à 6 chiffres, verrouillée, pas de réglages');
-  const ao = av.post({ action: 'aviator.ouvrir', code: a.c });
-  ok(ao.ok && ao.appli === 'alier' && ao.jetonApp && !ao.reglages, 'code de l\'appli : la page propose de la lier au cadran');
+  ok(a.ok && /^\d{6}$/.test(a.c) && a.l === 0 && a.u === 1, 'appli non liée : code à 6 chiffres, débloquée (offre de lancement)');
+  const aSeule = av.post({ action: 'aviator.ouvrir', code: a.c });
+  ok(aSeule.ok && aSeule.appli === 'seule' && aSeule.reglages && aSeule.jeton, 'QR de l\'appli sans téléphone mémorisé : ouvre directement ses réglages');
+  const ao = { jetonApp: av.ctx.jetonAppli_(AID) };
   ok(av.post({ action: 'aviator.lier', jetonApp: 'faux', memo: fo.memo }).code === 'session', 'lier : jeton inventé refusé');
   ok(av.post({ action: 'aviator.lier', jetonApp: ao.jetonApp }).code === 'code', 'lier : il faut le téléphone mémorisé ou le code du cadran');
   const b = av.get({ a: 'w', id: 'boardWatch0123456', k: 'boardKey0123456789ABC', v: 'B0.1.0', r: '0' });
@@ -297,9 +298,12 @@ console.log('Aviator METAR : appli liée au cadran');
   av.post({ action: 'aviator.enregistrer', jeton: ao2.jeton, reglages: Object.assign({}, ao2.reglages, { icao: 'LSGS' }), accepte: true });
   ok(av.get({ a: 'w', id: FID, k: FK, v: '0.7.0', r: '1' }).s.icao === 'LSGS' && av.get({ a: 'w', id: AID, k: AK, v: 'A0.1.0', r: '1' }).s.icao === 'LSGS', 'un seul enregistrement met à jour le cadran et l\'appli');
   const a2 = av.get({ a: 'w', id: 'app2Watch01234567', k: 'app2Key0123456789ABCD', v: 'A0.1.0', r: '0' });
-  const ao3 = av.post({ action: 'aviator.ouvrir', code: a2.c });
+  const ao3 = { jetonApp: av.ctx.jetonAppli_('app2Watch01234567') };
   const f2 = av.get({ a: 'w', id: FID, k: FK, v: '0.7.0', r: '2' });
   ok(av.post({ action: 'aviator.lier', jetonApp: ao3.jetonApp, code: f2.c }).ok, 'sans téléphone mémorisé : lier avec le code du cadran');
+  const A3 = 'app3Watch01234567', a3 = av.get({ a: 'w', id: A3, k: 'app3Key0123456789ABCD', v: 'A0.1.1', r: '0' });
+  const o4 = av.post({ action: 'aviator.ouvrir', code: a3.c, memo: fo.memo });
+  ok(o4.ok && o4.appli === 'liee' && o4.reglages.icao === 'LSGS', 'QR de l\'appli + téléphone mémorisé : liée toute seule, réglages du cadran');
 }
 
 console.log('Aviator METAR : fuseau horaire des aérodromes');
