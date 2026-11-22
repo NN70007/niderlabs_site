@@ -92,6 +92,10 @@
     var m = /[?&]c=(\d{6})(?:&|$)/.exec(location.search);
     if (!m) return;
     try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    // Arrivée par le QR de la montre : on va droit au but (pas la page de présentation)
+    if ($("#produit")) $("#produit").hidden = true;
+    var rec = document.querySelector(".recit"); if (rec) rec.hidden = true;
+    try { window.scrollTo(0, 0); } catch (e) {}
     $("#code").value = m[1].slice(0, 3) + " " + m[1].slice(3);
     $("#form-code").requestSubmit ? $("#form-code").requestSubmit() : $("#form-code").dispatchEvent(new Event("submit", { cancelable: true }));
   })();
