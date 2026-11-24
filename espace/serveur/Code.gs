@@ -165,6 +165,8 @@ function route_(req) {
   if (a === 'boarding.file') return boardingFile_(req.jeton, req.ap, String(req.q || ''), req.m);
   if (a === 'boarding.pasmonavion') return boardingPasMonAvion_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.abord') return boardingAbord_(req.jeton, String(req.n || ''), String(req.d || ''), Number(req.la), Number(req.lo));
+  // position : compteur anonyme (où, résultat, navigateur), sans session et sans la position
+  if (a === 'boarding.loc') return boardingLoc_(String(req.w || ''), String(req.r || ''), String(req.nav || ''));
   if (a === 'boarding.supprimer') return boardingSupprimer_(req.jeton, String(req.n || ''), String(req.d || ''));
   if (a === 'boarding.maison') return boardingMaison_(req.jeton, req.tz);
   if (a === 'boarding.trajet') return boardingTrajet_(req.jeton, req.tr);
@@ -1425,6 +1427,13 @@ function boardingFile_(jeton, ap, q, m) {
     listeEcrire_(key, l, 3 * 3600);
   } finally { lock.releaseLock(); }
   return { ok: true, ap: ap, files: filesAeroport_(ap) };
+}
+/** Compteur anonyme des essais de position (« Use my location », « I'm on board », départ) : résultat et navigateur, jamais la position. Lisible via ?a=conso. */
+function boardingLoc_(w, r, nav) {
+  if (['reglage', 'abord', 'ici'].indexOf(w) < 0 || ['ok', 'refus', 'signal', 'delai', 'absent'].indexOf(r) < 0 ||
+      ['samsung', 'chrome-android', 'android', 'ios', 'autre'].indexOf(nav) < 0) throw refus_('Invalid.', 'donnees');
+  compter_('loc_' + w + '_' + r + '_' + nav);
+  return { ok: true };
 }
 function boardingAbord_(jeton, n, d, la, lo) {
   var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);

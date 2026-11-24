@@ -334,22 +334,63 @@
       pos = { la: p.coords.latitude, lo: p.coords.longitude, t: now(), pr: p.coords.accuracy || 0 };
       if (apres) apres(pos);
     }, function (e) {
-      if (e && e.code === 1) { $("#loc-etat").innerHTML = locAideRefus(); }
+      if (e && e.code === 1 && $("#loc-etat")) { $("#loc-etat").innerHTML = locAide("refus"); }
       if (apres) apres(null);
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
-  function locAideRefus() {
-    return /iPhone|iPad/.test(navigator.userAgent) ? "Location is blocked. In Safari: <b>aA › Website Settings › Location › Allow</b> (or Settings › Apps › Safari › Location › Allow)." : "Location is blocked. Allow it for niderlabs.com in your browser's site settings.";
+  // navigateur du téléphone : les réglages de position ne sont pas au même endroit (Samsung Internet, Chrome, Safari)
+  function navNom() {
+    var u = navigator.userAgent || "";
+    return /SamsungBrowser/.test(u) ? "samsung" : /iPhone|iPad/.test(u) ? "ios" : /Android/.test(u) ? (/Chrome/.test(u) ? "chrome-android" : "android") : "autre";
   }
+  // une position : GPS précis d'abord, puis approximative ; ko("refus" | "signal" | "delai" | "absent")
+  function geoloc(ok, ko, lent) {
+    if (!navigator.geolocation) { ko("absent"); return; }
+    var essai = function (precis) {
+      navigator.geolocation.getCurrentPosition(ok, function (e) {
+        var r = e && e.code === 1 ? "refus" : e && e.code === 3 ? "delai" : "signal";
+        if (r === "refus" || !precis) ko(r); else essai(false);
+      }, { enableHighAccuracy: precis, timeout: precis ? (lent ? 20000 : 12000) : 12000, maximumAge: precis ? 30000 : 120000 });
+    };
+    essai(true);
+  }
+  // aide précise selon la cause ; sur Android, trois verrous : position du téléphone, droit du navigateur, droit du site
+  function locAide(r) {
+    var n = navNom(), app = n === "samsung" ? "Samsung Internet" : "Chrome", android = n === "samsung" || n === "chrome-android" || n === "android";
+    if (r === "absent") return "This browser cannot give a position. Open Boarding in " + (n === "ios" ? "Safari" : "Chrome") + ".";
+    if (r === "refus") {
+      if (n === "ios") return "Location is blocked for Boarding.<br>1. In Safari: <b>aA › Website Settings › Location › Allow</b>.<br>2. iPhone Settings › Privacy &amp; Security › <b>Location Services</b> on, and <b>Safari Websites › While Using</b>.<br>Then try again.";
+      if (android) return "Location is blocked for Boarding. Check these 3 things:<br>1. Swipe down from the top of the screen: <b>Location</b> must be on.<br>2. Phone Settings › Apps › <b>" + app + "</b> › Permissions › Location › <b>Allow only while using the app</b>, with <b>Use precise location</b> on.<br>3. In " + app + ": " +
+        (n === "samsung" ? "<b>menu ☰ › Settings › Sites and downloads › Site permissions › Location</b>" : "<b>menu ⋮ › Settings › Site settings › Location</b>") + " › niderlabs.com › <b>Allow</b>.<br>Then try again.";
+      return "Location is blocked. Allow it for niderlabs.com in your browser's site settings, then try again.";
+    }
+    if (r === "signal") return android ? "Your phone gives no position. Swipe down from the top of the screen and turn on <b>Location</b>, then try again." : "Your phone gives no position. Check that <b>Location Services</b> is on, then try again near a window.";
+    return "Your phone took too long to find its position (weak GPS indoors). Try again near a window or outside.";
+  }
+  // aide affichée dans la page (pas de fenêtre système), un seul bouton OK
+  function montrerAide(html) {
+    var non = $("#dlg-non"), p = demander("", "OK");
+    $("#dlg-txt").innerHTML = html; if (non) non.hidden = true;
+    p.then(function () { if (non) non.hidden = false; });
+  }
+  // compteur anonyme côté serveur (réussite ou cause de l'échec, navigateur) : jamais la position
+  function noterLoc(ou, r) { try { AVIATOR.appel({ action: "boarding.loc", w: ou, r: r, nav: navNom() }).catch(function () {}); } catch (e) {} }
   function majLoc() {
     var b = $("#loc-btn"), e = $("#loc-etat"); if (!b) return;
     b.textContent = locOn() ? "Stop using my location" : "Use my location";
     e.textContent = locOn() ? (pos ? "✓ On – used only while Boarding is open." : "On.") : "Off. Without it, Boarding goes by the clock: tap “I'm already at the airport” when you are there.";
   }
-  $("#loc-btn") && $("#loc-btn").addEventListener("click", function () {
+  $("#loc-btn") && $("#loc-btn").addEventListener("click", function (ev) {
     if (locOn()) { try { localStorage.removeItem("boarding-loc"); } catch (e) {} pos = null; majLoc(); if (dernier) afficherVols(dernier); return; }
-    try { localStorage.setItem("boarding-loc", "1"); } catch (e) {}
-    lirePosition(function (p) { majLoc(); if (!p) { $("#loc-etat").innerHTML = locAideRefus(); } if (dernier) afficherVols(dernier); });
+    var fin = occupe(ev.currentTarget, "Locating…");
+    $("#loc-etat").textContent = "If your phone asks, tap Allow.";
+    geoloc(function (p) {
+      fin(); try { localStorage.setItem("boarding-loc", "1"); } catch (e) {}
+      pos = { la: p.coords.latitude, lo: p.coords.longitude, t: now(), pr: p.coords.accuracy || 0 };
+      majLoc(); noterLoc("reglage", "ok"); if (dernier) afficherVols(dernier);
+    }, function (r) {
+      fin(); majLoc(); $("#loc-etat").innerHTML = locAide(r); noterLoc("reglage", r);
+    });
   });
   majLoc();
 
@@ -617,32 +658,24 @@
   }
 
   // ---- « I'm on board » : la position du téléphone (une fois, non conservée) trouve l'avion le plus proche ----
-  // position pour « I'm on board » : GPS précis d'abord, puis position approximative (cabine = mauvais GPS)
-  function positionAbord(ok, ko) {
-    var essai = function (precis) {
-      navigator.geolocation.getCurrentPosition(ok, function (e) {
-        if (e && e.code === 1) { ko("refus"); return; }
-        if (precis) essai(false); else ko("signal");
-      }, { enableHighAccuracy: precis, timeout: precis ? 20000 : 15000, maximumAge: precis ? 30000 : 120000 });
-    };
-    essai(true);
-  }
+  // position : GPS précis d'abord (20 s, cabine = mauvais GPS), puis position approximative — voir geoloc()
   function abord(v, btn) {
-    if (!navigator.geolocation) { toast("Location is not available on this device.", false); return; }
-    var fin = occupe(btn, "Finding your plane…");
-    positionAbord(function (p) {
+    var fin = occupe(btn, "Finding your position…");
+    geoloc(function (p) {
       try { localStorage.setItem("boarding-loc", "1"); } catch (e) {}
+      noterLoc("abord", "ok");
+      if (btn && btn.classList.contains("occupe")) btn.textContent = "Finding your plane…";
       AVIATOR.appel({ action: "boarding.abord", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, la: p.coords.latitude, lo: p.coords.longitude }).then(function (r) {
         fin();
         if (!r.ok) { toast(r.error || "No aircraft found next to you.", false); return; }
         toast("Found: " + (r.rg || "your plane") + (r.t ? " (" + r.t + ")" : "") + ", " + r.m + " m from you.", true);
         afficherVols(r);
       }).catch(function (x) { fin(); erreur(x); });
-    }, function (raison) {
-      fin();
-      if (raison === "refus") toast(/Android/.test(navigator.userAgent) ? "Location is blocked for this site: Chrome ⋮ › Settings › Site settings › Location › niderlabs.com › Allow." : "Location is blocked: Safari aA › Website Settings › Location › Allow.", false);
-      else toast("Your phone could not get a position (weak GPS inside the cabin). Try again near a window, or once the plane is moving.", false);
-    });
+    }, function (r) {
+      fin(); noterLoc("abord", r);
+      if ($("#loc-etat")) $("#loc-etat").innerHTML = locAide(r);
+      montrerAide(r === "signal" || r === "delai" ? locAide(r) + "<br>Inside the cabin, a seat by the window helps." : locAide(r));
+    }, true);
   }
 
 
@@ -1097,17 +1130,17 @@
     }, 450);
   });
   $("#ici").addEventListener("click", function (e) {
-    if (!navigator.geolocation) { toast("Position is not available on this device.", false); return; }
     var fin = occupe(e.currentTarget, "Locating…");
-    navigator.geolocation.getCurrentPosition(function (p) {
+    geoloc(function (p) {
       var la = p.coords.latitude, lo = p.coords.longitude;
+      noterLoc("ici", "ok");
       // adresse lisible (OpenStreetMap) ; à défaut, les coordonnées
       fetch("https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat=" + la + "&lon=" + lo, { headers: { "Accept-Language": "en" } })
         .then(function (r) { return r.json(); }).catch(function () { return null; }).then(function (a) {
           var lab = a && a.display_name ? a.display_name.split(",").slice(0, 3).join(",").trim() : "Position " + la.toFixed(4) + ", " + lo.toFixed(4);
           depart = { la: la, lo: lo, lab: lab }; fin(); departAfficher(); sauverTrajet();
         });
-    }, function () { fin(); toast("Position refused or unavailable.", false); }, { enableHighAccuracy: false, timeout: 15000 });
+    }, function (r) { fin(); noterLoc("ici", r); montrerAide(locAide(r)); });
   });
 
   // ---- montres liées (dans Compte) ----
@@ -1237,7 +1270,7 @@
   }, 120000);
 
   // ---- nouvelle version en ligne → rechargement (l'app épinglée sur l'écran d'accueil garde parfois l'ancienne page)
-  var VERSION = "41";
+  var VERSION = "42";
   function verifierVersion() {
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (o) {
       if (o && o.v && String(o.v) !== VERSION && lsLire("boarding-rechargee") !== String(o.v)) { lsEcrire("boarding-rechargee", String(o.v)); location.reload(); }

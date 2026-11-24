@@ -433,6 +433,11 @@ console.log('Boarding (cadran vol)');
   r = bo.post({ action: 'boarding.supprimer', jeton: o.jeton, n: 'LG8803', d: today });
   ok(r.ok && r.enregistres.length === 0, 'vol supprimé');
   ok(bo.post({ action: 'boarding.charger', jeton: 'faux' }).code === 'session', 'Boarding refusé sans session');
+  ok(bo.post({ action: 'boarding.loc', w: 'abord', r: 'refus', nav: 'samsung' }).ok, 'essai de position compté sans session');
+  ok(bo.post({ action: 'boarding.loc', w: 'abord', r: 'refus', nav: 'samsung', la: 49.6 }).ok, 'une position envoyée par erreur est ignorée');
+  ok(bo.post({ action: 'boarding.loc', w: 'x', r: 'ok', nav: 'ios' }).code === 'donnees', 'essai de position invalide refusé');
+  { const c = JSON.parse(bo.cache['cnt:' + new Date().toISOString().slice(0, 10)] || '{}');
+    ok(c.loc_abord_refus_samsung === 2 && !JSON.stringify(c).includes('49.6'), 'compteur anonyme par cause et navigateur, sans position'); }
   ok(!bo.get({ a: 'w', id: 'stdWatch0123456789', k: K, v: '0.6.6', r: '0' }).b, 'cadran Aviator : pas de données Boarding');
   ok(!JSON.stringify(bo.get({ a: 'vdiag' })).includes('cle-de-test'), 'le diagnostic ne renvoie jamais la clé');
 }
