@@ -62,6 +62,7 @@
     var L = [{ k: "accueil", h: lien("./"), t: "Accueil" }];
     if (u && u.actualites) L.push({ k: "actualites", h: lien("admin/"), t: "Actualités" });
     if (u && u.admin) L.push({ k: "acces", h: lien("acces.html"), t: "Accès" });
+    if (u && u.admin) L.push({ k: "visites", h: lien("visites.html"), t: "Visites" });
     return L.map(function (l) { return '<a href="' + l.h + '"' + (l.k === actif ? ' class="actif" aria-current="page"' : "") + ">" + esc(l.t) + "</a>"; }).join("");
   }
 

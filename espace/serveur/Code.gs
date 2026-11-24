@@ -56,7 +56,10 @@ var ONGLETS = {
   // Boarding : comptes du site public (adresse e-mail seule)
   Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols'],
   // Avis laissés sur les pages publiques (Aviator…)
-  Avis: ['Date', 'Produit', 'Type', 'Message', 'Email', 'Page']
+  Avis: ['Date', 'Produit', 'Type', 'Message', 'Email', 'Page'],
+  // Compteur de visites anonyme des pages publiques : jour, page, téléphone/ordinateur (ni cookie, ni adresse IP, ni identifiant)
+  Visites: ['Date', 'Site', 'Page', 'Vues', 'Telephone', 'Ordinateur'],
+  Provenances: ['Date', 'Source', 'Vues']
 };
 
 /* ======================= Points d'entrée ======================= */
@@ -152,6 +155,8 @@ function route_(req) {
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
   if (a === 'avis') return avis_(req);
+  // Compteur de visites anonyme (toutes les pages publiques de niderlabs.com)
+  if (a === 'visite') return visite_(req);
   // Aviator METAR Pro (page expérimentale niderlabs.com/aviator/pro)
   if (a === 'pro.charger') return proCharger_(req.jeton);
   if (a === 'pro.enregistrer') return proEnregistrer_(req.jeton, req.pro);
@@ -194,6 +199,7 @@ function route_(req) {
     case 'acces.supprimer': return accesSupprimer_(user, req.email);
     case 'acces.deconnecter': return accesDeconnecter_(user, req.email);
     case 'pub.github': return pubGithub_(user, req.methode, req.chemin, req.corps);
+    case 'stats.visites': return statsVisites_(user, req.jours);
     default: throw refus_('Action inconnue.', 'inconnu');
   }
 }
@@ -1073,7 +1079,7 @@ function classeur_(creerSiAbsent) {
 function feuille_(nom) {
   var ss = classeur_(false), sh = ss.getSheetByName(nom);
   // Onglets ajoutés après l'installation (Aviator METAR) : créés au premier besoin, sans relancer « installer »
-  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes' || nom === 'Avis')) {
+  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes' || nom === 'Avis' || nom === 'Visites' || nom === 'Provenances')) {
     sh = ss.insertSheet(nom);
     sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
     sh.setFrozenRows(1);
@@ -1122,6 +1128,103 @@ function verrou_(fn) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) throw refus_('Le serveur est occupé. Réessayez dans un instant.', 'occupe');
   try { return fn(); } finally { lock.releaseLock(); }
+}
+
+/* ======================= Compteur de visites ======================= */
+/* Anonyme : on garde seulement le jour, la page, « téléphone » ou « ordinateur » et le site d'où l'on vient
+   (nom de domaine seul). Ni cookie, ni adresse IP, ni identifiant. Les vues sont d'abord regroupées en mémoire
+   (cache), puis ajoutées à la feuille toutes les 10 minutes par le passage régulier. */
+var VISITES_SITES = { aviator: 'aviator', boarding: 'boarding' };
+var VISITES_MAX_JOUR = 20000;
+function visite_(req) {
+  var p = String(req.p || '').split(/[?#]/)[0].toLowerCase().replace(/\/index\.html$/, '/');
+  if (!/^\/[a-z0-9\/._-]{0,100}$/.test(p) || /\.\./.test(p)) throw refus_('Invalid.', 'donnees');
+  if (!/\.[a-z0-9]+$/.test(p) && !/\/$/.test(p)) p += '/';
+  var seg = p.split('/')[1] || '';
+  if (seg === 'espace') return { ok: true };
+  var site = VISITES_SITES[seg] || 'niderlabs';
+  var tel = req.m === 't';
+  var src = String(req.s || '').toLowerCase().replace(/^www\./, '');
+  if (!/^[a-z0-9.-]{3,80}$/.test(src) || /(^|\.)niderlabs\.com$/.test(src)) src = '';
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(3000)) return { ok: true };
+  try {
+    var c = CacheService.getScriptCache(), b = visitesTampon_(c), j = Utilities.formatDate(new Date(), 'Europe/Luxembourg', 'yyyy-MM-dd');
+    var jour = b[j] || (b[j] = { n: 0, pg: {}, src: {} });
+    if (jour.n >= VISITES_MAX_JOUR) return { ok: true };
+    jour.n++;
+    var k = site + '|' + p, v = jour.pg[k] || (jour.pg[k] = [0, 0, 0]);
+    v[0]++; v[tel ? 1 : 2]++;
+    if (src) jour.src[src] = (jour.src[src] || 0) + 1;
+    c.put('vis:buf', JSON.stringify(b), 21600);
+  } finally { lock.releaseLock(); }
+  return { ok: true };
+}
+function visitesTampon_(c) {
+  try { return JSON.parse(c.get('vis:buf') || '{}') || {}; } catch (e) { return {}; }
+}
+/** Ajoute à la feuille les vues gardées en mémoire, puis vide la mémoire. */
+function visitesVider_() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return 0;
+  var b;
+  try {
+    var c = CacheService.getScriptCache();
+    b = visitesTampon_(c);
+    if (!Object.keys(b).length) return 0;
+    c.remove('vis:buf');
+  } finally { lock.releaseLock(); }
+  var n = 0;
+  verrou_(function () {
+    var shV = feuille_('Visites'), shP = feuille_('Provenances');
+    var rv = lire_('Visites'), rp = lire_('Provenances'), iv = {}, ip = {}, nouvV = [], nouvP = [];
+    rv.forEach(function (r) { iv[r.Date + '|' + r.Site + '|' + r.Page] = r; });
+    rp.forEach(function (r) { ip[r.Date + '|' + r.Source] = r; });
+    Object.keys(b).forEach(function (j) {
+      Object.keys(b[j].pg).forEach(function (k) {
+        var v = b[j].pg[k], cle = j + '|' + k, r = iv[cle], parts = k.split('|');
+        n += v[0];
+        if (r) {
+          shV.getRange(r._ligne, 4, 1, 3).setNumberFormat('@').setValues([[String((Number(r.Vues) || 0) + v[0]), String((Number(r.Telephone) || 0) + v[1]), String((Number(r.Ordinateur) || 0) + v[2])]]);
+        } else nouvV.push([j, parts[0], parts.slice(1).join('|'), String(v[0]), String(v[1]), String(v[2])]);
+      });
+      Object.keys(b[j].src).forEach(function (s) {
+        var r = ip[j + '|' + s];
+        if (r) shP.getRange(r._ligne, 3).setNumberFormat('@').setValue(String((Number(r.Vues) || 0) + b[j].src[s]));
+        else nouvP.push([j, s, String(b[j].src[s])]);
+      });
+    });
+    if (nouvV.length) shV.getRange(shV.getLastRow() + 1, 1, nouvV.length, 6).setNumberFormat('@').setValues(nouvV);
+    if (nouvP.length) shP.getRange(shP.getLastRow() + 1, 1, nouvP.length, 3).setNumberFormat('@').setValues(nouvP);
+    // une fois par jour : on efface les chiffres de plus de 25 mois (durée annoncée dans les politiques de confidentialité)
+    var c2 = CacheService.getScriptCache();
+    if (!c2.get('vis:menage')) {
+      c2.put('vis:menage', '1', 86400);
+      var limite = Utilities.formatDate(new Date(Date.now() - 761 * 86400000), 'Europe/Luxembourg', 'yyyy-MM-dd');
+      supprimerLignes_('Visites', function (r) { return String(r.Date) < limite; });
+      supprimerLignes_('Provenances', function (r) { return String(r.Date) < limite; });
+    }
+  });
+  return n;
+}
+/** Statistiques de visites pour l'espace d'administration (administrateurs seulement). */
+function statsVisites_(u, jours) {
+  exigerAdmin_(u);
+  try { visitesVider_(); } catch (e) { console.error(e && e.stack || e); }
+  jours = Math.max(1, Math.min(400, Number(jours) || 30));
+  var depuis = Utilities.formatDate(new Date(Date.now() - (jours - 1) * 86400000), 'Europe/Luxembourg', 'yyyy-MM-dd');
+  var parJour = {}, parPage = {}, parSite = {}, tel = 0, ordi = 0, src = {};
+  lire_('Visites').forEach(function (r) {
+    var d = String(r.Date); if (d < depuis) return;
+    var v = Number(r.Vues) || 0;
+    (parJour[d] = parJour[d] || {})[r.Site] = ((parJour[d] || {})[r.Site] || 0) + v;
+    parPage[r.Site + '|' + r.Page] = (parPage[r.Site + '|' + r.Page] || 0) + v;
+    parSite[r.Site] = (parSite[r.Site] || 0) + v;
+    tel += Number(r.Telephone) || 0; ordi += Number(r.Ordinateur) || 0;
+  });
+  lire_('Provenances').forEach(function (r) { if (String(r.Date) >= depuis) src[r.Source] = (src[r.Source] || 0) + (Number(r.Vues) || 0); });
+  var tri = function (o, max) { return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, max); };
+  return { ok: true, jours: jours, depuis: depuis, parJour: parJour, parSite: parSite, pages: tri(parPage, 40), sources: tri(src, 20), telephone: tel, ordinateur: ordi };
 }
 
 /* ======================= Divers ======================= */
@@ -2034,6 +2137,7 @@ function compteEffacer_(jeton, confirme) {
    1. rafraîchit les vols suivis par quelqu'un qui a activé les alertes (même rythme que pour les montres ; une requête par vol) ;
    2. rappels : « Check in online » la veille (si aucune carte d'embarquement scannée), « Leave in 30 min ». */
 function boardingTick_() {
+  try { visitesVider_(); } catch (e) { console.error(e && e.stack || e); }
   var cache = CacheService.getScriptCache();
   if (cache.get('btick')) return { ok: true, attente: true };
   cache.put('btick', '1', 240);

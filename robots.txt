@@ -2,5 +2,7 @@
 User-agent: *
 Allow: /
 Disallow: /espace/
+Disallow: /archives/
+Disallow: /outils/
 
 Sitemap: https://niderlabs.com/sitemap.xml

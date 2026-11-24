@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Visites</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="espace.css?v=20261104a">
+<style>
+  .periodes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  .periodes button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .chiffres .carte { padding: 16px 18px; }
+  .chiffres b { display: block; font-size: 28px; line-height: 1.1; }
+  .chiffres span { color: var(--encre-2); font-size: 14px; }
+  .barres { display: flex; align-items: flex-end; gap: 3px; height: 160px; padding: 12px 4px 0; }
+  .barres .j { flex: 1; display: flex; flex-direction: column-reverse; min-width: 4px; height: 100%; }
+  .barres i { display: block; width: 100%; }
+  .s-aviator { background: #4F8FE8; } .s-niderlabs { background: #8A94A3; } .s-boarding { background: #E8A33F; }
+  .legende { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--encre-2); margin: 10px 4px 0; }
+  .legende i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .axe { display: flex; justify-content: space-between; font-size: 12px; color: var(--encre-2); padding: 4px 4px 0; }
+  .deux-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; } @media (max-width: 800px) { .deux-col { grid-template-columns: 1fr; } }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div id="haut"></div>
+<main>
+  <div class="conteneur">
+    <div class="tete">
+      <div class="surtitre">Statistiques</div>
+      <h1>Visites du site</h1>
+      <p class="chapeau">Pages vues sur niderlabs.com (NiderLabs, Aviator METAR Pro, Boarding). Compteur anonyme : ni cookie, ni adresse IP, ni identifiant. Les chiffres sont mis à jour toutes les 10 minutes.</p>
+    </div>
+    <div class="periodes" id="periodes">
+      <button class="btn btn-discret btn-petit" data-j="7" type="button">7 jours</button>
+      <button class="btn btn-discret btn-petit" data-j="30" type="button" aria-pressed="true">30 jours</button>
+      <button class="btn btn-discret btn-petit" data-j="90" type="button">90 jours</button>
+      <button class="btn btn-discret btn-petit" data-j="365" type="button">1 an</button>
+    </div>
+    <p class="message erreur" id="err" role="alert" hidden></p>
+    <div id="contenu"><div class="carte avis">Chargement…</div></div>
+  </div>
+</main>
+<div id="bas"></div>
+<script src="config.js"></script>
+<script src="espace.js?v=20261124a"></script>
+<script src="page-visites.js?v=1"></script>
+</body>
+</html>

@@ -593,4 +593,29 @@ console.log('Boarding : signalements des voyageurs');
   ok(bo.post({ action: 'boarding.file', jeton: users[0], ap: 'JFK', q: 'sec', m: 5 }).code === 'donnees', 'file refusée pour un aéroport sans vol');
 }
 
+
+console.log('Compteur de visites');
+{
+  ok(srv.post({ action: 'visite', p: '/aviator/', m: 't', s: 'www.google.com' }).ok, 'visite comptée sans session');
+  srv.post({ action: 'visite', p: '/aviator/index.html?c=123456', m: 'o', s: 'niderlabs.com' });
+  srv.post({ action: 'visite', p: '/notes/whisper-silence', m: 'o', s: '' });
+  srv.post({ action: 'visite', p: '/espace/admin/', m: 'o' });
+  ok(srv.post({ action: 'visite', p: '/../etc', m: 'o' }).code === 'donnees', 'chemin suspect refusé');
+  ok(srv.post({ action: 'visite', p: 'javascript:alert(1)' }).code === 'donnees', 'adresse invalide refusée');
+  ok(srv.post({ action: 'stats.visites' }).code === 'session', 'statistiques refusées sans session');
+  { add({ email: adr('lectrice'), nom: 'Lectrice', admin: false, actualites: true, actif: true });
+    const tL = connecterParCode(srv, adr('lectrice'));
+    ok(tL && srv.post({ action: 'stats.visites', token: tL }).code === 'droits', 'statistiques réservées aux administrateurs'); }
+  const st = srv.post({ action: 'stats.visites', token: tJB, jours: 7 });
+  ok(st.ok && st.parSite.aviator === 2 && st.parSite.niderlabs === 1, 'vues regroupées par site (aviator 2, niderlabs 1, espace ignoré)');
+  ok(st.pages.some((x) => x[0] === 'aviator|/aviator/' && x[1] === 2), 'paramètres et index.html retirés de l\'adresse de la page');
+  ok(st.pages.some((x) => x[0] === 'niderlabs|/notes/whisper-silence/'), 'barre finale ajoutée');
+  ok(st.telephone === 1 && st.ordinateur === 2, 'téléphone / ordinateur comptés');
+  ok(st.sources.length === 1 && st.sources[0][0] === 'google.com', 'provenance : domaine seul, sans www, le site lui-même ignoré');
+  srv.post({ action: 'visite', p: '/aviator/', m: 'o' });
+  const st2 = srv.post({ action: 'stats.visites', token: tJB });
+  ok(st2.parSite.aviator === 3 && srv.sheets.Visites.data.filter((l) => l[2] === '/aviator/').length === 1, 'nouvelle vue ajoutée à la même ligne du jour');
+  ok(JSON.stringify(srv.sheets.Visites.data).indexOf('google') < 0 && srv.sheets.Visites.data[0].join() === 'Date,Site,Page,Vues,Telephone,Ordinateur', 'onglet Visites : aucune autre donnée que jour, page et appareil');
+}
+
 console.log('\n' + n + ' vérifications réussies.');
