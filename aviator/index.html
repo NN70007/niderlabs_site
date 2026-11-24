@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/aviator/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/aviator/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="aviator.css?v=33">
+<link rel="stylesheet" href="aviator.css?v=34">
 <script src="commun.js?v=2"></script>
 <script src="aviator.js?v=14" defer></script>
 <script src="terre.js?v=1" defer></script>
@@ -128,71 +128,70 @@
       <p class="illus" style="text-align:left">Airports set on watches over the last 30 days, anonymous and rounded.</p>
     </section>
 
-    <section class="reglage">
-      <div>
+    <section class="sec-av" id="privacy-security">
+      <div class="sec-tete">
         <div class="eyebrow">Privacy &amp; security</div>
         <h2 class="serif" style="margin-top:14px">Your airports. <em>Nothing else.</em></h2>
-        <p class="chapeau" style="margin-top:20px">To put your airports on your watch, we have to know which airports you chose. That is the only thing about you we keep – no name, no e-mail, no Garmin account, no phone number, no payment details.</p>
-        <p style="margin-top:18px"><a class="pill vide" href="privacy/">Read the privacy policy <span aria-hidden="true">→</span></a></p>
+        <p class="chapeau" style="margin-top:18px">No name, no e-mail, no Garmin account, no phone number, no payment details.</p>
       </div>
-      <div class="liste acc">
-        <div><span class="n">01</span><div><b>What we keep, and why</b><p>A random number your watch makes up for itself, your settings (airports, runways, units, crosswind limit) and the date the watch last called in. With that, this page can send your settings to your watch, and the watch can show each airport's local time.</p></div></div>
-        <div><span class="n">02</span><div><b>Your position stays on your wrist</b><p>The watch uses it only to find the nearest airport. If you use NEAREST, we receive that airport's code – ELLX, for example – never your coordinates.</p></div></div>
-        <div><span class="n">03</span><div><b>The weather does not go through us</b><p>Your watch asks NOAA's aviationweather.gov directly, through your phone. We never see the weather you read.</p></div></div>
-        <div><span class="n">04</span><div><b>No account to hack</b><p>No password exists. The 6-digit code on your watch works for a few minutes, for your watch only, and keys are stored only as fingerprints.</p></div></div>
-        <div><span class="n">05</span><div><b>The map is optional</b><p>If you leave the option ticked, your airports appear on the public map, counted in rounded bands, with no identifier. Untick it and they never will.</p></div></div>
-        <div><span class="n">06</span><div><b>Gone when you stop</b><p>A watch silent for 12 months is erased. Want it sooner? Write to us with the code your watch shows.</p></div></div>
+      <div class="tuiles">
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg></span><b>Only your airports</b><p>A random watch number, your settings (airports, runways, units, crosswind limit) and the last call-in date.</p></div>
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></span><b>Your position stays on your wrist</b><p>With NEAREST we receive an airport code – ELLX, for example – never your coordinates.</p></div>
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .6-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z"/></svg></span><b>Weather comes straight from NOAA</b><p>Your watch asks aviationweather.gov through your phone. We never see what you read.</p></div>
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5 19 4M16 7l2 2"/></svg></span><b>No account, no password</b><p>A 6-digit code, valid a few minutes, for your watch only. Keys are stored only as fingerprints.</p></div>
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg></span><b>The map is optional</b><p>Rounded counts, no identifier. Untick the option and your airports never appear.</p></div>
+        <div class="tuile"><span class="tuile-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>Erased after 12 months</b><p>A silent watch is deleted. Want it sooner? Write to us with your watch code.</p></div>
+      </div>
+      <p class="sec-lien"><a class="pill vide" href="privacy/">Read the privacy policy <span aria-hidden="true">→</span></a></p>
+    </section>
+
+    <span id="appli" class="ancre-ancienne" aria-hidden="true"></span><section class="sec-av" id="how-to-use">
+      <div class="sec-tete">
+        <div class="eyebrow">How to use it</div>
+        <h2 class="serif" style="margin-top:14px">Touch it, <em>or press it.</em></h2>
+        <p class="chapeau" style="margin-top:18px">Everything is set on this page, from your phone. Nothing to install, nothing to remember.</p>
+      </div>
+      <div class="duo">
+        <div class="panneau">
+          <h3>Watch face</h3><p class="panneau-sous">Touch-screen watches</p>
+          <div class="geste"><span class="touche">TAP CODE</span><p>Tap the airport code at the bottom of the dial: 1 → 2 → 3 → nearest.</p></div>
+          <div class="geste"><span class="touche">TAP</span><p>Tap anywhere else: runway wind, decoded METAR, then settings.</p></div>
+          <div class="geste"><span class="touche">← →</span><p>On a page, right half for the next page, left half to go back.</p></div>
+        </div>
+        <div class="panneau">
+          <h3>Aviator METAR Pro App <span class="badge-pro">FREE</span></h3><p class="panneau-sous">Buttons-only watches · free for owners of the watch face</p>
+          <div class="geste"><span class="touche">UP / DOWN</span><p>From the watch face, the glance: airport, runway, flight category, crosswind, QNH.</p></div>
+          <div class="geste"><span class="touche">START</span><p>Runway wind, decoded METAR, settings. Up and down change page; START switches airport.</p></div>
+          <div class="geste"><span class="touche">QR</span><p>Scan once: the app uses the airports and settings of your watch face.</p></div>
+        </div>
       </div>
     </section>
 
-    <section class="reglage">
-      <div>
-        <div class="eyebrow">How it works</div>
-        <h2 class="serif" style="margin-top:14px">Set it up <em>your way.</em></h2>
-        <p class="chapeau" style="margin-top:20px">Everything is set on this page, from your phone. Nothing to install, nothing to remember.</p>
-      </div>
-      <div class="liste">
-        <div><span class="n">01</span><div><b>Tap the airport code</b><p>at the bottom of the dial to switch airport: 1 → 2 → 3 → nearest.</p></div></div>
-        <div><span class="n">02</span><div><b>Tap anywhere else</b><p>to open runway wind, the decoded METAR, then settings.</p></div></div>
-        <div><span class="n">03</span><div><b>On a page</b><p>tap the right half for the next page, the left half to go back.</p></div></div>
-      </div>
-    </section>
-    <section class="reglage" id="appli">
-      <div>
-        <div class="eyebrow">Watch with buttons only?</div>
-        <h2 class="serif" style="margin-top:14px">The <em>Aviator METAR Pro App.</em></h2>
-        <p class="chapeau" style="margin-top:20px">Free for owners of the watch face. A glance and the same pages, with the buttons – it follows your watch face settings.</p>
-      </div>
-      <div class="liste">
-        <div><span class="n">01</span><div><b>From the watch face, press up or down</b><p>to the Aviator METAR Pro glance: airport, runway, flight category, crosswind and QNH.</p></div></div>
-        <div><span class="n">02</span><div><b>Press START</b><p>for runway wind, the decoded METAR and settings. Up and down change page; START switches airport.</p></div></div>
-        <div><span class="n">03</span><div><b>Link it once</b><p>scan the QR code shown by the app: it uses the airports and settings of your watch face.</p></div></div>
+    <span id="montres" class="ancre-ancienne" aria-hidden="true"></span><section class="sec-av" id="watches">
+      <div class="bande-montres">
+        <div class="chiffre-montres">56<small>Garmin models</small></div>
+        <div>
+          <div class="eyebrow">Compatible watches</div>
+          <h2 class="serif" style="margin-top:14px">Made for <em>your Garmin.</em></h2>
+          <div class="puces-m"><span class="puce-m">fēnix 8 Pro</span><span class="puce-m">fēnix 8 · 9 · E</span><span class="puce-m">epix 2 · Pro</span><span class="puce-m">MARQ</span><span class="puce-m">D2 Air · Mach</span><span class="puce-m">Forerunner</span><span class="puce-m">Venu</span><span class="puce-m">vivoactive</span><span class="puce-m">Descent</span><span class="puce-m">Approach</span><span class="puce-m">fēnix 6 · quatix 6 <i>BETA</i></span><a class="puce-m bientot" href="#feedback">Instinct · next</a></div>
+          <p class="note-montres">Every round AMOLED touch-screen Garmin watch, each screen size checked – watch face and Aviator METAR Pro App. On the fēnix 6 series (no touch screen), the dial shows your airport 1 and the app does the rest. Another watch? <a href="#feedback">Tell us which one.</a></p>
+        </div>
       </div>
     </section>
-    <section class="reglage" id="montres">
-      <div>
-        <div class="eyebrow">Compatible watches</div>
-        <h2 class="serif" style="margin-top:14px">Made for <em>your Garmin.</em></h2>
-        <p class="chapeau" style="margin-top:20px">Every round AMOLED touch-screen Garmin watch – fēnix, epix, MARQ, D2, Forerunner, Venu, vivoactive, Descent, Approach – plus the fēnix 6 series. 56 models, each screen size checked.</p>
-      </div>
-      <div class="liste">
-        <div><span class="n">✓</span><div><b>fēnix 8 Pro</b><p>Watch face and Aviator METAR Pro App – available now.</p></div></div>
-        <div><span class="n">✓</span><div><b>All round AMOLED touch watches</b><p>fēnix 8 / 9, fēnix E, epix 2 / Pro, MARQ (Aviator), D2 Air X10 / X15, D2 Mach, Forerunner 165 to 970, Venu 2 to 4, vivoactive 5 / 6, Descent, Approach: watch face and Aviator METAR Pro App.</p></div></div>
-        <div><span class="n">✓</span><div><b>fēnix 6 series <span class="badge-pro">BETA</span></b><p>fēnix 6, 6 Pro, 6S, 6S Pro, 6X Pro, quatix 6: watch face and Aviator METAR Pro App. No touch screen, so the dial shows the setup QR code by itself until you have set it up, then always shows your airport 1 (change the order on this page). The app gives the runway and METAR pages with the buttons, and START switches between your airports.</p></div></div>
-        <div><span class="n">→</span><div><b>Round MIP watches</b><p>Instinct and other MIP models, after that. <a href="#feedback">Tell us which watch you have.</a></p></div></div>
-      </div>
-    </section>
-    <section class="reglage" id="faq">
-      <div>
+
+    <section class="sec-av" id="faq">
+      <div class="sec-tete">
         <div class="eyebrow">Questions</div>
         <h2 class="serif" style="margin-top:14px">Good to <em>know.</em></h2>
       </div>
-      <div class="faq">
+      <div class="faq-etroite">
+        <div class="faq">
         <details><summary>How much does it cost?</summary><p>Free forever if you install before 31 December 2026 – yours to keep. From 1 January 2027: $9.99, one-time, no subscription. The Aviator METAR Pro App is free for owners of the watch face.</p></details>
         <details><summary>Watch face or app – which one do I need?</summary><p>The watch face, if your watch has a touch screen. The Aviator METAR Pro App is for watches with buttons only: it shows the same pages and is free for owners of the watch face.</p></details>
         <details><summary>My watch has no touch screen. Does it work?</summary><p>Yes. On the fēnix 6 series, install the watch face: it shows the setup QR code until you have set it up, then the normal dial. The dial always shows your airport 1: to show another one, put it first in the settings on this page. Add the Aviator METAR Pro App for the runway and METAR pages (UP and DOWN) and to look at your other airports (START).</p></details>
         <details><summary>Does it need a connection?</summary><p>Your watch gets the METAR through your phone (Bluetooth), every few minutes. Without your phone nearby, the watch keeps the last report and shows how old it is.</p></details>
         <details><summary>Can I use it to fly?</summary><p>No. Aviator METAR Pro is for situational awareness only – NOT FOR NAVIGATION. Always get an official weather briefing; the pilot in command remains responsible for every decision.</p></details>
+      </div>
       </div>
     </section>
     <div class="cta-fin">
