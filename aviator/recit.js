@@ -55,8 +55,8 @@
     sec.classList.toggle("calcul", !!e.calc);
     calc.hidden = !e.calc;
     montre.style.transformOrigin = cx + "% " + cy + "%";
-    // téléphone : zoom plus doux, la montre reste dans sa fenêtre
-    montre.style.transform = calme ? "none" : "scale(" + (1 + (e.z - 1) * (innerWidth <= 900 ? 0.5 : 0.8)).toFixed(2) + ")";
+    // téléphone : la montre reste fixe, sans zoom (seule la zone expliquée est mise en évidence) ; ordinateur : zoom sur la zone
+    montre.style.transform = (calme || innerWidth <= 900) ? "none" : "scale(" + (1 + (e.z - 1) * 0.8).toFixed(2) + ")";
     var t0 = performance.now();
     (function suivre(now) { lien(Math.min(1, (now - t0) / 700)); if (now - t0 < 760) requestAnimationFrame(suivre); })(t0);
   }
