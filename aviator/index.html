@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/aviator/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/aviator/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="aviator.css?v=30">
+<link rel="stylesheet" href="aviator.css?v=31">
 <script src="commun.js?v=2"></script>
 <script src="aviator.js?v=14" defer></script>
 <script src="terre.js?v=1" defer></script>
@@ -207,9 +207,9 @@
       </div>
       <form class="carte avis-form" id="form-avis" novalidate>
         <div class="choix avis-type" role="radiogroup" aria-label="Type of feedback">
-          <label><input type="radio" name="avis-type" value="love" checked>👍 Love it</label>
-          <label><input type="radio" name="avis-type" value="idee">💡 Idea</label>
-          <label><input type="radio" name="avis-type" value="bug">🐞 Problem</label>
+          <label><input type="radio" name="avis-type" value="love" checked><svg class="avis-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 7A2 2 0 0 1 17.5 21H7V10l4.3-6.4A1.6 1.6 0 0 1 14.2 4 2 2 0 0 1 15 5.9Z"/><path d="M3 10h4v11H3z"/></svg>Love it</label>
+          <label><input type="radio" name="avis-type" value="idee"><svg class="avis-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/></svg>Idea</label>
+          <label><input type="radio" name="avis-type" value="bug"><svg class="avis-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Problem</label>
         </div>
         <label class="titre" for="avis-msg">YOUR MESSAGE</label>
         <textarea id="avis-msg" rows="4" maxlength="2000" placeholder="Your message…" required></textarea>

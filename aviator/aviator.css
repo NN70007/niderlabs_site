@@ -482,3 +482,5 @@ html{scroll-padding-top:96px}
 }
 /* Anciennes adresses #avis et #lier : repères hors du flux, sans effet sur la mise en page */
 .ancre-ancienne{position:absolute;width:0;height:0;overflow:hidden}
+/* Avis : icônes au trait (même style que le logo) à la place des émojis */
+.avis-ico{width:18px;height:18px;flex:none;vertical-align:-3px;margin-right:8px}
