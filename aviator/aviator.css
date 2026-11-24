@@ -360,6 +360,9 @@ body{overflow-x:clip}
 .recit-haut,.recit-texte{position:relative;z-index:3}
 .recit-lien{z-index:4}
 @media (max-width:900px){.recit-montre-cadre{height:46vh;max-height:46vh}}
+/* téléphone : montre fixe (sans zoom), donc plus grande ; le bracelet sort de la fenêtre */
+@media (max-width:900px){.recit-montre{height:130%}}
+@media (max-width:900px) and (max-height:620px){.recit-texte h2.serif{font-size:27px;margin-top:6px}.recit-texte p{font-size:14.5px;margin-top:6px}.recit-scene{padding-top:72px}}
 .recit{height:calc(15 * 55vh + 100vh)}
 .recit-montre .page-rwy{position:absolute;inset:0;opacity:0;transition:opacity .5s}
 .recit-montre.rwy .page-rwy{opacity:1}

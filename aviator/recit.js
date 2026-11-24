@@ -101,7 +101,7 @@
       titre.textContent = t0; para.textContent = p0; calc.hidden = c0;
     }
     var bas = haut.getBoundingClientRect().bottom - scene.getBoundingClientRect().top;
-    var reste = Math.max(150, Math.min(H * 0.5, H - bas - hTexte - 34));
+    var reste = Math.max(100, Math.min(H * 0.5, H - bas - hTexte - 34));
     cadre.style.height = cadre.style.maxHeight = reste + "px";
   }
   addEventListener("scroll", function () { requestAnimationFrame(defile); }, { passive: true });
