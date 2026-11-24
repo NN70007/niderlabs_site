@@ -447,3 +447,10 @@ body{overflow-x:clip}
   .hero-grille>.ctas{justify-content:center}
   .hero-av .scene-av{margin-top:44px}
 }
+
+/* Téléphone (Safari) : la montre ne déborde jamais sur le texte ; tailles réglées par recit.js */
+@media (max-width:900px){
+  .recit-corps{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;flex:1;min-height:0}
+  .recit-montre-cadre{order:-1;flex:none;isolation:isolate;contain:paint;margin-top:6px}
+  .recit-texte{flex:none;position:relative;z-index:3}
+}

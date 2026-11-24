@@ -55,7 +55,8 @@
     sec.classList.toggle("calcul", !!e.calc);
     calc.hidden = !e.calc;
     montre.style.transformOrigin = cx + "% " + cy + "%";
-    montre.style.transform = calme ? "none" : "scale(" + (1 + (e.z - 1) * 0.8).toFixed(2) + ")";
+    // téléphone : zoom plus doux, la montre reste dans sa fenêtre
+    montre.style.transform = calme ? "none" : "scale(" + (1 + (e.z - 1) * (innerWidth <= 900 ? 0.5 : 0.8)).toFixed(2) + ")";
     var t0 = performance.now();
     (function suivre(now) { lien(Math.min(1, (now - t0) / 700)); if (now - t0 < 760) requestAnimationFrame(suivre); })(t0);
   }
@@ -85,7 +86,26 @@
     barre.style.width = (prog * 100) + "%";
     montrer(Math.floor(prog * ETAPES.length));
   }
+  // Téléphone : la hauteur visible réelle (barres de Safari comprises) décide de la taille de la montre,
+  // pour que le titre et le texte tiennent toujours en dessous (100vh de Safari est plus grand que l'écran visible)
+  var scene = sec.querySelector(".recit-scene"), haut = sec.querySelector(".recit-haut"), texte = sec.querySelector(".recit-texte"), cadre = sec.querySelector(".recit-montre-cadre");
+  var hTexte = 0, lPrec = 0;
+  function ajuster() {
+    if (innerWidth > 900) { scene.style.height = cadre.style.height = cadre.style.maxHeight = ""; return; }
+    var H = innerHeight;
+    scene.style.height = H + "px";
+    if (innerWidth !== lPrec) {            // texte le plus haut des 15 étapes, mesuré une fois par largeur
+      lPrec = innerWidth; hTexte = 0;
+      var t0 = titre.textContent, p0 = para.textContent, c0 = calc.hidden;
+      ETAPES.forEach(function (e) { titre.textContent = e.titre; para.textContent = e.p; calc.hidden = !e.calc; hTexte = Math.max(hTexte, texte.offsetHeight); });
+      titre.textContent = t0; para.textContent = p0; calc.hidden = c0;
+    }
+    var bas = haut.getBoundingClientRect().bottom - scene.getBoundingClientRect().top;
+    var reste = Math.max(150, Math.min(H * 0.5, H - bas - hTexte - 34));
+    cadre.style.height = cadre.style.maxHeight = reste + "px";
+  }
   addEventListener("scroll", function () { requestAnimationFrame(defile); }, { passive: true });
-  addEventListener("resize", function () { var k = cur; cur = -1; montrer(Math.max(0, k)); });
-  montrer(0); defile();
+  addEventListener("resize", function () { ajuster(); var k = cur; cur = -1; montrer(Math.max(0, k)); });
+  ajuster(); montrer(0); defile();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { lPrec = 0; ajuster(); });
 })();
