@@ -13,9 +13,9 @@
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
 <link rel="preload" href="/aviator/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/aviator/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="aviator.css?v=24">
+<link rel="stylesheet" href="aviator.css?v=25">
 <script src="commun.js?v=1"></script>
-<script src="aviator.js?v=13" defer></script>
+<script src="aviator.js?v=14" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=2" defer></script>
 <script src="intro.js?v=7" defer></script>
@@ -214,9 +214,21 @@
   <div class="col etroit" id="vue-code">
     <div class="separateur" id="lier"><span class="eyebrow">Settings</span></div>
     <h1>Link your watch</h1>
-    <ol class="etapes">
-      <li>On the watch, tap the screen until <b>SETTINGS</b> appears. Scan its QR code with your phone camera – or type the code below.</li>
-      <li>Type the 6-digit code it shows. It changes every few minutes.</li>
+    <!-- Sur un ordinateur : les réglages se font sur le téléphone, en scannant le QR code de la montre -->
+    <div class="sur-ordi">
+      <svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+      <div>
+        <p class="sur-ordi-titre">Settings are made on your phone.</p>
+        <ol class="etapes petites">
+          <li>On the watch, tap the screen until <b>SETTINGS</b> appears: it shows a QR code.</li>
+          <li>Scan it with your phone camera. Your settings open on the phone – no code to type.</li>
+        </ol>
+        <button type="button" class="lien" id="ordi-code">No phone at hand? Type the watch code on this computer</button>
+      </div>
+    </div>
+    <ol class="etapes sur-tel">
+      <li>On the watch, tap the screen until <b>SETTINGS</b> appears, then <b>scan its QR code with your phone camera</b>. Your settings open directly.</li>
+      <li>No camera? Type the 6-digit code shown on the watch below. It changes every few minutes.</li>
     </ol>
     <form id="form-code" style="display:flex;flex-direction:column;gap:18px" novalidate>
       <label class="titre" for="code">WATCH CODE</label>

@@ -448,6 +448,22 @@ body{overflow-x:clip}
   .hero-av .scene-av{margin-top:44px}
 }
 
+/* Lier la montre sur un ordinateur : expliquer le QR code plutôt qu'un grand formulaire */
+.sur-ordi{display:none}
+.lien{background:none;border:0;padding:0;color:var(--ciel,var(--accent));font:inherit;font-size:16px;text-decoration:underline;cursor:pointer;text-align:left}
+@media (hover:hover) and (pointer:fine) and (min-width:900px){
+  #vue-code:not(.code-ordi) .sur-ordi{display:flex;gap:20px;align-items:flex-start;padding:28px;border:1px solid var(--bord);border-radius:18px;background:var(--surface)}
+  #vue-code:not(.code-ordi) .sur-tel,#vue-code:not(.code-ordi) #form-code{display:none!important}
+  .sur-ordi svg{flex:none;color:var(--encre-3);margin-top:2px}
+  .sur-ordi-titre{margin:0 0 10px;font-size:22px;font-weight:600}
+  .etapes.petites{margin:0 0 16px;font-size:17px}
+  /* formulaire à taille d'ordinateur (code tapé, avis) */
+  #vue-code .code{height:84px;font-size:52px}
+  #vue-code .bouton,#form-avis .bouton{min-height:56px;font-size:19px;border-radius:14px}
+  #form-avis .choix label{min-height:48px;font-size:16px;border-width:1px}
+  #form-avis textarea,#form-avis input[type=email]{font-size:16px}
+}
+
 /* Téléphone (Safari) : la montre ne déborde jamais sur le texte ; tailles réglées par recit.js */
 @media (max-width:900px){
   .recit-corps{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;flex:1;min-height:0}

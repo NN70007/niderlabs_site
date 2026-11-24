@@ -74,6 +74,8 @@
     return (m || tous ? AVIATOR.appel(req).catch(function () {}) : Promise.resolve()).then(function () { location.href = location.pathname; });
   }
 
+  // ordinateur : afficher quand même le champ du code sur demande
+  var oc = $("#ordi-code"); if (oc) oc.addEventListener("click", function () { $("#vue-code").classList.add("code-ordi"); $("#code").focus(); });
   $("#form-code").addEventListener("submit", function (e) {
     e.preventDefault();
     var code = $("#code").value.replace(/\D/g, ""), b = e.target.querySelector("button"), err = $("#err-code");
@@ -96,6 +98,7 @@
     if ($("#produit")) $("#produit").hidden = true;
     var rec = document.querySelector(".recit"); if (rec) rec.hidden = true;
     try { window.scrollTo(0, 0); } catch (e) {}
+    $("#vue-code").classList.add("code-ordi");
     $("#code").value = m[1].slice(0, 3) + " " + m[1].slice(3);
     $("#form-code").requestSubmit ? $("#form-code").requestSubmit() : $("#form-code").dispatchEvent(new Event("submit", { cancelable: true }));
   })();
