@@ -459,3 +459,13 @@ body{overflow-x:clip}
   .recit-montre-cadre{order:-1;flex:none;isolation:isolate;contain:paint;margin-top:6px}
   .recit-texte{flex:none;position:relative;z-index:3}
 }
+
+/* Carte des aéroports, ordinateur : titre plus compact et carte entière visible dès l'ouverture (légende comprise) */
+@media (min-width:900px){
+  .page-carte main{padding-top:20px}
+  .page-carte h1{font-size:clamp(38px,3.6vw,52px)}
+  .page-carte .chapeau{margin:8px 0 0;font-size:17px;max-width:62em}
+  .page-carte #plan{height:clamp(260px,calc(100vh - 380px),640px);margin-top:16px}
+  @supports (height:100svh){.page-carte #plan{height:clamp(260px,calc(100svh - 380px),640px)}}
+  .page-carte .legende{margin-top:12px;font-size:16px}
+}
