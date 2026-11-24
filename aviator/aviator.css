@@ -278,7 +278,7 @@ main{flex-direction:column;align-items:center}
   .lignes .l{font-size:14.5px}
 }
 /* Carte en points des aéroports */
-.dotmap{position:relative;width:100%;height:clamp(320px,44vw,520px);margin-top:36px;border:1px solid var(--trait);border-radius:18px;overflow:hidden;
+.dotmap{position:relative;width:100%;height:clamp(260px,28vw,400px);margin-top:36px;border:1px solid var(--trait);border-radius:18px;overflow:hidden;
   background:radial-gradient(800px 400px at 50% 40%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--surface),var(--champ))}
 .dotmap.grande{height:min(70vh,640px);margin-top:0}
 .dotmap canvas{display:block}
