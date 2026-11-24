@@ -484,3 +484,52 @@ html{scroll-padding-top:96px}
 .ancre-ancienne{position:absolute;width:0;height:0;overflow:hidden}
 /* Avis : icônes au trait (même style que le logo) à la place des émojis */
 .avis-ico{width:18px;height:18px;flex:none;vertical-align:-3px;margin-right:8px}
+
+/* ===== Pied de page commun (toutes les pages Aviator), sur le modèle de finscale.media ===== */
+.pied2{border-top:1px solid var(--trait);background:color-mix(in srgb,#000 35%,var(--fond));color:var(--encre-3);font-size:15px;line-height:1.6;margin-top:48px}
+:root[data-theme="light"] .pied2{background:var(--surface)}
+.pied2-haut{max-width:1180px;margin:0 auto;padding:56px clamp(16px,4vw,48px) 40px;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:32px}
+.pied2-marque .marque{font-size:17px;gap:10px;letter-spacing:.06em}
+.pied2-marque p{margin:14px 0 0;color:var(--encre-3);font-size:14px}
+.pied2-col{display:flex;flex-direction:column;gap:12px}
+.pied2-col h2{margin:0 0 6px;font-family:var(--texte);font-weight:600;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--encre-3)}
+.pied2-col a{color:var(--encre);text-decoration:none;font-size:15.5px}
+.pied2-col a:hover{color:var(--accent)}
+.pied2-bas{max-width:1180px;margin:0 auto;padding:20px clamp(16px,4vw,48px) 32px;border-top:1px solid var(--trait);display:flex;justify-content:space-between;align-items:center;gap:10px 32px;flex-wrap:wrap;font-size:13.5px}
+.pied2-bas p{margin:0}
+.pied2-bas b{color:var(--ambre);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+.pied2-legal a{color:var(--encre-2);text-decoration:none}
+.pied2-legal a:hover{color:var(--encre)}
+@media (max-width:900px){
+  .pied2-haut{grid-template-columns:1fr 1fr;gap:30px 20px;padding:40px 16px 28px}
+  .pied2-marque{grid-column:1/-1}
+  .pied2-bas{padding:18px 16px 28px;flex-direction:column;align-items:flex-start}
+}
+
+/* ===== Pages juridiques : mise en page de document ===== */
+.doc{padding:40px clamp(16px,4vw,48px) 24px}
+.doc-grille{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;align-items:start}
+.doc-sommaire{position:sticky;top:100px;font-size:14px}
+.doc-sommaire-titre{margin:0 0 12px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--encre-3)}
+.doc-sommaire ol{list-style:none;margin:0;padding:0 0 0 14px;border-left:1px solid var(--trait);display:flex;flex-direction:column;gap:9px}
+.doc-sommaire a{color:var(--encre-3);text-decoration:none;line-height:1.35;display:block}
+.doc-sommaire a:hover{color:var(--encre)}
+.doc-texte{max-width:720px;font-size:17px;line-height:1.75;color:var(--encre-2)}
+.doc-surtitre{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ciel)}
+.doc-texte h1{margin:10px 0 0;font-size:clamp(38px,4.2vw,54px)}
+.doc-maj{margin:14px 0 0;font-size:14px;color:var(--encre-3)}
+.doc-intro{margin:22px 0 0;padding:16px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--trait);font-size:15.5px;line-height:1.65}
+.doc-texte h2{text-transform:none;margin:40px 0 0;padding-top:22px;border-top:1px solid var(--trait);font-family:var(--titre);font-weight:400;font-size:24px;line-height:1.25;color:var(--encre);letter-spacing:-.01em}
+.doc-texte p{margin:12px 0 0}
+.doc-texte ul{margin:12px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+.doc-texte .avert{margin-top:26px;font-size:15.5px;line-height:1.65}
+.doc-texte .aide{font-size:15px;color:var(--encre-3)}
+.doc-texte a{color:var(--accent);text-underline-offset:3px}
+.doc-autres{margin-top:44px !important;padding-top:20px;border-top:1px solid var(--trait);font-size:14px;color:var(--encre-3)}
+@media (max-width:900px){
+  .doc{padding-top:24px}
+  .doc-grille{grid-template-columns:1fr;gap:20px}
+  .doc-sommaire{position:static;order:2;display:none}
+  .doc-texte{font-size:16px}
+  .doc-texte h2{font-size:21px;margin-top:32px}
+}
