@@ -1,5 +1,5 @@
 /* Aviator METAR — pages publiques (réglages de la montre, carte, textes juridiques).
-   Très grands caractères, fort contraste, mode jour/nuit (suit l'appareil, bouton pour forcer). */
+   Très grands caractères, fort contraste, mode nuit par défaut, mode jour seulement par le bouton. */
 :root{
   --fond:#0B0F14;--surface:#141A22;--champ:#0B0F14;--encre:#F5F5F2;--encre-2:#C5CCD4;--encre-3:#A9B1BA;
   --trait:#232B36;--bord:#3A4552;--accent:#4F8FE8;--sur-accent:#0B0F14;--ambre:#FFB020;--vert:#4CC38A;--rouge:#F26D6D;
@@ -10,13 +10,6 @@
   --fond:#F4F5F7;--surface:#FFFFFF;--champ:#FFFFFF;--encre:#101317;--encre-2:#2E353D;--encre-3:#4E5761;
   --trait:#D9DDE2;--bord:#A7B0BA;--accent:#1F5FC9;--sur-accent:#FFFFFF;--ambre:#A86400;--vert:#1C7C4E;--rouge:#B42318;
   color-scheme:light;
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --fond:#F4F5F7;--surface:#FFFFFF;--champ:#FFFFFF;--encre:#101317;--encre-2:#2E353D;--encre-3:#4E5761;
-    --trait:#D9DDE2;--bord:#A7B0BA;--accent:#1F5FC9;--sur-accent:#FFFFFF;--ambre:#A86400;--vert:#1C7C4E;--rouge:#B42318;
-    color-scheme:light;
-  }
 }
 *{box-sizing:border-box}
 fieldset{min-width:0}
@@ -156,13 +149,6 @@ input[type=date]::-webkit-datetime-edit{padding:0}
   --fond:#F5F7FA;--surface:#FFFFFF;--surface-2:#EEF2F7;--champ:#FFFFFF;--encre:#0A0E15;--encre-2:#2B3442;--encre-3:#56606E;
   --trait:rgba(10,14,21,.10);--bord:rgba(10,14,21,.22);--accent:#1F5FC9;--ciel:#1F5FC9;--sur-accent:#FFFFFF;
   --ambre:#9A6300;--vert:#1C7C4E;--rouge:#B42318;
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --fond:#F5F7FA;--surface:#FFFFFF;--surface-2:#EEF2F7;--champ:#FFFFFF;--encre:#0A0E15;--encre-2:#2B3442;--encre-3:#56606E;
-    --trait:rgba(10,14,21,.10);--bord:rgba(10,14,21,.22);--accent:#1F5FC9;--ciel:#1F5FC9;--sur-accent:#FFFFFF;
-    --ambre:#9A6300;--vert:#1C7C4E;--rouge:#B42318;
-  }
 }
 body{font-size:20px;line-height:1.6;-webkit-font-smoothing:antialiased;
   background:radial-gradient(1200px 600px at 50% -10%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),var(--fond) no-repeat}

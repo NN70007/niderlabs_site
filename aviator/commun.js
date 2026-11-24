@@ -9,7 +9,7 @@
   if (t === "light" || t === "dark") root.setAttribute("data-theme", t);
   function sombre() {
     var f = root.getAttribute("data-theme");
-    return f ? f === "dark" : !matchMedia("(prefers-color-scheme: light)").matches;
+    return f ? f === "dark" : true; // nuit par défaut ; jour seulement si on clique
   }
   document.addEventListener("DOMContentLoaded", function () {
     var b = document.querySelector(".theme");
