@@ -469,3 +469,6 @@ body{overflow-x:clip}
   @supports (height:100svh){.page-carte #plan{height:clamp(260px,calc(100svh - 380px),640px)}}
   .page-carte .legende{margin-top:12px;font-size:16px}
 }
+/* Liens internes (#avis, #lier, et depuis les autres pages) : la section s'arrête sous l'en-tête collé en haut, pas derrière */
+html{scroll-padding-top:96px}
+@media (max-width:900px){html{scroll-padding-top:124px}}
