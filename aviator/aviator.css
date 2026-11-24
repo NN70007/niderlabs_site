@@ -472,3 +472,13 @@ body{overflow-x:clip}
 /* Liens internes (#feedback, #settings, et depuis les autres pages) : la section s'arrête sous l'en-tête collé en haut, pas derrière */
 html{scroll-padding-top:96px}
 @media (max-width:900px){html{scroll-padding-top:124px}}
+/* Téléphone : le cadre de la carte prend les proportions de la carte du monde (plus de grand vide au-dessus et en dessous) */
+@media (max-width:900px){
+  .dotmap,.dotmap.grande,#plan.dotmap{height:auto;aspect-ratio:16/9}
+  .page-carte h1{font-size:34px}
+  .page-carte .chapeau{font-size:16px;margin:8px 0 0}
+  .page-carte #plan{margin-top:16px}
+  .page-carte .legende{margin-top:12px;font-size:15px}
+}
+/* Anciennes adresses #avis et #lier : repères hors du flux, sans effet sur la mise en page */
+.ancre-ancienne{position:absolute;width:0;height:0;overflow:hidden}
