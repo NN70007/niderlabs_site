@@ -11,14 +11,16 @@
 <meta name="apple-mobile-web-app-title" content="Aviator">
 <meta name="theme-color" content="#0B0F14">
 <meta name="description" content="Aviator METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
+<link rel="preload" href="/aviator/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/aviator/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="aviator.css?v=23">
 <script src="commun.js?v=1"></script>
 <script src="aviator.js?v=13" defer></script>
 <script src="terre.js?v=1" defer></script>
-<script src="carte-points.js?v=1" defer></script>
-<script src="intro.js?v=6" defer></script>
+<script src="carte-points.js?v=2" defer></script>
+<script src="intro.js?v=7" defer></script>
 <script src="recit.js?v=9" defer></script>
-<script src="fond.js?v=1" defer></script>
+<script src="fond.js?v=2" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -42,7 +44,7 @@
         <div class="eyebrow">Garmin watch face · for VFR pilots</div>
         <h1>The METAR, <em>on your wrist.</em></h1>
         <div class="montre montre-av h-montre" id="montre-av">
-          <img src="img/watch-dial.webp?v=2" width="480" height="575" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
+          <img src="img/watch-dial.webp?v=2" width="480" height="575" fetchpriority="high" alt="Aviator METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
         </div>
         <p class="lead">Flight category, QNH, wind and gusts, and a wind arrow relative to the runway you fly – for up to 3 airports, read at a glance before you walk to the aircraft.</p>
         <div class="offre"><span class="badge-pro">LAUNCH OFFER</span><span><b>Free forever if you install before 31 December 2026.</b> After that: $9.99, one-time.</span></div>

@@ -21,7 +21,10 @@
     var cv = boite.querySelector("canvas") || boite.appendChild(document.createElement("canvas"));
     var bulle = boite.querySelector(".bulle");
     if (!bulle && opts.bulles) { bulle = document.createElement("div"); bulle.className = "bulle"; bulle.hidden = true; boite.appendChild(bulle); }
-    var t = terre(), dpr = window.devicePixelRatio || 1, anim = null, pos = [];
+    var t = terre(), dpr = Math.min(window.devicePixelRatio || 1, 2), anim = null, pos = [], vue = true, relancer = null;
+    // l'animation s'arrête quand la carte n'est pas à l'écran ou que l'onglet est caché
+    if ("IntersectionObserver" in window) new IntersectionObserver(function (e) { vue = e[0].isIntersecting; if (vue && relancer) relancer(); }).observe(boite);
+    document.addEventListener("visibilitychange", function () { if (relancer) relancer(); });
     function cadre(W, H) {
       var lo0 = -12, lo1 = 32, la0 = 34, la1 = 62;
       if (points.length) {
@@ -54,9 +57,14 @@
         }
       }
       pos = points.map(function (p) { return { p: p, x: (p.lon - f.x0) * sx, y: (f.y1 - merc(p.lat)) * sy, r: T[p.t] || 5 }; });
-      var acc = couleur("--ciel", "#8CC0F2"), t0 = performance.now(), calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var acc = couleur("--ciel", "#8CC0F2"), t0 = performance.now(), calme = matchMedia("(prefers-reduced-motion: reduce)").matches, der = 0;
       if (anim) cancelAnimationFrame(anim);
+      anim = null;
       function image(now) {
+        anim = null;
+        if (!vue || document.hidden) return;
+        if (der && now - der < 32) { anim = requestAnimationFrame(image); return; } // 30 images par seconde
+        der = now;
         c.clearRect(0, 0, W, H); c.drawImage(fond, 0, 0, W, H);
         var ph = calme ? 0.5 : ((now - t0) / 2400) % 1;
         pos.forEach(function (q, i) {
@@ -71,8 +79,10 @@
         c.globalAlpha = 1;
         if (!calme) anim = requestAnimationFrame(image);
       }
-      anim = requestAnimationFrame(image);
+      relancer = function () { if (!anim) anim = requestAnimationFrame(image); };
+      relancer();
     }
+    boite._retrace = function (p) { if (p) points = p; trace(); };
     if (bulle) {
       cv.addEventListener("mousemove", function (e) {
         var r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, best = null, d = 400;
@@ -84,15 +94,34 @@
       cv.addEventListener("mouseleave", function () { bulle.hidden = true; });
     }
     trace();
-    var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(trace, 150); });
-    document.addEventListener("aviator-theme", trace);
+    if (!boite._ecoute) {
+      boite._ecoute = true;
+      var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(boite._retrace.bind(null, null), 150); });
+      document.addEventListener("aviator-theme", function () { boite._retrace(null); });
+    }
   }
 
+  // Demande au serveur lancée une seule fois (elle peut partir avant que la carte soit à l'écran)
+  var demande = null, CLE = "aviator.carte.v1";
+  window.AVIATOR_CARTE_DONNEES = function () {
+    if (!demande) demande = AVIATOR.appel({ action: "aviator.carte" }).then(function (o) {
+      try { localStorage.setItem(CLE, JSON.stringify({ points: o.points || [] })); } catch (e) {}
+      return o;
+    });
+    return demande;
+  };
+  function compte(total, n) { if (total) total.textContent = n + (n === 1 ? " airport" : " airports"); }
   window.AVIATOR_CARTE = function (boite, opts) {
-    var total = opts && opts.total;
-    AVIATOR.appel({ action: "aviator.carte" }).then(function (o) {
-      dessiner(boite, o.points || [], opts);
-      if (total) total.textContent = (o.points || []).length + ((o.points || []).length === 1 ? " airport" : " airports");
-    }).catch(function (x) { dessiner(boite, [], opts); if (total) total.textContent = x.message; });
+    var total = opts && opts.total, memo = null;
+    try { memo = JSON.parse(localStorage.getItem(CLE) || "null"); } catch (e) {}
+    // affichage immédiat : dernière carte connue sur cet appareil, sinon le fond seul ; les points du serveur suivent
+    var pts0 = memo && memo.points ? memo.points : [];
+    dessiner(boite, pts0, opts);
+    if (memo) compte(total, pts0.length);
+    window.AVIATOR_CARTE_DONNEES().then(function (o) {
+      var p = o.points || [];
+      if (!memo || JSON.stringify(p) !== JSON.stringify(pts0)) boite._retrace(p);
+      compte(total, p.length);
+    }).catch(function (x) { if (!memo && total) total.textContent = x.message; });
   };
 })();

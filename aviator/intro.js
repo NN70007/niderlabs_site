@@ -9,8 +9,10 @@
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { io.disconnect(); go(); } }, { rootMargin: "200px" });
       io.observe(ca);
-    }
-    setTimeout(go, 3000); // filet de sécurité : la carte se charge de toute façon après 3 s
+    } else go();
+    // les données de la carte partent une fois la page chargée (le serveur met quelques secondes) : elles sont prêtes quand on y arrive
+    var prefetch = function () { setTimeout(function () { if (window.AVIATOR_CARTE_DONNEES) window.AVIATOR_CARTE_DONNEES().catch(function () {}); }, 300); };
+    if (document.readyState === "complete") prefetch(); else addEventListener("load", prefetch);
   }
   var GROUPES = [
     ["METAR", null], ["ELLX", "Luxembourg (ELLX)"], ["210750Z", "Observed 07:50 UTC"],
