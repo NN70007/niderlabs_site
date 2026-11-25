@@ -181,7 +181,7 @@ footer .legal{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);
   .lang button{padding:6px 6px}
   .hero{padding-top:40px;padding-bottom:64px}
   .stats{gap:24px}.stats b{font-size:32px}
-  .sec-head,.works,.contact-grid,.article-wrap,.cta{grid-template-columns:1fr;gap:16px}
+  .sec-head,.works,.contact-grid,.article-wrap,.cta{grid-template-columns:minmax(0,1fr);gap:16px}
   .principles,.areas{grid-template-columns:1fr}
   .notes-list a{grid-template-columns:1fr;gap:4px}.notes-list .tag{text-align:left}
   .article{padding:28px 20px 34px}.aside{position:static}
