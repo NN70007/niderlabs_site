@@ -1,6 +1,6 @@
 {
   "name": "Crosswind METAR",
-  "short_name": "Aviator",
+  "short_name": "Crosswind",
   "start_url": "/aviator/",
   "scope": "/aviator/",
   "display": "standalone",
