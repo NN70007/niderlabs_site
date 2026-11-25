@@ -220,7 +220,7 @@ footer .legal{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);
 @media print{.cf{display:none}}
 .cta.cta-contact{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start;gap:56px}
 .cta-contact .cf{--cf-tx:#fff;--cf-lab:#C9D6E4;--cf-bd:rgba(255,255,255,.24);--cf-bg:rgba(255,255,255,.06);--cf-focus:#8DB8E6;--cf-err:#FFB4A8;--cf-btn-bg:#fff;--cf-btn-tx:#0B1F33;--cf-note:#9FB3C8}
-.cta-liens{margin-top:28px}
-.cta-liens br{display:none}
-.cta-liens a{margin-top:12px}
+.cta-liens{margin-top:26px;font-size:15.5px;line-height:1.9;color:#C9D6E4}
+.cta .cta-liens a,.cta .cf-note a{display:inline;font-size:inherit;font-weight:500;margin:0}
+.cta .cf-note a{font-weight:400}
 @media(max-width:900px){.cta.cta-contact{grid-template-columns:minmax(0,1fr);gap:32px}}
