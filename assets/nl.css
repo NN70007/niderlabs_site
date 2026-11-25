@@ -194,3 +194,29 @@ footer .legal{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.hero-text>*,.app{animation:none}.caret,.app-top .live i{animation:none}html{scroll-behavior:auto}}
 @media print{header,footer,.lang,.app{display:none}body{background:#fff}}
 .works a:nth-child(2) .logo img{height:125%}
+
+/* Formulaire de contact (prépare un e-mail, n'envoie rien) */
+.cf{display:grid;gap:14px;color:var(--cf-tx)}
+.cf-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.cf-row.cf-un{grid-template-columns:minmax(0,1fr)}
+.cf label{display:block;font-size:13.5px;margin-bottom:6px;color:var(--cf-lab)}
+.cf input,.cf select,.cf textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15.5px;line-height:1.4;padding:12px 14px;border-radius:10px;border:1px solid var(--cf-bd);background:var(--cf-bg);color:var(--cf-tx)}
+.cf select option{color:#0B1F33;background:#fff}
+.cf textarea{min-height:128px;resize:vertical}
+.cf input:focus,.cf select:focus,.cf textarea:focus{outline:2px solid var(--cf-focus);outline-offset:1px}
+.cf [aria-invalid="true"]{border-color:var(--cf-err)}
+.cf-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.cf button{font:inherit;font-size:15px;font-weight:500;cursor:pointer;border-radius:999px;padding:13px 22px;border:1px solid var(--cf-btn-bg);background:var(--cf-btn-bg);color:var(--cf-btn-tx)}
+.cf button[type="button"]{background:transparent;color:var(--cf-tx);border-color:var(--cf-bd)}
+.cf button:focus-visible{outline:2px solid var(--cf-focus);outline-offset:2px}
+.cf-note{font-size:13px;line-height:1.5;color:var(--cf-note);margin:0}
+.cf-status{font-size:14px;line-height:1.5;min-height:1.5em;margin:0;color:var(--cf-tx)}
+.cf-status.cf-erreur{color:var(--cf-err)}
+@media(max-width:720px){.cf-row{grid-template-columns:minmax(0,1fr)}}
+@media print{.cf{display:none}}
+.cta.cta-contact{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start;gap:56px}
+.cta-contact .cf{--cf-tx:#fff;--cf-lab:#C9D6E4;--cf-bd:rgba(255,255,255,.24);--cf-bg:rgba(255,255,255,.06);--cf-focus:#8DB8E6;--cf-err:#FFB4A8;--cf-btn-bg:#fff;--cf-btn-tx:#0B1F33;--cf-note:#9FB3C8}
+.cta-liens{margin-top:28px}
+.cta-liens br{display:none}
+.cta-liens a{margin-top:12px}
+@media(max-width:900px){.cta.cta-contact{grid-template-columns:minmax(0,1fr);gap:32px}}
