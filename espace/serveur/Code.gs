@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-07-boarding4',
+  VERSION: '2026-11-25-contact',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -57,6 +57,7 @@ var ONGLETS = {
   Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols'],
   // Avis laissés sur les pages publiques (Aviator…)
   Avis: ['Date', 'Produit', 'Type', 'Message', 'Email', 'Page'],
+  Messages: ['Date', 'Nom', 'Email', 'Organisation', 'Objet', 'Message', 'Page', 'Langue'],
   // Compteur de visites anonyme des pages publiques : jour, page, téléphone/ordinateur (ni cookie, ni adresse IP, ni identifiant)
   Visites: ['Date', 'Site', 'Page', 'Vues', 'Telephone', 'Ordinateur'],
   Provenances: ['Date', 'Source', 'Vues']
@@ -155,6 +156,7 @@ function route_(req) {
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
   if (a === 'avis') return avis_(req);
+  if (a === 'contact') return contact_(req);
   // Compteur de visites anonyme (toutes les pages publiques de niderlabs.com)
   if (a === 'visite') return visite_(req);
   // Aviator METAR Pro (page expérimentale niderlabs.com/aviator/pro)
@@ -875,6 +877,27 @@ function avis_(req) {
   return { ok: true };
 }
 
+/** Formulaire de contact de l'accueil : une ligne dans l'onglet Messages et un e-mail à contact@niderlabs.com.
+ *  Sans session. Garde-fous : champ piège, longueurs bornées, plafond horaire, cellules neutralisées par ajouter_. */
+function contact_(req) {
+  if (texte_(req.site, 200)) return { ok: true };            // champ piège rempli : robot, rien n'est gardé
+  var nom = texte_(req.nom, 120), email = texte_(req.email, 160).toLowerCase();
+  var message = String(req.message == null ? '' : req.message).replace(/\r/g, '').replace(/[\u0000-\u0009\u000b-\u001f]/g, ' ').trim().slice(0, 4000);
+  if (!nom || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || message.length < 3) throw refus_('Le nom, une adresse e-mail valide et le message sont nécessaires.', 'donnees');
+  var cache = CacheService.getScriptCache(), cle = 'contact:' + Math.floor(Date.now() / 3600000), nb = Number(cache.get(cle) || 0);
+  if (nb >= 20) throw refus_('Trop de messages reçus en peu de temps. Écrire directement à contact@niderlabs.com.', 'limite');
+  cache.put(cle, String(nb + 1), 3600);
+  var ligne = { Date: Utilities.formatDate(new Date(), CONFIG.FUSEAU, 'yyyy-MM-dd HH:mm'), Nom: nom, Email: email, Organisation: texte_(req.organisation, 160),
+    Objet: texte_(req.objet, 160), Message: message, Page: texte_(req.page, 120), Langue: texte_(req.langue, 5) };
+  ajouter_('Messages', ligne);
+  try {
+    MailApp.sendEmail({ to: 'contact@niderlabs.com', replyTo: email, name: 'NiderLabs – site',
+      subject: 'niderlabs.com – ' + (ligne.Objet || 'message du site') + ' – ' + nom,
+      body: ['Nom : ' + nom, 'E-mail : ' + email].concat(ligne.Organisation ? ['Organisation : ' + ligne.Organisation] : [], ligne.Objet ? ['Objet : ' + ligne.Objet] : []).join('\n') + '\n\n' + message + '\n\n(page ' + ligne.Page + ', langue ' + ligne.Langue + ')' });
+  } catch (e) { try { journal_('contact', 'mail-erreur', String(e)); } catch (e2) {} }
+  return { ok: true };
+}
+
 /** Nom et pistes d'un aéroport pour la page de réglages (gardé 1 jour en cache). */
 function aviatorAeroport_(icao) {
   icao = String(icao || '').trim().toUpperCase();
@@ -1079,7 +1102,7 @@ function classeur_(creerSiAbsent) {
 function feuille_(nom) {
   var ss = classeur_(false), sh = ss.getSheetByName(nom);
   // Onglets ajoutés après l'installation (Aviator METAR) : créés au premier besoin, sans relancer « installer »
-  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes' || nom === 'Avis' || nom === 'Visites' || nom === 'Provenances')) {
+  if (!sh && (nom === 'Montres' || nom === 'Aeroports' || nom === 'Comptes' || nom === 'Avis' || nom === 'Messages' || nom === 'Visites' || nom === 'Provenances')) {
     sh = ss.insertSheet(nom);
     sh.getRange(1, 1, 1, ONGLETS[nom].length).setValues([ONGLETS[nom]]);
     sh.setFrozenRows(1);

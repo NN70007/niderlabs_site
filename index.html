@@ -6,7 +6,7 @@
 <title>NiderLabs — software design, Luxembourg</title>
 <meta name="description" content="NiderLabs designs software and AI models for professions where data must not leave: on-device speech recognition, chains of trust for models, applications that keep nothing.">
 <meta name="theme-color" content="#F3F5F7">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://script.google.com; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta property="og:type" content="website">
 <meta property="og:title" content="NiderLabs — software design, Luxembourg">
 <meta property="og:description" content="NiderLabs designs software and AI models for professions where data must not leave: on-device speech recognition, chains of trust for models, applications that keep nothing.">
@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://niderlabs.com/">
 <meta property="og:image" content="https://niderlabs.com/assets/og-image.png">
 <link rel="icon" type="image/svg+xml" href="/assets/nn-icon.svg?v=20261117">
-<link rel="stylesheet" href="/assets/nl.css?v=20261125c">
+<link rel="stylesheet" href="/assets/nl.css?v=20261125d">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -179,12 +179,13 @@
         <p class="cta-liens"><a href="/licences/"><span data-fr>Licences et droits</span><span data-en>Licensing and rights</span><span data-es>Licencias y derechos</span><span data-de>Lizenzen und Rechte</span></a><br><a href="mailto:contact@niderlabs.com">contact@niderlabs.com</a></p>
       </div>
       <div>
-        <form class="cf" data-contact data-to="contact@niderlabs.com" data-sujet="niderlabs.com" novalidate>
+        <form class="cf" data-contact data-to="contact@niderlabs.com" data-sujet="niderlabs.com" data-api="https://script.google.com/macros/s/AKfycbwjfALtYam9glF9Rb9pF_5IuImyFI4tler3PUiHPXBy5L3GOR-hItwuS33eI2wRHUQiAg/exec" novalidate>
           <div class="cf-row"><div class="cf-champ"><label for="cf-nom"><span data-fr>Nom et prénom</span><span data-en>Full name</span><span data-es>Nombre y apellidos</span><span data-de>Vor- und Nachname</span> <span class="cf-req" aria-hidden="true">*</span></label><input id="cf-nom" data-cf="nom" data-req type="text" maxlength="120" autocomplete="name"></div><div class="cf-champ"><label for="cf-email"><span data-fr>Adresse e-mail</span><span data-en>E-mail address</span><span data-es>Correo electrónico</span><span data-de>E-Mail-Adresse</span> <span class="cf-req" aria-hidden="true">*</span></label><input id="cf-email" data-cf="email" data-req type="email" maxlength="120" autocomplete="email"></div></div>
           <div class="cf-row"><div class="cf-champ"><label for="cf-organisation"><span data-fr>Organisation</span><span data-en>Organisation</span><span data-es>Organización</span><span data-de>Organisation</span></label><input id="cf-organisation" data-cf="organisation" type="text" maxlength="120" autocomplete="organization"></div><div class="cf-champ"><label for="cf-objet"><span data-fr>Objet</span><span data-en>Subject</span><span data-es>Asunto</span><span data-de>Betreff</span></label><select id="cf-objet" data-cf="objet"><option value="" data-t-fr="Choisir…" data-t-en="Select…" data-t-es="Seleccionar…" data-t-de="Auswählen…">Select…</option><option value="1" data-t-fr="Licence d'un logiciel ou d'un modèle" data-t-en="Licence for software or a model" data-t-es="Licencia de un software o de un modelo" data-t-de="Lizenz für eine Software oder ein Modell">Licence for software or a model</option><option value="2" data-t-fr="Citation d'une mesure" data-t-en="Citation of a measurement" data-t-es="Cita de una medición" data-t-de="Zitierung eines Messwerts">Citation of a measurement</option><option value="3" data-t-fr="Presse" data-t-en="Press" data-t-es="Prensa" data-t-de="Presse">Press</option><option value="4" data-t-fr="Autre demande" data-t-en="Other request" data-t-es="Otra solicitud" data-t-de="Sonstige Anfrage">Other request</option></select></div></div>
           <div class="cf-row cf-un"><div class="cf-champ"><label for="cf-message"><span data-fr>Message</span><span data-en>Message</span><span data-es>Mensaje</span><span data-de>Nachricht</span> <span class="cf-req" aria-hidden="true">*</span></label><textarea id="cf-message" data-cf="message" data-req rows="5" maxlength="1400"></textarea></div></div>
-          <div class="cf-actions"><button type="submit"><span data-fr>Préparer le message</span><span data-en>Prepare the message</span><span data-es>Preparar el mensaje</span><span data-de>Nachricht vorbereiten</span></button><button type="button" data-cf-copier><span data-fr>Copier le message</span><span data-en>Copy the message</span><span data-es>Copiar el mensaje</span><span data-de>Nachricht kopieren</span></button></div>
-          <p class="cf-note"><span data-fr>Ce formulaire prépare un e-mail dans la messagerie de l'appareil. Aucune donnée n'est transmise ni conservée par ce site.</span><span data-en>This form prepares an e-mail in the device's mail application. No data is transmitted or retained by this site.</span><span data-es>Este formulario prepara un correo en la aplicación de correo del dispositivo. Este sitio no transmite ni conserva ningún dato.</span><span data-de>Dieses Formular bereitet eine E-Mail im E-Mail-Programm des Geräts vor. Diese Website übermittelt und speichert keine Daten.</span></p>
+          <input class="cf-piege" data-cf-piege type="text" name="site" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <div class="cf-actions"><button type="submit"><span data-fr>Envoyer le message</span><span data-en>Send the message</span><span data-es>Enviar el mensaje</span><span data-de>Nachricht senden</span></button><button type="button" data-cf-mailto hidden><span data-fr>Préparer un e-mail</span><span data-en>Prepare an e-mail</span><span data-es>Preparar un correo</span><span data-de>E-Mail vorbereiten</span></button></div>
+          <p class="cf-note"><span data-fr>Les informations saisies servent uniquement à répondre à la demande.</span><span data-en>The information entered is used solely to respond to the request.</span><span data-es>La información introducida se utiliza únicamente para responder a la solicitud.</span><span data-de>Die eingegebenen Angaben dienen ausschließlich der Beantwortung der Anfrage.</span> <a href="/mentions-legales/#confidentialite"><span data-fr>Confidentialité du site</span><span data-en>Site privacy</span><span data-es>Privacidad del sitio</span><span data-de>Datenschutz der Website</span></a>.</p>
           <p class="cf-status" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -205,7 +206,7 @@
   </div>
 </footer>
 <script src="/assets/nl.js?v=20261117b"></script>
-<script src="/assets/contact.js?v=20261125" defer></script>
+<script src="/assets/contact.js?v=20261125b" defer></script>
 <script src="/visite.js?v=1" defer></script>
 </body>
 </html>

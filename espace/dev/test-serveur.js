@@ -246,6 +246,20 @@ console.log('Avis depuis les pages publiques');
   ok(av.post({ action: 'avis', message: 'hello', email: 'pas-un-mail' }).ok === false, 'e-mail invalide refusé');
   const avant = av.mails.length;
   ok(av.post({ action: 'avis', message: 'spam spam', piege: 'x' }).ok && av.mails.length === avant, 'robot (champ piège) ignoré');
+  {
+    const m0 = av.mails.length;
+    const base = { action: 'contact', nom: 'Jeanne Test', email: 'jeanne@example.com', organisation: 'Hôpital', objet: 'Presse', message: 'Bonjour, ceci est un essai.', page: '/', langue: 'fr' };
+    ok(av.post(base).ok === true, 'contact : message accepté sans session');
+    const L = av.sheets.Messages.data;
+    ok(L.length === 2 && L[1][1] === 'Jeanne Test' && L[1][2] === 'jeanne@example.com' && L[1][4] === 'Presse', 'contact : ligne ajoutée dans l\'onglet Messages');
+    ok(av.mails.length === m0 + 1 && av.mails[m0].to === 'contact@niderlabs.com' && av.mails[m0].replyTo === 'jeanne@example.com', 'contact : e-mail de notification avec réponse vers l\'expéditeur');
+    ok(av.post(Object.assign({}, base, { email: 'pas-un-mail' })).ok === false, 'contact : adresse invalide refusée');
+    ok(av.post(Object.assign({}, base, { message: 'x' })).ok === false, 'contact : message trop court refusé');
+    const n1 = av.sheets.Messages.data.length, m1 = av.mails.length;
+    ok(av.post(Object.assign({}, base, { site: 'http://spam' })).ok === true && av.sheets.Messages.data.length === n1 && av.mails.length === m1, 'contact : champ piège rempli, rien de gardé');
+    let dernier; for (let i = 0; i < 25; i++) dernier = av.post(base);
+    ok(dernier.ok === false && dernier.code === 'limite', 'contact : plafond horaire appliqué');
+  }
 }
 
 console.log('Aviator METAR : téléphone mémorisé');
