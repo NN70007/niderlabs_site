@@ -13,6 +13,8 @@ Options -Indexes
   RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
   RewriteCond %{HTTPS} off
   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+  # Pages légales du cadran : elles sont désormais chez l'éditeur (GOKYO)
+  RewriteRule ^(aviator|crosswind)/(terms|privacy|refund|legal)/?$ https://watch.gokyo.lu/crosswind/$2/ [R=302,L]
   # Aviator METAR : QR code de la montre -> page des réglages avec le code
   RewriteRule ^[Aa]/([0-9]{6})/?$ /aviator/?c=$1 [R=302,L]
   # Crosswind METAR : adresse courte niderlabs.com/crosswind -> pages du cadran (dossier /aviator)
