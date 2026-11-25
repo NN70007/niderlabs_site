@@ -562,3 +562,5 @@ a.puce-m.bientot{border-style:dashed;color:var(--encre-3);text-decoration:none}
 .faq-etroite{width:100%;max-width:760px;margin:40px auto 0}
 @media (max-width:900px){.tuiles{grid-template-columns:1fr 1fr}.duo,.bande-montres{grid-template-columns:1fr}.bande-montres{gap:16px}.chiffre-montres{font-size:88px}}
 @media (max-width:560px){.tuiles{grid-template-columns:1fr}.tuile{display:grid;grid-template-columns:46px 1fr;column-gap:14px;padding:18px}.tuile b{margin-top:0}.tuile p{grid-column:2}.tuile-ico{grid-row:span 2}.panneau{padding:22px}.touche{min-width:62px}}
+
+.marque-x{color:var(--accent)}

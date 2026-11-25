@@ -749,7 +749,7 @@ function aviatorLier_(jetonApp, memo, code, garder) {
   }
   if (!fid) throw refus_('Enter the 6-digit code shown on your watch face (tap the dial twice to reach SETTINGS).', 'code');
   var f = montre_(fid);
-  if (!f || /^[AB]/.test(String(f.Version || ''))) throw refus_('This code is not from an Aviator METAR watch face.', 'code');
+  if (!f || /^[AB]/.test(String(f.Version || ''))) throw refus_('This code is not from a Crosswind METAR watch face.', 'code');
   PropertiesService.getScriptProperties().setProperty('mlien:' + appId, fid);
   var o = sessionMontre_(f); o.appli = 'liee';
   if (garder) { var mm = memoCreer_(f.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
@@ -859,7 +859,7 @@ function avis_(req) {
   var msg = texte_(String(req.message || '').replace(/\r/g, ''), 2000);
   if (msg.length < 3) throw refus_('Please write a few words.', 'donnees');
   var type = ({ love: 'Love it', idee: 'Idea', bug: 'Problem' })[req.type] || 'Other';
-  var produit = texte_(req.produit || 'Aviator METAR', 40);
+  var produit = texte_(req.produit || 'Crosswind METAR', 40);
   var email = texte_(req.email, 120);
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw refus_('This e-mail address looks wrong.', 'donnees');
   var cache = CacheService.getScriptCache(), jour = 'avis:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');

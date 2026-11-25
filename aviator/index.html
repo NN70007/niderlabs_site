@@ -3,30 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Aviator METAR Pro – the METAR on your Garmin watch</title>
+<title>Crosswind METAR – the METAR on your Garmin watch</title>
 <link rel="icon" type="image/svg+xml" href="img/icon.svg?v=1">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png?v=1">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=1">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Aviator">
 <meta name="theme-color" content="#0B0F14">
-<meta name="description" content="Aviator METAR Pro is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
+<meta name="description" content="Crosswind METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
 <link rel="canonical" href="https://niderlabs.com/aviator/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Aviator METAR Pro">
-<meta property="og:title" content="Aviator METAR Pro – the METAR on your Garmin watch">
-<meta property="og:description" content="Aviator METAR Pro is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
+<meta property="og:site_name" content="Crosswind METAR">
+<meta property="og:title" content="Crosswind METAR – the METAR on your Garmin watch">
+<meta property="og:description" content="Crosswind METAR is a Garmin watch face for VFR pilots: flight category, QNH, wind relative to your runway, decoded METAR and crosswind for up to 3 airports. Set it up here with the code shown on your watch.">
 <meta property="og:url" content="https://niderlabs.com/aviator/">
-<meta property="og:image" content="https://niderlabs.com/aviator/img/og-aviator.jpg">
+<meta property="og:image" content="https://niderlabs.com/aviator/img/og-crosswind.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Aviator METAR Pro watch face on a Garmin watch: flight category, QNH, wind and gusts">
+<meta property="og:image:alt" content="Crosswind METAR watch face on a Garmin watch: flight category, QNH, wind and gusts">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/aviator/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/aviator/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="aviator.css?v=34">
+<link rel="stylesheet" href="aviator.css?v=35">
 <script src="commun.js?v=2"></script>
-<script src="aviator.js?v=14" defer></script>
+<script src="aviator.js?v=15" defer></script>
 <script src="terre.js?v=1" defer></script>
 <script src="carte-points.js?v=2" defer></script>
 <script src="intro.js?v=7" defer></script>
@@ -35,7 +35,7 @@
 </head>
 <body>
 <header class="entete">
-  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR <span class="badge-pro badge-marque">PRO</span><small>by NiderLabs</small></a>
+  <a class="marque" href="./"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg><span class="marque-x">CROSSWIND</span> METAR<small>by NiderLabs</small></a>
   <nav class="nav" aria-label="Pages">
     <a href="./" aria-current="page">Watch face</a>
     <a href="#settings">Settings</a>
@@ -55,7 +55,7 @@
         <div class="eyebrow">Garmin watch face · for VFR pilots</div>
         <h1>The METAR, <em>on your wrist.</em></h1>
         <div class="montre montre-av h-montre" id="montre-av">
-          <img src="img/watch-dial.webp?v=3" width="480" height="575" fetchpriority="high" alt="Aviator METAR Pro dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
+          <img src="img/watch-dial.webp?v=3" width="480" height="575" fetchpriority="high" alt="Crosswind METAR dial: VFR, QNH 1018, wind 14 gusting 22 knots, runway 06 at ELLX">
         </div>
         <p class="lead">Flight category, QNH, wind and gusts, and a wind arrow relative to the runway you fly – for up to 3 airports, read at a glance before you walk to the aircraft.</p>
         <div class="offre"><span class="badge-pro">LAUNCH OFFER</span><span><b>Free forever if you install before 31 December 2026.</b> After that: $9.99, one-time.</span></div>
@@ -97,7 +97,7 @@
           </div>
           <div class="recit-montre-cadre">
             <div class="recit-montre" id="recit-montre">
-              <img src="img/watch-dial.webp?v=3" width="480" height="575" alt="Aviator METAR Pro dial">
+              <img src="img/watch-dial.webp?v=3" width="480" height="575" alt="Crosswind METAR dial">
               <img class="page-rwy" src="img/watch-rwy.webp?v=3" width="480" height="575" alt="" aria-hidden="true">
               <img class="page-metar" src="img/watch-metar.webp?v=3" width="480" height="575" alt="" aria-hidden="true">
               <div class="recit-voile" aria-hidden="true"><i id="recit-trou"></i><img id="recit-fleche" src="img/voile-fleche.png?v=1" alt=""><svg id="recit-arc" viewBox="0 0 454 454" preserveAspectRatio="none"><defs><filter id="recit-flou"><feGaussianBlur stdDeviation="6"/></filter></defs><path d="M0 0H454V454H0Z M27.8 112.0A230 230 0 0 1 426.2 342.0L395.0 324.0A194 194 0 0 0 59.0 130.0Z" fill-rule="evenodd" filter="url(#recit-flou)"/></svg></div>
@@ -123,7 +123,7 @@
     <section class="ou">
       <div class="eyebrow">Where our pilots fly</div>
       <h2 class="serif" style="margin-top:14px">From the home airfield <em>to the far end of the map.</em></h2>
-      <div class="dotmap" id="carte-accueil" role="img" aria-label="Map of the airports followed by Aviator METAR Pro watches"></div>
+      <div class="dotmap" id="carte-accueil" role="img" aria-label="Map of the airports followed by Crosswind METAR watches"></div>
       <div class="legende-ou"><span><i style="width:8px;height:8px"></i>1–4 pilots</span><span><i style="width:12px;height:12px"></i>5 or more</span><span><i style="width:16px;height:16px"></i>10 or more</span><span id="total-accueil"></span><a href="map/">Open the full map →</a></div>
       <p class="illus" style="text-align:left">Airports set on watches over the last 30 days, anonymous and rounded.</p>
     </section>
@@ -159,7 +159,7 @@
           <div class="geste"><span class="touche">← →</span><p>On a page, right half for the next page, left half to go back.</p></div>
         </div>
         <div class="panneau">
-          <h3>Aviator METAR Pro App <span class="badge-pro">FREE</span></h3><p class="panneau-sous">Buttons-only watches · free for owners of the watch face</p>
+          <h3>Crosswind METAR App <span class="badge-pro">FREE</span></h3><p class="panneau-sous">Buttons-only watches · free for owners of the watch face</p>
           <div class="geste"><span class="touche">UP / DOWN</span><p>From the watch face, the glance: airport, runway, flight category, crosswind, QNH.</p></div>
           <div class="geste"><span class="touche">START</span><p>Runway wind, decoded METAR, settings. Up and down change page; START switches airport.</p></div>
           <div class="geste"><span class="touche">QR</span><p>Scan once: the app uses the airports and settings of your watch face.</p></div>
@@ -174,7 +174,7 @@
           <div class="eyebrow">Compatible watches</div>
           <h2 class="serif" style="margin-top:14px">Made for <em>your Garmin.</em></h2>
           <div class="puces-m"><span class="puce-m">fēnix 8 Pro</span><span class="puce-m">fēnix 8 · 9 · E</span><span class="puce-m">epix 2 · Pro</span><span class="puce-m">MARQ</span><span class="puce-m">D2 Air · Mach</span><span class="puce-m">Forerunner</span><span class="puce-m">Venu</span><span class="puce-m">vivoactive</span><span class="puce-m">Descent</span><span class="puce-m">Approach</span><span class="puce-m">fēnix 6 · quatix 6 <i>BETA</i></span><a class="puce-m bientot" href="#feedback">Instinct · next</a></div>
-          <p class="note-montres">Every round AMOLED touch-screen Garmin watch, each screen size checked – watch face and Aviator METAR Pro App. On the fēnix 6 series (no touch screen), the dial shows your airport 1 and the app does the rest. Another watch? <a href="#feedback">Tell us which one.</a></p>
+          <p class="note-montres">Every round AMOLED touch-screen Garmin watch, each screen size checked – watch face and Crosswind METAR App. On the fēnix 6 series (no touch screen), the dial shows your airport 1 and the app does the rest. Another watch? <a href="#feedback">Tell us which one.</a></p>
         </div>
       </div>
     </section>
@@ -186,11 +186,11 @@
       </div>
       <div class="faq-etroite">
         <div class="faq">
-        <details><summary>How much does it cost?</summary><p>Free forever if you install before 31 December 2026 – yours to keep. From 1 January 2027: $9.99, one-time, no subscription. The Aviator METAR Pro App is free for owners of the watch face.</p></details>
-        <details><summary>Watch face or app – which one do I need?</summary><p>The watch face, if your watch has a touch screen. The Aviator METAR Pro App is for watches with buttons only: it shows the same pages and is free for owners of the watch face.</p></details>
-        <details><summary>My watch has no touch screen. Does it work?</summary><p>Yes. On the fēnix 6 series, install the watch face: it shows the setup QR code until you have set it up, then the normal dial. The dial always shows your airport 1: to show another one, put it first in the settings on this page. Add the Aviator METAR Pro App for the runway and METAR pages (UP and DOWN) and to look at your other airports (START).</p></details>
+        <details><summary>How much does it cost?</summary><p>Free forever if you install before 31 December 2026 – yours to keep. From 1 January 2027: $9.99, one-time, no subscription. The Crosswind METAR App is free for owners of the watch face.</p></details>
+        <details><summary>Watch face or app – which one do I need?</summary><p>The watch face, if your watch has a touch screen. The Crosswind METAR App is for watches with buttons only: it shows the same pages and is free for owners of the watch face.</p></details>
+        <details><summary>My watch has no touch screen. Does it work?</summary><p>Yes. On the fēnix 6 series, install the watch face: it shows the setup QR code until you have set it up, then the normal dial. The dial always shows your airport 1: to show another one, put it first in the settings on this page. Add the Crosswind METAR App for the runway and METAR pages (UP and DOWN) and to look at your other airports (START).</p></details>
         <details><summary>Does it need a connection?</summary><p>Your watch gets the METAR through your phone (Bluetooth), every few minutes. Without your phone nearby, the watch keeps the last report and shows how old it is.</p></details>
-        <details><summary>Can I use it to fly?</summary><p>No. Aviator METAR Pro is for situational awareness only – NOT FOR NAVIGATION. Always get an official weather briefing; the pilot in command remains responsible for every decision.</p></details>
+        <details><summary>Can I use it to fly?</summary><p>No. Crosswind METAR is for situational awareness only – NOT FOR NAVIGATION. Always get an official weather briefing; the pilot in command remains responsible for every decision.</p></details>
       </div>
       </div>
     </section>
@@ -256,11 +256,11 @@
     </div>
   </div>
 
-  <!-- Appli Aviator METAR (montres à boutons) : la lier au cadran -->
+  <!-- Appli Crosswind METAR (montres à boutons) : la lier au cadran -->
   <div class="col etroit" id="vue-appli" hidden>
-    <div class="separateur"><span class="eyebrow">Aviator METAR Pro App</span></div>
+    <div class="separateur"><span class="eyebrow">Crosswind METAR App</span></div>
     <h1>Link the app to your watch face</h1>
-    <p class="aide">The app shows the same airports and settings as your Aviator METAR Pro watch face. Link it once; after that, every change you make here applies to both.</p>
+    <p class="aide">The app shows the same airports and settings as your Crosswind METAR watch face. Link it once; after that, every change you make here applies to both.</p>
     <button class="bouton" type="button" id="lier-memo" hidden>Use the same airports as my watch face</button>
     <form id="form-lier" style="display:flex;flex-direction:column;gap:18px" novalidate>
       <label class="titre" for="code-cadran">CODE SHOWN ON YOUR WATCH FACE</label>
@@ -274,7 +274,7 @@
   <!-- Étape 2 : réglages -->
   <form class="col" id="vue-reglages" hidden novalidate>
     <h1>My watch settings</h1>
-    <p class="aide" id="note-appli" hidden>These settings apply to your watch face and to the Aviator METAR Pro App.</p>
+    <p class="aide" id="note-appli" hidden>These settings apply to your watch face and to the Crosswind METAR App.</p>
 
     <section style="display:flex;flex-direction:column;gap:18px">
       <h2>Airports</h2>
@@ -316,7 +316,7 @@
     <section style="display:flex;flex-direction:column;gap:18px">
       <h2>Before you save</h2>
       <label class="case"><input type="checkbox" id="carte"> <span>Show my airports, anonymously, on the public <a href="map/" target="_blank" rel="noopener">airports map</a></span></label>
-      <div class="avert"><b>NOT FOR NAVIGATION.</b> Aviator METAR Pro is for situational awareness only. It is not an approved source of aeronautical information and does not replace an official weather briefing. The pilot in command remains solely responsible for flight planning and every operational decision.</div>
+      <div class="avert"><b>NOT FOR NAVIGATION.</b> Crosswind METAR is for situational awareness only. It is not an approved source of aeronautical information and does not replace an official weather briefing. The pilot in command remains solely responsible for flight planning and every operational decision.</div>
       <label class="case important"><input type="checkbox" id="accepte"> <span>I have read and accept the <a href="terms/" target="_blank" rel="noopener">Terms of Use</a> and the <a href="privacy/" target="_blank" rel="noopener">Privacy Policy</a>, including the NOT FOR NAVIGATION notice.</span></label>
     </section>
 
@@ -335,7 +335,7 @@
 <footer class="pied2">
   <div class="pied2-haut">
     <div class="pied2-marque">
-      <a class="marque" href="/aviator/"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg>AVIATOR METAR <span class="badge-pro badge-marque">PRO</span></a>
+      <a class="marque" href="/aviator/"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M2 16l20-8-6 12-3-5-5 3 1-5z"/></svg><span class="marque-x">CROSSWIND</span> METAR</a>
       <p>Published by GOKYO S.à r.l.-S, Luxembourg</p>
     </div>
     <nav class="pied2-col" aria-label="Product">

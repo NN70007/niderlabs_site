@@ -1,4 +1,4 @@
-/* Aviator METAR — page de réglages : code de la montre → réglages → enregistrement. */
+/* Crosswind METAR — page de réglages : code de la montre → réglages → enregistrement. */
 (function () {
   "use strict";
   var $ = function (s) { return document.querySelector(s); };
@@ -264,7 +264,7 @@
     r.hidden = false;
     if (msg.length < 3) { r.className = "message err"; r.textContent = "Please write a few words."; return; }
     b.disabled = true; b.textContent = "Sending…";
-    AVIATOR.appel({ action: "avis", produit: "Aviator METAR", type: t ? t.value : "", message: msg,
+    AVIATOR.appel({ action: "avis", produit: "Crosswind METAR", type: t ? t.value : "", message: msg,
       email: document.getElementById("avis-email").value.trim(), piege: document.getElementById("avis-piege").value, page: location.pathname })
       .then(function () {
         r.className = "message ok"; r.textContent = "Thank you! Your message has been sent.";

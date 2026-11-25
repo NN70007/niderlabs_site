@@ -5,7 +5,7 @@
   var S = E.exigerConnexion(); if (!S) return;
   if (!S.user.admin) { location.replace("./"); return; }
   E.enTete({ actif: "visites" }); E.piedDePage();
-  var SITES = [["aviator", "Aviator METAR Pro"], ["niderlabs", "NiderLabs"], ["boarding", "Boarding"]];
+  var SITES = [["aviator", "Crosswind METAR"], ["niderlabs", "NiderLabs"], ["boarding", "Boarding"]];
   var nb = function (x) { return Number(x || 0).toLocaleString("fr-FR"); };
 
   function jours(depuis, n) {

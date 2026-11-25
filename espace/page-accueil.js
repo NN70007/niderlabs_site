@@ -75,7 +75,7 @@
     var T = [];
     if (u.actualites) T.push({ h: "admin/", t: "Actualités", p: "Rédiger, modifier et publier les articles du site." });
     if (u.admin) T.push({ h: "acces.html", t: "Accès", p: "Inscrire une personne et choisir ses droits (administration, actualités)." });
-    if (u.admin) T.push({ h: "visites.html", t: "Visites", p: "Pages vues sur niderlabs.com, Aviator METAR Pro et Boarding (compteur anonyme)." });
+    if (u.admin) T.push({ h: "visites.html", t: "Visites", p: "Pages vues sur niderlabs.com, Crosswind METAR et Boarding (compteur anonyme)." });
     $("#tuiles").innerHTML = T.length
       ? T.map(function (x) { return '<a class="carte tuile" href="' + x.h + '"><h2>' + E.esc(x.t) + "</h2><p>" + E.esc(x.p) + '</p><span class="aller">Ouvrir →</span></a>'; }).join("")
       : '<div class="carte avis"><strong>Aucun droit ne vous est encore ouvert.</strong>L\'administrateur du site peut vous les attribuer.</div>';
