@@ -233,6 +233,7 @@ console.log('Aviator METAR : montres');
     const w2 = av.get({ a: 'w', id: ID2, k: K2, v: '1.0.3', r: '0', t: '0' });
     const o2 = av.post({ action: 'aviator.ouvrir', code: w2.c });
     ok(o2.ok && o2.tactile === false, 'cadran sans écran tactile : un seul aéroport proposé');
+    ok(o2.memo && o2.memoExp, 'cadran sans écran tactile : téléphone mémorisé par défaut');
     const ID3 = 'avecTactile1234567', K3 = 'cleAvecTactile0123456';
     const w3 = av.get({ a: 'w', id: ID3, k: K3, v: '1.0.3', r: '0', t: '1' });
     ok(av.post({ action: 'aviator.ouvrir', code: w3.c }).tactile === true, 'cadran tactile : trois aéroports');

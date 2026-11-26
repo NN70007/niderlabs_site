@@ -730,6 +730,8 @@ function aviatorOuvrir_(code, garder, memo) {
   }
   var o = sessionMontre_(m);
   if (appli) { o.appli = f ? 'liee' : 'seule'; o.tactile = true; }
+  // Cadran sans écran tactile : il ne peut plus réafficher son QR une fois réglé → téléphone mémorisé par défaut
+  if (!appli && m.Tactile === 'non' && !memo) garder = true;
   if (garder) { var mm = memoCreer_(m.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
   return o;
 }
