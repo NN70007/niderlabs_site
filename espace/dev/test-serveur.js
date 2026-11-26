@@ -240,6 +240,20 @@ console.log('Aviator METAR : montres');
     const IDA = 'appliSeule12345678', KA = 'cleAppliSeule0123456';
     const wa = av.get({ a: 'w', id: IDA, k: KA, v: 'A1.0.3', r: '0', t: '0' });
     ok(av.post({ action: 'aviator.ouvrir', code: wa.c }).tactile === true, 'appli : toujours trois aéroports');
+    // Veille des nouveaux utilisateurs : un seul e-mail par jour, rien s'il n'y a personne
+    const vm = require('vm');
+    const demain = new Date(Date.now() + 86400000); demain.setUTCHours(20, 30, 0, 0); // 21 h 30 à Luxembourg (hiver)
+    const veille = (d) => vm.runInContext('veilleUtilisateurs_(new Date(' + d.getTime() + '))', av.ctx);
+    av.props.VEILLE_DEPUIS = '1'; delete av.props.VEILLE_JOUR;
+    const avantV = av.mails.length;
+    const matin = new Date(demain.getTime()); matin.setUTCHours(8, 0, 0, 0);
+    ok(veille(matin) === '' && av.mails.length === avantV, 'veille : rien avant 20 h');
+    ok(veille(demain) === 'envoyé' && av.mails.length === avantV + 1, 'veille : un e-mail le soir s’il y a de nouvelles montres');
+    const mv = av.mails[av.mails.length - 1];
+    ok(mv.to === 'jb@niedercorn.com' && /nouvelles installations/.test(mv.subject) && /Cadran 1\.0\.3 · sans écran tactile/.test(mv.body) && /Application A1\.0\.3/.test(mv.body) && !/ 0\.6/.test(mv.body), 'veille : cadrans et applis publiés listés, bêtas exclues');
+    ok(veille(new Date(demain.getTime() + 3600000)) === '' && av.mails.length === avantV + 1, 'veille : au plus un e-mail par jour');
+    const apres = new Date(demain.getTime() + 86400000);
+    ok(veille(apres) === 'rien' && av.mails.length === avantV + 1, 'veille : aucun e-mail s’il n’y a pas de nouvel utilisateur');
   }
   const ap = av.post({ action: 'aviator.aeroport', icao: 'ellx' });
   ok(ap.ok && ap.trouve && ap.nom && ap.pistes.join() === '6,24', 'aéroport : nom et extrémités de piste');

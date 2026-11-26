@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-26-tactile',
+  VERSION: '2026-11-26-veille',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -631,6 +631,8 @@ function montreAppel_(p) {
     }
     return row;
   });
+  // Veille quotidienne des nouveaux utilisateurs (au plus un e-mail par jour, rien s'il n'y a personne)
+  try { veilleUtilisateurs_(); } catch (e) { console.error(e && e.stack || e); }
   var c = codeMontre_(id);
   var out = { ok: true, c: c.code, ce: Math.round((c.exp - Date.now()) / 1000), st: STATUTS.indexOf(m.Statut) > -1 ? m.Statut : 'beta', rv: Number(m.Rev) || 0 };
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
@@ -657,6 +659,58 @@ function montreAppel_(p) {
     out.tz = tzDecalages_(liste);
   } catch (e) { console.error(e && e.stack || e); }
   return out;
+}
+
+/* ----- Veille des nouveaux utilisateurs Crosswind METAR -----
+   Déclenchée par les appels des montres (aucun déclencheur à installer) : à partir de VEILLE_HEURE (heure de Luxembourg),
+   le premier appel du jour regarde les montres enregistrées depuis le résumé précédent. S'il y en a, un seul e-mail
+   part vers VEILLE_DEST avec leurs aéroports ; sinon rien n'est envoyé. Au plus un passage par jour (VEILLE_JOUR). */
+var VEILLE_DEST = 'jb@niedercorn.com', VEILLE_HEURE = 20;
+function veilleUtilisateurs_(maintenant) {
+  var d = maintenant || new Date(), t = d.getTime();
+  var loc = new Date(t + (tzSecondes_('Europe/Luxembourg', d) || 0) * 1000);
+  var jour = loc.toISOString().slice(0, 10), props = PropertiesService.getScriptProperties();
+  if (loc.getUTCHours() < VEILLE_HEURE || props.getProperty('VEILLE_JOUR') === jour) return '';
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return '';
+  try {
+    if (props.getProperty('VEILLE_JOUR') === jour) return '';
+    props.setProperty('VEILLE_JOUR', jour);
+    var depuis = Number(props.getProperty('VEILLE_DEPUIS') || 0) || (t - 86400000);
+    props.setProperty('VEILLE_DEPUIS', String(t));
+    // Cadrans et applis Crosswind METAR publiés (versions « 1.x » et « A1.x ») ; bêtas « 0.x », Pro « P » et Boarding « B » exclus
+    var nouv = lire_('Montres').filter(function (r) {
+      var c = Number(r.Cree || 0);
+      return c > depuis && c <= t && /^A?[1-9]\d*\./.test(String(r.Version || ''));
+    });
+    if (!nouv.length) return 'rien';
+    var compte = {}, lignes = nouv.map(function (r, i) {
+      var appli = /^A/.test(String(r.Version)), quoi = appli ? 'Application' : 'Cadran', aer;
+      var s = {}; try { s = r.Reglages ? JSON.parse(r.Reglages) : {}; } catch (e) { s = {}; }
+      var liste = [s.icao, s.icao2, s.icao3].filter(function (x) { return /^[A-Z0-9]{4}$/.test(String(x || '')); });
+      if (liste.length) {
+        liste.forEach(function (x) { compte[x] = (compte[x] || 0) + 1; });
+        aer = liste.join(', ') + (s.gps ? ' + aéroport le plus proche' : '');
+      } else if (appli && lienAppli_(r.Id)) {
+        aer = 'reliée à un cadran (mêmes aéroports)';
+      } else {
+        aer = 'pas encore réglé';
+      }
+      var quand = new Date(Number(r.Cree) + (tzSecondes_('Europe/Luxembourg', new Date(Number(r.Cree))) || 0) * 1000).toISOString();
+      var ecran = r.Tactile === 'non' ? ' · sans écran tactile' : (r.Tactile === 'oui' ? ' · écran tactile' : '');
+      return (i + 1) + '. ' + quoi + ' ' + r.Version + ecran + ' · installé le ' + quand.slice(8, 10) + '/' + quand.slice(5, 7) + ' à ' + quand.slice(11, 16) + ' · ' + aer;
+    });
+    var nbC = nouv.filter(function (r) { return !/^A/.test(String(r.Version)); }).length, nbA = nouv.length - nbC;
+    var resume = Object.keys(compte).sort(function (a, b) { return compte[b] - compte[a] || (a < b ? -1 : 1); })
+      .map(function (x) { return x + (compte[x] > 1 ? ' ×' + compte[x] : ''); }).join(', ');
+    var corps = 'Nouvelles installations de Crosswind METAR depuis le dernier résumé :\n\n' +
+      'Cadrans : ' + nbC + '   ·   Applications : ' + nbA + '\n\n' + lignes.join('\n') + '\n\n' +
+      'Aéroports choisis : ' + (resume || 'aucun pour l’instant') + '\n\n' +
+      'Les aéroports réglés après ce résumé n’y figurent pas. Message automatique, au plus un par jour, envoyé seulement quand il y a de nouveaux utilisateurs.';
+    MailApp.sendEmail({ to: VEILLE_DEST, name: 'Crosswind METAR – veille',
+      subject: 'Crosswind METAR : ' + nouv.length + (nouv.length > 1 ? ' nouvelles installations' : ' nouvelle installation'), body: corps });
+    return 'envoyé';
+  } finally { lock.releaseLock(); }
 }
 
 /* ----- Fuseau horaire des aérodromes (fichiers aviator/tz/<lettre>.json du site, calculés depuis OurAirports) ----- */
