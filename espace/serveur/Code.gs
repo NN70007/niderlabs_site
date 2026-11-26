@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-25-contact',
+  VERSION: '2026-11-26-tactile',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -51,7 +51,7 @@ var CONFIG = {
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
   Journal: ['Date', 'Qui', 'Action', 'Detail'],
-  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte'],
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte', 'Tactile'],
   Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj'],
   // Boarding : comptes du site public (adresse e-mail seule)
   Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols'],
@@ -609,6 +609,8 @@ function montreAppel_(p) {
   var id = String(p.id || ''), k = String(p.k || '');
   if (!/^[A-Za-z0-9]{12,40}$/.test(id) || !/^[A-Za-z0-9]{16,64}$/.test(k)) throw refus_('Identifiant invalide.', 'montre');
   var rev = Number(p.r) || 0, ver = texte_(p.v, 20);
+  // Écran tactile (cadran 1.0.3 et suivants) : « non » → la page de réglages ne propose qu'un aéroport
+  var tact = p.t === '0' ? 'non' : (p.t === '1' ? 'oui' : '');
   var cache = CacheService.getScriptCache();
   var m = verrou_(function () {
     var row = montre_(id), now = String(Date.now());
@@ -616,13 +618,17 @@ function montreAppel_(p) {
       var n = Number(cache.get('mreg:*') || 0);
       if (n > 200) throw refus_('Trop d’enregistrements. Réessayez plus tard.', 'limite');
       cache.put('mreg:*', String(n + 1), 3600);
-      row = { Id: id, Cle: hash_(k + '|' + id), Statut: 'beta', Reglages: '', Rev: '0', Version: ver, Cree: now, Vu: now, Accepte: '', Carte: 'oui' };
+      row = { Id: id, Cle: hash_(k + '|' + id), Statut: 'beta', Reglages: '', Rev: '0', Version: ver, Cree: now, Vu: now, Accepte: '', Carte: 'oui', Tactile: tact };
       ajouter_('Montres', row);
       return row;
     }
     if (row.Cle !== hash_(k + '|' + id)) throw refus_('Clé invalide.', 'montre');
     // « Vu » mis à jour au plus une fois par heure pour ménager la feuille
-    if (Date.now() - Number(row.Vu || 0) > 3600000 || row.Version !== ver) majLigne_('Montres', function (r) { return r.Id === id; }, { Vu: now, Version: ver });
+    var majT = tact && row.Tactile !== tact;
+    if (Date.now() - Number(row.Vu || 0) > 3600000 || row.Version !== ver || majT) {
+      var ch = { Vu: now, Version: ver }; if (majT) { ch.Tactile = tact; row.Tactile = tact; }
+      majLigne_('Montres', function (r) { return r.Id === id; }, ch);
+    }
     return row;
   });
   var c = codeMontre_(id);
@@ -723,7 +729,7 @@ function aviatorOuvrir_(code, garder, memo) {
     if (f) m = f;
   }
   var o = sessionMontre_(m);
-  if (appli) o.appli = f ? 'liee' : 'seule';
+  if (appli) { o.appli = f ? 'liee' : 'seule'; o.tactile = true; }
   if (garder) { var mm = memoCreer_(m.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
   return o;
 }
@@ -753,7 +759,7 @@ function aviatorLier_(jetonApp, memo, code, garder) {
   var f = montre_(fid);
   if (!f || /^[AB]/.test(String(f.Version || ''))) throw refus_('This code is not from a Crosswind METAR watch face.', 'code');
   PropertiesService.getScriptProperties().setProperty('mlien:' + appId, fid);
-  var o = sessionMontre_(f); o.appli = 'liee';
+  var o = sessionMontre_(f); o.appli = 'liee'; o.tactile = true;
   if (garder) { var mm = memoCreer_(f.Id); o.memo = mm.memo; o.memoExp = mm.exp; }
   return o;
 }
@@ -762,7 +768,8 @@ function aviatorLier_(jetonApp, memo, code, garder) {
 function sessionMontre_(m) {
   var jeton = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('mtok:' + hash_(jeton), m.Id, CONFIG.MONTRE_SESSION_MINUTES * 60);
-  return { ok: true, jeton: jeton, reglages: reglagesDe_(m), statut: m.Statut || 'beta', accepte: !!m.Accepte, carte: m.Carte !== 'non' };
+  // tactile:false → cadran sans écran tactile : un seul aéroport sur la page (l'appli, elle, en garde toujours trois)
+  return { ok: true, jeton: jeton, reglages: reglagesDe_(m), statut: m.Statut || 'beta', accepte: !!m.Accepte, carte: m.Carte !== 'non', tactile: m.Tactile !== 'non' || estAppli_(m) };
 }
 
 /* « Remember this phone » : jeton longue durée gardé dans le navigateur, empreinte seule côté serveur.

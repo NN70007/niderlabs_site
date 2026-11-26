@@ -227,6 +227,19 @@ console.log('Aviator METAR : montres');
   w = av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '0' });
   ok(w.rv === 1 && w.s && w.s.icao2 === 'LFSB' && w.s.dateFmt === 1, 'la montre reçoit les nouveaux réglages');
   ok(!av.get({ a: 'w', id: ID, k: K, v: '0.6.0', r: '1' }).s, 'rien n\'est renvoyé si la montre est déjà à jour');
+  ok(o.tactile === true, 'montre ancienne (sans indicateur) : trois aéroports proposés');
+  {
+    const ID2 = 'sansTactile123456', K2 = 'cleSansTactile0123456';
+    const w2 = av.get({ a: 'w', id: ID2, k: K2, v: '1.0.3', r: '0', t: '0' });
+    const o2 = av.post({ action: 'aviator.ouvrir', code: w2.c });
+    ok(o2.ok && o2.tactile === false, 'cadran sans écran tactile : un seul aéroport proposé');
+    const ID3 = 'avecTactile1234567', K3 = 'cleAvecTactile0123456';
+    const w3 = av.get({ a: 'w', id: ID3, k: K3, v: '1.0.3', r: '0', t: '1' });
+    ok(av.post({ action: 'aviator.ouvrir', code: w3.c }).tactile === true, 'cadran tactile : trois aéroports');
+    const IDA = 'appliSeule12345678', KA = 'cleAppliSeule0123456';
+    const wa = av.get({ a: 'w', id: IDA, k: KA, v: 'A1.0.3', r: '0', t: '0' });
+    ok(av.post({ action: 'aviator.ouvrir', code: wa.c }).tactile === true, 'appli : toujours trois aéroports');
+  }
   const ap = av.post({ action: 'aviator.aeroport', icao: 'ellx' });
   ok(ap.ok && ap.trouve && ap.nom && ap.pistes.join() === '6,24', 'aéroport : nom et extrémités de piste');
   ok(av.post({ action: 'aviator.aeroport', icao: 'ZZZZ' }).trouve === false, 'aéroport inconnu signalé');
