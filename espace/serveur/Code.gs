@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-26-veille',
+  VERSION: '2026-11-26-veille2',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -670,6 +670,7 @@ function veilleUtilisateurs_(maintenant) {
   var d = maintenant || new Date(), t = d.getTime();
   var loc = new Date(t + (tzSecondes_('Europe/Luxembourg', d) || 0) * 1000);
   var jour = loc.toISOString().slice(0, 10), props = PropertiesService.getScriptProperties();
+  try { bilanHebdo_(d, loc, jour, props); } catch (e) { console.error(e && e.stack || e); }
   if (loc.getUTCHours() < VEILLE_HEURE || props.getProperty('VEILLE_JOUR') === jour) return '';
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return '';
@@ -703,12 +704,67 @@ function veilleUtilisateurs_(maintenant) {
     var nbC = nouv.filter(function (r) { return !/^A/.test(String(r.Version)); }).length, nbA = nouv.length - nbC;
     var resume = Object.keys(compte).sort(function (a, b) { return compte[b] - compte[a] || (a < b ? -1 : 1); })
       .map(function (x) { return x + (compte[x] > 1 ? ' ×' + compte[x] : ''); }).join(', ');
+    var st = statsCrosswind_(t);
     var corps = 'Nouvelles installations de Crosswind METAR depuis le dernier résumé :\n\n' +
       'Cadrans : ' + nbC + '   ·   Applications : ' + nbA + '\n\n' + lignes.join('\n') + '\n\n' +
-      'Aéroports choisis : ' + (resume || 'aucun pour l’instant') + '\n\n' +
+      'Aéroports choisis : ' + (resume || 'aucun pour l’instant') + '\n\n' + ligneActifs_(st) + '\n\n' +
       'Les aéroports réglés après ce résumé n’y figurent pas. Message automatique, au plus un par jour, envoyé seulement quand il y a de nouveaux utilisateurs.';
     MailApp.sendEmail({ to: VEILLE_DEST, name: 'Crosswind METAR – veille',
       subject: 'Crosswind METAR : ' + nouv.length + (nouv.length > 1 ? ' nouvelles installations' : ' nouvelle installation'), body: corps });
+    return 'envoyé';
+  } finally { lock.releaseLock(); }
+}
+
+/** Chiffres Crosswind METAR (versions publiées « 1.x » / « A1.x ») à l'instant t. */
+function statsCrosswind_(t) {
+  var J = 86400000, st = { c: { total: 0, j1: 0, j7: 0, sem: 0, nonTactile: 0 }, a: { total: 0, j1: 0, j7: 0, sem: 0 }, aer: {} };
+  lire_('Montres').forEach(function (r) {
+    var v = String(r.Version || '');
+    if (!/^A?[1-9]\d*\./.test(v)) return;
+    var g = /^A/.test(v) ? st.a : st.c, vu = Number(r.Vu || 0), cree = Number(r.Cree || 0);
+    g.total++;
+    if (t - vu <= J) g.j1++;
+    if (t - vu <= 7 * J) g.j7++;
+    if (cree <= t && t - cree <= 7 * J) g.sem++;
+    if (g === st.c && r.Tactile === 'non') g.nonTactile++;
+    if (g === st.c && t - vu <= 7 * J) {
+      var s = {}; try { s = r.Reglages ? JSON.parse(r.Reglages) : {}; } catch (e) { s = {}; }
+      [s.icao, s.icao2, s.icao3].forEach(function (x) { if (/^[A-Z0-9]{4}$/.test(String(x || ''))) st.aer[x] = (st.aer[x] || 0) + 1; });
+    }
+  });
+  return st;
+}
+function ligneActifs_(st) {
+  return 'Utilisateurs actifs : ' + st.c.j1 + ' cadran' + (st.c.j1 > 1 ? 's' : '') + ' vus ces 24 h, ' + st.c.j7 + ' ces 7 jours' +
+    ' · applications : ' + st.a.j1 + ' / ' + st.a.j7 + '.';
+}
+/* Point hebdomadaire : le dimanche à partir de VEILLE_HEURE, une fois par semaine, envoyé même sans nouvel utilisateur.
+   Un premier bilan part aussi au premier appel qui suit sa mise en place (VEILLE_BILAN_INITIAL). */
+function bilanHebdo_(d, loc, jour, props) {
+  var initial = !props.getProperty('VEILLE_BILAN_INITIAL');
+  var dimanche = loc.getUTCDay() === 0 && loc.getUTCHours() >= VEILLE_HEURE && props.getProperty('VEILLE_SEMAINE') !== jour;
+  if (!initial && !dimanche) return '';
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return '';
+  try {
+    initial = !props.getProperty('VEILLE_BILAN_INITIAL');
+    dimanche = loc.getUTCDay() === 0 && loc.getUTCHours() >= VEILLE_HEURE && props.getProperty('VEILLE_SEMAINE') !== jour;
+    if (!initial && !dimanche) return '';
+    props.setProperty('VEILLE_BILAN_INITIAL', jour);
+    if (dimanche) props.setProperty('VEILLE_SEMAINE', jour);
+    var st = statsCrosswind_(d.getTime());
+    var top = Object.keys(st.aer).sort(function (a, b) { return st.aer[b] - st.aer[a] || (a < b ? -1 : 1); }).slice(0, 15)
+      .map(function (x) { return x + (st.aer[x] > 1 ? ' ×' + st.aer[x] : ''); }).join(', ');
+    var corps = (initial && !dimanche ? 'Premier bilan (mise en place de la veille).' : 'Point de la semaine.') + '\n\n' +
+      'CADRAN\n- Installations enregistrées : ' + st.c.total + ' (dont ' + st.c.nonTactile + ' sur montre sans écran tactile)\n' +
+      '- Nouvelles cette semaine : ' + st.c.sem + '\n- Actifs : ' + st.c.j1 + ' vus ces 24 h, ' + st.c.j7 + ' ces 7 jours\n\n' +
+      'APPLICATION\n- Installations enregistrées : ' + st.a.total + '\n- Nouvelles cette semaine : ' + st.a.sem + '\n' +
+      '- Actives : ' + st.a.j1 + ' vues ces 24 h, ' + st.a.j7 + ' ces 7 jours\n\n' +
+      'Aéroports des cadrans actifs : ' + (top || 'aucun réglé pour l’instant') + '\n\n' +
+      '« Actif » = la montre a contacté le serveur dans la période (le cadran le fait toutes les 15 minutes tant qu’il est affiché et relié au téléphone). ' +
+      'Versions de test et Boarding non comptées.';
+    MailApp.sendEmail({ to: VEILLE_DEST, name: 'Crosswind METAR – veille',
+      subject: 'Crosswind METAR : ' + (initial && !dimanche ? 'bilan' : 'point de la semaine') + ' – ' + st.c.j7 + ' cadran' + (st.c.j7 > 1 ? 's' : '') + ' actif' + (st.c.j7 > 1 ? 's' : ''), body: corps });
     return 'envoyé';
   } finally { lock.releaseLock(); }
 }

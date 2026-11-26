@@ -244,7 +244,7 @@ console.log('Aviator METAR : montres');
     const vm = require('vm');
     const demain = new Date(Date.now() + 86400000); demain.setUTCHours(20, 30, 0, 0); // 21 h 30 à Luxembourg (hiver)
     const veille = (d) => vm.runInContext('veilleUtilisateurs_(new Date(' + d.getTime() + '))', av.ctx);
-    av.props.VEILLE_DEPUIS = '1'; delete av.props.VEILLE_JOUR;
+    av.props.VEILLE_DEPUIS = '1'; delete av.props.VEILLE_JOUR; av.props.VEILLE_BILAN_INITIAL = 'test';
     const avantV = av.mails.length;
     const matin = new Date(demain.getTime()); matin.setUTCHours(8, 0, 0, 0);
     ok(veille(matin) === '' && av.mails.length === avantV, 'veille : rien avant 20 h');
@@ -254,6 +254,20 @@ console.log('Aviator METAR : montres');
     ok(veille(new Date(demain.getTime() + 3600000)) === '' && av.mails.length === avantV + 1, 'veille : au plus un e-mail par jour');
     const apres = new Date(demain.getTime() + 86400000);
     ok(veille(apres) === 'rien' && av.mails.length === avantV + 1, 'veille : aucun e-mail s’il n’y a pas de nouvel utilisateur');
+    ok(/Utilisateurs actifs : \d+ cadran/.test(mv.body), 'veille : ligne des utilisateurs actifs');
+    // Bilan : un premier bilan dès la mise en place, puis le dimanche soir, une fois par semaine, même sans nouvel utilisateur
+    delete av.props.VEILLE_BILAN_INITIAL; const n0 = av.mails.length;
+    veille(matin);
+    const b1 = av.mails[av.mails.length - 1];
+    ok(av.mails.length === n0 + 1 && /bilan/.test(b1.subject) && /Installations enregistrées : \d+/.test(b1.body) && /Actifs : \d+ vus ces 24 h/.test(b1.body), 'bilan initial envoyé une fois, à toute heure');
+    veille(new Date(matin.getTime() + 3600000));
+    ok(av.mails.length === n0 + 1, 'bilan initial : pas de second envoi');
+    const dim = new Date(demain.getTime()); while (dim.getUTCDay() !== 0) dim.setUTCDate(dim.getUTCDate() + 1); dim.setUTCHours(20, 30, 0, 0);
+    av.props.VEILLE_JOUR = dim.toISOString().slice(0, 10); // résumé quotidien déjà passé ce jour-là
+    veille(dim);
+    ok(av.mails.length === n0 + 2 && /point de la semaine/.test(av.mails[av.mails.length - 1].subject), 'point hebdomadaire le dimanche soir');
+    veille(new Date(dim.getTime() + 1800000));
+    ok(av.mails.length === n0 + 2, 'point hebdomadaire : une seule fois par semaine');
   }
   const ap = av.post({ action: 'aviator.aeroport', icao: 'ellx' });
   ok(ap.ok && ap.trouve && ap.nom && ap.pistes.join() === '6,24', 'aéroport : nom et extrémités de piste');
