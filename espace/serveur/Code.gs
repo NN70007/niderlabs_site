@@ -106,6 +106,23 @@ function doGet(e) {
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'conso') return json_(consoJours_());
+  // Boarding : test AirLabs (vol du jour, horaires réguliers, aéroport) — noms des champs reçus, jamais la clé ; gardé 30 min
+  if (p.a === 'aldiag') {
+    try {
+      var cz = CacheService.getScriptCache(), dz = cz.get('aldiag');
+      if (dz) return json_(JSON.parse(dz));
+      var kz = cfgCle_('AIRLABS_KEY'), nz = String(p.n || 'LH400').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8), out = { ok: true, cle: !!kz, n: nz };
+      if (kz) ['flight?flight_iata=' + nz, 'routes?flight_iata=' + nz, 'airports?iata_code=LUX'].forEach(function (q) {
+        if (!alBudget_()) return; compter_('airlabs');
+        var r = UrlFetchApp.fetch('https://airlabs.co/api/v9/' + q + '&api_key=' + encodeURIComponent(kz), { muteHttpExceptions: true }), j = null;
+        try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) {}
+        var rp = j && j.response, un = Array.isArray(rp) ? rp[0] : rp;
+        out[q.split('?')[0]] = { http: r.getResponseCode(), erreur: j && j.error ? j.error : null, nb: Array.isArray(rp) ? rp.length : (rp ? 1 : 0), exemple: un || null };
+      });
+      cz.put('aldiag', JSON.stringify(out), 1800);
+      return json_(out);
+    } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
+  }
   if (p.a === 'adsdiag') {
     if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, cw: L.cw, raw: listeLire_('cw:' + String(p.n) + ':' + String(p.d)).map(function (r) { return [r.k, r.v, new Date(r.t * 1000).toISOString().slice(11, 16), String(r.u).slice(0, 4)]; }), b: L.b, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
     try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
