@@ -244,13 +244,22 @@ console.log('Aviator METAR : montres');
     {
       const IDp = 'prochePortugal0001', Kp = 'cleProchePortugal0123';
       const ligne = (id) => { const d = av.sheets.Montres.data, h = d[0], r = d.find((x) => x[0] === id); return r ? Object.fromEntries(h.map((k, i) => [k, r[i]])) : {}; };
-      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX' });
-      ok(!ligne(IDp).Proche, 'position pas encore connue : aucun aéroport retenu');
-      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX,LSGS' });
-      ok(ligne(IDp).Proche === 'LSGS', 'aéroport le plus proche retenu pour la carte');
-      delete av.cache.carte;
+      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX,LFSB,LSGS' });
+      ok(!ligne(IDp).Proche, 'première installation, position pas encore connue : aucun aéroport retenu (pas LSGS)');
+      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX,LFSB,LSGS' });
+      ok(!ligne(IDp).Proche, 'les trois aéroports par défaut du paquet ne comptent pas comme le plus proche');
+      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX,LFSB,LSGS,KJFK' });
+      ok(ligne(IDp).Proche === 'KJFK', 'aéroport le plus proche (4e de la liste) retenu pour la carte');
+      av.get({ a: 'w', id: 'procheNouveau0001', k: 'cleProcheNouveau0123', v: '1.0.5', r: '0', t: '1', i: 'ELLX,LFSB', n: 'LFSB' });
+      ok(ligne('procheNouveau0001').Proche === 'LFSB', 'paramètre n (1.0.5) retenu dès la création de la ligne');
+      // Correction unique des « LSGS » enregistrés à tort
+      av.get({ a: 'w', id: 'procheFaux00000001', k: 'cleProcheFaux0123456', v: '1.0.4', r: '0', t: '1', i: 'ELLX' });
+      { const d = av.sheets.Montres.data, h = d[0], r = d.find((x) => x[0] === 'procheFaux00000001'); r[h.indexOf('Proche')] = 'LSGS'; }
+      delete av.props.PROCHE_RAZ_1; delete av.cache.carte;
       const c = av.post({ action: 'aviator.carte' });
-      ok(c.ok && c.points.some((x) => x.icao === 'LSGS'), 'la montre non réglée apparaît sur la carte');
+      ok(!ligne('procheFaux00000001').Proche && ligne(IDp).Proche === 'KJFK', 'LSGS enregistré à tort effacé, vrai plus proche gardé');
+      ok(c.ok && c.points.some((x) => x.icao === 'KJFK'), 'la montre non réglée apparaît sur la carte avec son vrai aéroport');
+      { const d = av.sheets.Montres.data, h = d[0]; d.forEach((r) => { if ([IDp, 'procheNouveau0001', 'procheFaux00000001'].includes(r[0])) r[h.indexOf('Carte')] = 'non'; }); delete av.cache.carte; }
       av.get({ a: 'w', id: 'appliProche000001', k: 'cleAppliProche01234', v: 'A1.0.3', r: '0', i: 'ELLX,KMDT' });
       ok(!ligne('appliProche000001').Proche, 'appli : rien retenu');
     }

@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-27-carte',
+  VERSION: '2026-11-27-proche',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -603,6 +603,8 @@ function verifierImage_(b64) {
      et les réglages s'ils sont plus récents que la révision connue de la montre.
    La page web échange ce code contre un jeton de courte durée qui permet de lire et d'écrire les réglages. */
 // gps : aéroport le plus proche, coché d'office pour une nouvelle montre (le cadran 1.0.4 l'affiche dès l'installation)
+// Aéroports 1 à 3 par défaut dans le paquet du cadran 1.0.4 (réglages d'essai de l'auteur, retirés au 1.0.5)
+var DEFAUTS_PAQUET = ['ELLX', 'LFSB', 'LSGS'];
 var REGL_DEF = { icao: 'ELLX', rwy: 0, icao2: '', rwy2: 0, icao3: '', rwy3: 0, gps: true, xwLim: 15, pUnit: 0, wUnit: 0, magVar: 0, dateFmt: 0 };
 var STATUTS = ['beta', 'gratuit', 'premium'];
 
@@ -612,11 +614,16 @@ function montreAppel_(p) {
   var rev = Number(p.r) || 0, ver = texte_(p.v, 20);
   // Écran tactile (cadran 1.0.3 et suivants) : « non » → la page de réglages ne propose qu'un aéroport
   var tact = p.t === '0' ? 'non' : (p.t === '1' ? 'oui' : '');
-  // Aéroport le plus proche d'une montre jamais réglée (cadran 1.0.4+, versions « 1.x ») : la liste « i » contient d'abord
-  // l'aéroport des réglages par défaut (ELLX), puis le plus proche une fois la position connue. Gardé pour la carte (code OACI
-  // seulement, jamais la position). Liste réduite à ELLX : position pas encore connue (ou proche = ELLX) → rien.
+  // Aéroport le plus proche d'une montre jamais réglée (cadran 1.0.4+, versions « 1.x »), gardé pour la carte (code OACI
+  // seulement, jamais la position). Paramètre « n » (cadran 1.0.5+) ; sinon, pour le 1.0.4, la liste « i » commence par les
+  // trois aéroports par défaut du paquet (ELLX, LFSB, LSGS) et le plus proche n'arrive qu'en 4e position, une fois la
+  // position connue. Liste de 3 seulement : rien (le plus proche est inconnu, ou fait partie des trois).
   var listeI = String(p.i || '').toUpperCase().split(',').filter(function (x) { return /^[A-Z0-9]{4}$/.test(x); });
-  var proche = /^[1-9]\d*\./.test(ver) && listeI.length >= 2 ? listeI[listeI.length - 1] : '';
+  var proche = '';
+  if (/^[1-9]\d*\./.test(ver)) {
+    if (/^[A-Z0-9]{4}$/.test(String(p.n || '').toUpperCase())) proche = String(p.n).toUpperCase();
+    else if (listeI.length >= 4 && listeI.slice(0, 3).join(',') === DEFAUTS_PAQUET.join(',')) proche = listeI[3];
+  }
   var cache = CacheService.getScriptCache();
   var m = verrou_(function () {
     var row = montre_(id), now = String(Date.now());
@@ -624,7 +631,7 @@ function montreAppel_(p) {
       var n = Number(cache.get('mreg:*') || 0);
       if (n > 200) throw refus_('Trop d’enregistrements. Réessayez plus tard.', 'limite');
       cache.put('mreg:*', String(n + 1), 3600);
-      row = { Id: id, Cle: hash_(k + '|' + id), Statut: 'beta', Reglages: '', Rev: '0', Version: ver, Cree: now, Vu: now, Accepte: '', Carte: 'oui', Tactile: tact };
+      row = { Id: id, Cle: hash_(k + '|' + id), Statut: 'beta', Reglages: '', Rev: '0', Version: ver, Cree: now, Vu: now, Accepte: '', Carte: 'oui', Tactile: tact, Proche: proche };
       ajouter_('Montres', row);
       return row;
     }
@@ -1052,6 +1059,12 @@ function aviatorCarte_() {
   // Montres inactives depuis 12 mois : supprimées (politique de confidentialité)
   var vieux = Date.now() - 365 * 86400000;
   if (lire_('Montres').some(function (m) { return Number(m.Vu) < vieux; })) verrou_(function () { supprimerLignes_('Montres', function (m) { return Number(m.Vu) < vieux; }); });
+  // Correction unique : « Proche » enregistré à tort (dernier des aéroports par défaut, LSGS) avant le 27/11/2026
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('PROCHE_RAZ_1')) {
+    verrou_(function () { for (var i = 0; i < 1000; i++) { try { majLigne_('Montres', function (m) { return !m.Reglages && m.Proche === 'LSGS'; }, { Proche: '' }); } catch (e) { break; } } });
+    props.setProperty('PROCHE_RAZ_1', '1');
+  }
   var limite = Date.now() - CONFIG.CARTE_JOURS * 86400000, compte = {};
   lire_('Montres').forEach(function (m) {
     if (m.Carte === 'non' || Number(m.Vu) < limite || /^TEST/.test(m.Id)) return; // TEST… = essais techniques
