@@ -253,6 +253,7 @@ console.log('Aviator METAR : montres');
     ok(mv.to === 'jb@niedercorn.com' && /nouvelles installations/.test(mv.subject) && /Cadran 1\.0\.3 · sans écran tactile/.test(mv.body) && /Application A1\.0\.3/.test(mv.body) && !/ 0\.6/.test(mv.body), 'veille : cadrans et applis publiés listés, bêtas exclues');
     ok(veille(new Date(demain.getTime() + 3600000)) === '' && av.mails.length === avantV + 1, 'veille : au plus un e-mail par jour');
     const apres = new Date(demain.getTime() + 86400000);
+    av.props.VEILLE_SEMAINE = new Date(apres.getTime() + 3600000).toISOString().slice(0, 10); // point hebdomadaire déjà passé ce jour-là (si c'est un dimanche)
     ok(veille(apres) === 'rien' && av.mails.length === avantV + 1, 'veille : aucun e-mail s’il n’y a pas de nouvel utilisateur');
     ok(/Utilisateurs actifs : \d+ cadran/.test(mv.body), 'veille : ligne des utilisateurs actifs');
     // Bilan : un premier bilan dès la mise en place, puis le dimanche soir, une fois par semaine, même sans nouvel utilisateur
@@ -262,7 +263,7 @@ console.log('Aviator METAR : montres');
     ok(av.mails.length === n0 + 1 && /bilan/.test(b1.subject) && /Installations enregistrées : \d+/.test(b1.body) && /Actifs : \d+ vus ces 24 h/.test(b1.body), 'bilan initial envoyé une fois, à toute heure');
     veille(new Date(matin.getTime() + 3600000));
     ok(av.mails.length === n0 + 1, 'bilan initial : pas de second envoi');
-    const dim = new Date(demain.getTime()); while (dim.getUTCDay() !== 0) dim.setUTCDate(dim.getUTCDate() + 1); dim.setUTCHours(20, 30, 0, 0);
+    const dim = new Date(demain.getTime() + 2 * 86400000); while (dim.getUTCDay() !== 0) dim.setUTCDate(dim.getUTCDate() + 1); dim.setUTCHours(20, 30, 0, 0);
     av.props.VEILLE_JOUR = dim.toISOString().slice(0, 10); // résumé quotidien déjà passé ce jour-là
     veille(dim);
     ok(av.mails.length === n0 + 2 && /point de la semaine/.test(av.mails[av.mails.length - 1].subject), 'point hebdomadaire le dimanche soir');

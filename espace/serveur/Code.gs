@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-26-veille2',
+  VERSION: '2026-11-27-proche',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -602,7 +602,8 @@ function verifierImage_(b64) {
    - chaque appel : renvoie le code à 6 chiffres en cours (valable MONTRE_CODE_MINUTES), le statut,
      et les réglages s'ils sont plus récents que la révision connue de la montre.
    La page web échange ce code contre un jeton de courte durée qui permet de lire et d'écrire les réglages. */
-var REGL_DEF = { icao: 'ELLX', rwy: 0, icao2: '', rwy2: 0, icao3: '', rwy3: 0, gps: false, xwLim: 15, pUnit: 0, wUnit: 0, magVar: 0, dateFmt: 0 };
+// gps : aéroport le plus proche, coché d'office pour une nouvelle montre (le cadran 1.0.4 l'affiche dès l'installation)
+var REGL_DEF = { icao: 'ELLX', rwy: 0, icao2: '', rwy2: 0, icao3: '', rwy3: 0, gps: true, xwLim: 15, pUnit: 0, wUnit: 0, magVar: 0, dateFmt: 0 };
 var STATUTS = ['beta', 'gratuit', 'premium'];
 
 function montreAppel_(p) {
@@ -695,7 +696,7 @@ function veilleUtilisateurs_(maintenant) {
       } else if (appli && lienAppli_(r.Id)) {
         aer = 'reliée à un cadran (mêmes aéroports)';
       } else {
-        aer = 'pas encore réglé';
+        aer = 'pas encore réglé (aéroport le plus proche par défaut à partir du cadran 1.0.4)';
       }
       var quand = new Date(Number(r.Cree) + (tzSecondes_('Europe/Luxembourg', new Date(Number(r.Cree))) || 0) * 1000).toISOString();
       var ecran = r.Tactile === 'non' ? ' · sans écran tactile' : (r.Tactile === 'oui' ? ' · écran tactile' : '');
