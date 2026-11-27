@@ -1668,6 +1668,14 @@ function adsSuivre_(rec, v) {
   if (!f.hx && f.rg) { var hx = adsParImmat_(f.rg); if (hx) { f.hx = hx; rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} } }
   if (!f.hx) return null;
   var lv = adsLive_(f.hx), ecrire = false, envol = !!(f.tk || f.atk);
+  // le radar montre une autre immatriculation que celle du vol : mauvais avion, on suit le bon par son immatriculation
+  if (lv && lv.rg && f.rg && String(lv.rg).toUpperCase() !== String(f.rg).toUpperCase()) {
+    delete f.hx; delete f.atk; delete f.lst; rec.f = f;
+    var hx2 = adsParImmat_(f.rg); if (hx2) f.hx = hx2;
+    try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {}
+    if (!f.hx) return null;
+    lv = adsLive_(f.hx); envol = !!(f.tk || f.atk);
+  }
   var pres = function (la, lo) { return f.ala != null && la != null && distKm_(la, lo, f.ala, f.alo) < 8; };
   if (lv) {
     var t = Math.round(now - (lv.vu || 0));
@@ -1815,6 +1823,17 @@ function boardingAbord_(jeton, n, d, la, lo) {
     .filter(function (x) { return isFinite(x.km) && x.vu < 240 && (x.gr || x.km < 2) && !vehiculeSol_(x); });
   var cand = tous.map(function (x) { x.sc = x.km - (fam && fam.test(x.t) ? 0.4 : 0) + (x.gr ? 0 : 0.5); return x; })
     .filter(function (x) { return x.km < 1.5; }).sort(function (a, b) { return a.sc - b.sc; });
+  // immatriculation officielle déjà connue : seul cet avion-là compte
+  var off = String(rec.f.rg || '').toUpperCase();
+  if (off && !/^GND$/.test(off)) {
+    var bon = cand.filter(function (x) { return String(x.rg || '').toUpperCase() === off; });
+    if (!bon.length) {
+      var hx0 = adsParImmat_(off);
+      if (hx0) { rec.f.hx = hx0; props.setProperty(k, JSON.stringify(rec)); return { ok: true, rg: off, t: '', m: null, vols: boardingListe_(b, false), enregistres: b.v }; }
+      return { ok: false, code: 'aucun', error: 'Your aircraft (' + off + ') is not transmitting yet. Try again once the doors are closed.' };
+    }
+    cand = bon;
+  }
   if (!cand.length) return { ok: false, code: 'aucun', error: 'No aircraft found next to you (' + tous.length + ' around the airport). Its transponder may still be off: try again in a minute.' };
   var c0 = cand[0];
   rec.f.hx = c0.hx; if (c0.rg) rec.f.rg = c0.rg;
@@ -2000,7 +2019,10 @@ function volStatut_(n, d, o, forcer) {
   if (!trouve) return rec || (al && al.rien ? { t: now, f: null, rien: 1 } : null);
   {
     // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
-    if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; if (rec.f.lst) f.lst = rec.f.lst; }
+    if (f && rec && rec.f) {
+      // l'avion reconnu à bord n'est gardé que s'il correspond à l'immatriculation officielle du vol (sinon on suit le bon avion par son immatriculation)
+      var autreAvion = f.rg && rec.f.rg && f.rg.toUpperCase() !== String(rec.f.rg).toUpperCase();
+      if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (!autreAvion) { if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; if (rec.f.lst) f.lst = rec.f.lst; } }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (rec && rec.alx) nv.alx = rec.alx;
     // le vol du jour AirLabs donne déjà porte, terminal et tapis : pas de second appel tout de suite
