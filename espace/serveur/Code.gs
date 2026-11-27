@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-27-proche',
+  VERSION: '2026-11-27-carte',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -51,7 +51,7 @@ var CONFIG = {
 var ONGLETS = {
   Acces: ['Email', 'Nom', 'Admin', 'Actualites', 'Actif', 'Note'],
   Journal: ['Date', 'Qui', 'Action', 'Detail'],
-  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte', 'Tactile'],
+  Montres: ['Id', 'Cle', 'Statut', 'Reglages', 'Rev', 'Version', 'Cree', 'Vu', 'Accepte', 'Carte', 'Pro', 'Vols', 'Compte', 'Tactile', 'Proche'],
   Aeroports: ['Icao', 'Lat', 'Lon', 'Nom', 'Maj'],
   // Boarding : comptes du site public (adresse e-mail seule)
   Comptes: ['Id', 'Email', 'Cree', 'Vu', 'Vols'],
@@ -612,6 +612,11 @@ function montreAppel_(p) {
   var rev = Number(p.r) || 0, ver = texte_(p.v, 20);
   // Écran tactile (cadran 1.0.3 et suivants) : « non » → la page de réglages ne propose qu'un aéroport
   var tact = p.t === '0' ? 'non' : (p.t === '1' ? 'oui' : '');
+  // Aéroport le plus proche d'une montre jamais réglée (cadran 1.0.4+, versions « 1.x ») : la liste « i » contient d'abord
+  // l'aéroport des réglages par défaut (ELLX), puis le plus proche une fois la position connue. Gardé pour la carte (code OACI
+  // seulement, jamais la position). Liste réduite à ELLX : position pas encore connue (ou proche = ELLX) → rien.
+  var listeI = String(p.i || '').toUpperCase().split(',').filter(function (x) { return /^[A-Z0-9]{4}$/.test(x); });
+  var proche = /^[1-9]\d*\./.test(ver) && listeI.length >= 2 ? listeI[listeI.length - 1] : '';
   var cache = CacheService.getScriptCache();
   var m = verrou_(function () {
     var row = montre_(id), now = String(Date.now());
@@ -625,9 +630,10 @@ function montreAppel_(p) {
     }
     if (row.Cle !== hash_(k + '|' + id)) throw refus_('Clé invalide.', 'montre');
     // « Vu » mis à jour au plus une fois par heure pour ménager la feuille
-    var majT = tact && row.Tactile !== tact;
-    if (Date.now() - Number(row.Vu || 0) > 3600000 || row.Version !== ver || majT) {
+    var majT = tact && row.Tactile !== tact, majP = proche && !row.Reglages && row.Proche !== proche;
+    if (Date.now() - Number(row.Vu || 0) > 3600000 || row.Version !== ver || majT || majP) {
       var ch = { Vu: now, Version: ver }; if (majT) { ch.Tactile = tact; row.Tactile = tact; }
+      if (majP) { ch.Proche = proche; row.Proche = proche; }
       majLigne_('Montres', function (r) { return r.Id === id; }, ch);
     }
     return row;
@@ -1048,8 +1054,11 @@ function aviatorCarte_() {
   if (lire_('Montres').some(function (m) { return Number(m.Vu) < vieux; })) verrou_(function () { supprimerLignes_('Montres', function (m) { return Number(m.Vu) < vieux; }); });
   var limite = Date.now() - CONFIG.CARTE_JOURS * 86400000, compte = {};
   lire_('Montres').forEach(function (m) {
-    if (m.Carte === 'non' || Number(m.Vu) < limite || !m.Reglages || /^TEST/.test(m.Id)) return; // TEST… = essais techniques
-    var s; try { s = JSON.parse(m.Reglages); } catch (e) { return; }
+    if (m.Carte === 'non' || Number(m.Vu) < limite || /^TEST/.test(m.Id)) return; // TEST… = essais techniques
+    var s = {};
+    if (m.Reglages) { try { s = JSON.parse(m.Reglages); } catch (e) { return; } }
+    else if (/^[A-Z0-9]{4}$/.test(String(m.Proche || ''))) s = { icao: m.Proche }; // jamais réglée : son aéroport le plus proche
+    else return;
     var vus = {};
     [s.icao, s.icao2, s.icao3].forEach(function (x) { if (x && !vus[x]) { vus[x] = 1; compte[x] = (compte[x] || 0) + 1; } });
   });

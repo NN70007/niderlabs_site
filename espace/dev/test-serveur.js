@@ -240,6 +240,20 @@ console.log('Aviator METAR : montres');
     const IDA = 'appliSeule12345678', KA = 'cleAppliSeule0123456';
     const wa = av.get({ a: 'w', id: IDA, k: KA, v: 'A1.0.3', r: '0', t: '0' });
     ok(av.post({ action: 'aviator.ouvrir', code: wa.c }).tactile === true, 'appli : toujours trois aéroports');
+    // Carte : une montre 1.0.4 jamais réglée y figure avec son aéroport le plus proche (code OACI seulement)
+    {
+      const IDp = 'prochePortugal0001', Kp = 'cleProchePortugal0123';
+      const ligne = (id) => { const d = av.sheets.Montres.data, h = d[0], r = d.find((x) => x[0] === id); return r ? Object.fromEntries(h.map((k, i) => [k, r[i]])) : {}; };
+      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX' });
+      ok(!ligne(IDp).Proche, 'position pas encore connue : aucun aéroport retenu');
+      av.get({ a: 'w', id: IDp, k: Kp, v: '1.0.4', r: '0', t: '1', i: 'ELLX,LSGS' });
+      ok(ligne(IDp).Proche === 'LSGS', 'aéroport le plus proche retenu pour la carte');
+      delete av.cache.carte;
+      const c = av.post({ action: 'aviator.carte' });
+      ok(c.ok && c.points.some((x) => x.icao === 'LSGS'), 'la montre non réglée apparaît sur la carte');
+      av.get({ a: 'w', id: 'appliProche000001', k: 'cleAppliProche01234', v: 'A1.0.3', r: '0', i: 'ELLX,KMDT' });
+      ok(!ligne('appliProche000001').Proche, 'appli : rien retenu');
+    }
     // Veille des nouveaux utilisateurs : un seul e-mail par jour, rien s'il n'y a personne
     const vm = require('vm');
     const demain = new Date(Date.now() + 86400000); demain.setUTCHours(20, 30, 0, 0); // 21 h 30 à Luxembourg (hiver)
