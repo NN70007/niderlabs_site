@@ -106,23 +106,6 @@ function doGet(e) {
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'conso') return json_(consoJours_());
-  // Boarding : test AirLabs (vol du jour, horaires réguliers, aéroport) — noms des champs reçus, jamais la clé ; gardé 30 min
-  if (p.a === 'aldiag') {
-    try {
-      var cz = CacheService.getScriptCache(), dz = cz.get('aldiag');
-      if (dz) return json_(JSON.parse(dz));
-      var kz = cfgCle_('AIRLABS_KEY'), nz = String(p.n || 'LH400').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8), out = { ok: true, cle: !!kz, n: nz };
-      if (kz) ['flight?flight_iata=' + nz, 'routes?flight_iata=' + nz, 'airports?iata_code=LUX'].forEach(function (q) {
-        if (!alBudget_()) return; compter_('airlabs');
-        var r = UrlFetchApp.fetch('https://airlabs.co/api/v9/' + q + '&api_key=' + encodeURIComponent(kz), { muteHttpExceptions: true }), j = null;
-        try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) {}
-        var rp = j && j.response, un = Array.isArray(rp) ? rp[0] : rp;
-        out[q.split('?')[0]] = { http: r.getResponseCode(), erreur: j && j.error ? j.error : null, nb: Array.isArray(rp) ? rp.length : (rp ? 1 : 0), exemple: un || null };
-      });
-      cz.put('aldiag', JSON.stringify(out), 1800);
-      return json_(out);
-    } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
-  }
   if (p.a === 'adsdiag') {
     if (p.n) { var L = boardingListe_({ v: [{ n: String(p.n), d: String(p.d), o: String(p.o || '') }] }, false)[0] || {}; return json_({ ok: true, st: L.st, cw: L.cw, raw: listeLire_('cw:' + String(p.n) + ':' + String(p.d)).map(function (r) { return [r.k, r.v, new Date(r.t * 1000).toISOString().slice(11, 16), String(r.u).slice(0, 4)]; }), b: L.b, ads: L.ads, tk: L.tk, atk: L.atk, ald: L.ald, hx: L.hx, ala: L.ala, alo: L.alo }); }
     try { CacheService.getScriptCache().remove('ads:' + String(p.h || '').toLowerCase()); return json_({ ok: true, live: adsLive_(p.h), autour: p.la ? adsAutour_(Number(p.la), Number(p.lo), 1).length : null }); }
@@ -1530,6 +1513,97 @@ function alBudget_() {
   if (n >= BOARDING.AIRLABS_JOUR) return false;
   c.put(k, String(n + 1), 90000); return true;
 }
+/** AirLabs : une requête (null si pas de réponse exploitable, [] si le vol est inconnu). */
+function alAppel_(q) {
+  var k = cfgCle_('AIRLABS_KEY'); if (!k || !alBudget_()) return null;
+  compter_('airlabs');
+  try {
+    var r = UrlFetchApp.fetch('https://airlabs.co/api/v9/' + q + '&api_key=' + encodeURIComponent(k), { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return null;
+    var j = JSON.parse(r.getContentText() || '{}');
+    if (j.error) return /not.?found/i.test(String(j.error.code || '') + ' ' + String(j.error.message || '')) ? [] : null;
+    return j.response == null ? [] : j.response;
+  } catch (e) { console.error(e); return null; }
+}
+/** Décalage horaire (secondes) entre l'heure locale et l'heure UTC données par AirLabs. */
+function alZ_(loc, utc) {
+  loc = String(loc || ''); utc = String(utc || '');
+  if (/^\d{4}-\d\d-\d\d \d{1,2}:\d\d$/.test(loc) && /^\d{4}-\d\d-\d\d \d{1,2}:\d\d$/.test(utc))
+    return (Date.parse(loc.replace(' ', 'T').replace(/T(\d):/, 'T0$1:') + ':00Z') - Date.parse(utc.replace(' ', 'T').replace(/T(\d):/, 'T0$1:') + ':00Z')) / 1000;
+  var hm = function (x) { var m = x.match(/(\d{1,2}):(\d\d)$/); return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 : null; };
+  var a = hm(loc), b = hm(utc); if (a == null || b == null) return 0;
+  var z = a - b; if (z > 14 * 3600) z -= 86400; if (z < -12 * 3600) z += 86400;
+  return z;
+}
+/** Aéroport (position, ville) : demandé une seule fois à AirLabs puis gardé. */
+function alAeroport_(iata, ville) {
+  if (!/^[A-Z]{3}$/.test(iata || '')) return null;
+  var props = PropertiesService.getScriptProperties(), k = 'apl:' + iata, a = null;
+  try { a = JSON.parse(props.getProperty(k) || 'null'); } catch (e) {}
+  if (a && (a.v || !ville)) return a;
+  if (!a) {
+    var r = alAppel_('airports?iata_code=' + iata), x = Array.isArray(r) ? r[0] : r;
+    if (!x || x.lat == null) return null;
+    a = { la: Math.round(Number(x.lat) * 10000) / 10000, lo: Math.round(Number(x.lng) * 10000) / 10000, i: String(x.icao_code || '').toUpperCase(), nm: String(x.name || ''), v: '' };
+  }
+  if (ville) a.v = String(ville);
+  try { props.setProperty(k, JSON.stringify(a)); } catch (e) {}
+  return a;
+}
+function alVille_(a, ville) { return ville || (a && (a.v || a.nm.replace(/\b(International|Intl\.?|Airport|Aeroporto|Aéroport|Flughafen)\b/gi, '').replace(/\s+/g, ' ').trim())) || ''; }
+/** Vol du jour vu par AirLabs, au même format que volNorme_. */
+function alNorme_(n, x) {
+  var ts = function (v) { return v ? Number(v) : null; };
+  var st = { scheduled: 'Expected', active: 'EnRoute', 'en-route': 'EnRoute', landed: 'Arrived', cancelled: 'Canceled', diverted: 'Diverted' }[String(x.status || '')] || 'Unknown';
+  var sd = ts(x.dep_time_ts), sa = ts(x.arr_time_ts), parti = /EnRoute|Arrived|Diverted/.test(st);
+  var p1 = alAeroport_(x.dep_iata, x.dep_city), p2 = alAeroport_(x.arr_iata, x.arr_city);
+  return {
+    n: n, al: String(x.airline_name || ''),
+    o: String(x.dep_iata || ''), oi: String(x.dep_icao || (p1 && p1.i) || ''), oc: alVille_(p1, x.dep_city),
+    a: String(x.arr_iata || ''), ai: String(x.arr_icao || (p2 && p2.i) || ''), ac2: alVille_(p2, x.arr_city),
+    st: st, sd: sd, ed: ts(x.dep_actual_ts) || ts(x.dep_estimated_ts) || sd, sa: sa, ea: ts(x.arr_actual_ts) || ts(x.arr_estimated_ts) || sa,
+    oz: alZ_(x.dep_time, x.dep_time_utc), az: alZ_(x.arr_time, x.arr_time_utc),
+    g: String(x.dep_gate || ''), t: String(x.dep_terminal || ''), ck: '', ta: String(x.arr_terminal || ''), ag: String(x.arr_gate || ''), b: String(x.arr_baggage || ''),
+    tk: parti ? ts(x.dep_actual_ts) : null, ln: st === 'Arrived' ? ts(x.arr_actual_ts) : null, pa: ts(x.arr_estimated_ts) || 0,
+    ola: p1 ? p1.la : null, olo: p1 ? p1.lo : null, ala: p2 ? p2.la : null, alo: p2 ? p2.lo : null,
+    md: String(x.model || ''), rg: String(x.reg_number || ''), src: 'al'
+  };
+}
+/** Vol prévu d'après les horaires réguliers AirLabs (jours à l'avance). */
+function alRoute_(n, d, r) {
+  var oz = alZ_(r.dep_time, r.dep_time_utc), az = alZ_(r.arr_time, r.arr_time_utc);
+  var hh = String(r.dep_time || '').match(/(\d{1,2}):(\d\d)/); if (!hh) return null;
+  var sd = Date.parse(d + 'T' + ('0' + hh[1]).slice(-2) + ':' + hh[2] + ':00Z') / 1000 - oz, sa = r.duration ? sd + Number(r.duration) * 60 : null;
+  var p1 = alAeroport_(r.dep_iata, ''), p2 = alAeroport_(r.arr_iata, '');
+  return {
+    n: n, al: '', o: String(r.dep_iata || ''), oi: String(r.dep_icao || (p1 && p1.i) || ''), oc: alVille_(p1, ''),
+    a: String(r.arr_iata || ''), ai: String(r.arr_icao || (p2 && p2.i) || ''), ac2: alVille_(p2, ''),
+    st: 'Expected', sd: sd, ed: sd, sa: sa, ea: sa, oz: oz, az: az,
+    g: '', t: '', ck: '', ta: '', ag: '', b: '', tk: null, ln: null, pa: 0,
+    ola: p1 ? p1.la : null, olo: p1 ? p1.lo : null, ala: p2 ? p2.la : null, alo: p2 ? p2.lo : null,
+    md: '', rg: '', src: 'alr'
+  };
+}
+/** AirLabs d'abord : { f } si le vol est trouvé, { rien: true } s'il est inconnu, null sans réponse. */
+function alVol_(n, d, o) {
+  var now = Date.now() / 1000, jour = Date.parse(d + 'T00:00:00Z') / 1000;
+  if (!cfgCle_('AIRLABS_KEY')) return null;
+  if (jour - now < 36 * 3600 && jour - now > -36 * 3600) {
+    var x = alAppel_('flight?flight_iata=' + encodeURIComponent(n));
+    if (x && !Array.isArray(x) && String(x.dep_time || '').slice(0, 10) === d && (!o || !x.dep_iata || x.dep_iata === o)) return { f: alNorme_(n, x) };
+  }
+  var rs = alAppel_('routes?flight_iata=' + encodeURIComponent(n));
+  if (rs == null) return null;
+  rs = (Array.isArray(rs) ? rs : [rs]).filter(function (r) { return r && r.dep_time; });
+  if (o) rs = rs.filter(function (r) { return r.dep_iata === o; });
+  if (!rs.length) return { rien: true };
+  var jd = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(d + 'T12:00:00Z').getUTCDay()];
+  var ce = rs.filter(function (r) { return !Array.isArray(r.days) || !r.days.length || r.days.indexOf(jd) >= 0; });
+  if (!ce.length) return o ? { f: null } : { rien: true };
+  ce.sort(function (a, b) { return (Number(b.counter) || 0) - (Number(a.counter) || 0); });
+  var f = alRoute_(n, d, ce[0]);
+  return f ? { f: f } : { f: null };
+}
 function alSuivre_(rec, v) {
   var f = rec && rec.f, now = Date.now() / 1000;
   if (!f || !f.sd || /^Canceled/.test(f.st)) return;
@@ -1801,7 +1875,8 @@ function volDiag_() {
 /* Vols par montre (colonne Vols, JSON) : { h: fuseau maison IANA, v: [ { n: 'LG8803', d: 'AAAA-MM-JJ' (date locale de départ), s: siège, o: IATA départ } ] }
    Statut d'un vol : AeroDataBox, gardé dans les propriétés du script ('bv:<n>:<d>') et rafraîchi d'autant plus souvent
    que le départ approche (une seule requête par vol, quel que soit le nombre de montres qui le suivent). */
-var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 12, AIRLABS_JOUR: 40 };
+// AirLabs (1 000 requêtes/mois gratuites) fait l'essentiel ; AeroDataBox (400 unités/mois, 2 par appel) reste en secours
+var BOARDING = { VOLS_MAX: 6, APPELS_JOUR: 5, AIRLABS_JOUR: 32 };
 
 function boardingDe_(m) {
   var b = {}; try { b = m.Vols ? JSON.parse(m.Vols) : {}; } catch (e) { b = {}; }
@@ -1893,15 +1968,24 @@ function volStatut_(n, d, o, forcer) {
   var now = Math.round(Date.now() / 1000);
   var ancien = rec && rec.f && (rec.f.ola === undefined || (rec.f.pa === undefined && Date.now() / 1000 < (rec.f.sd || 0))); // ancien format (avant 0.2, ou retard « prévu » mêlé au retard annoncé)
   if (rec && !forcer && !ancien && now - rec.t < volFraicheur_(rec.f)) return rec;
-  if (!budgetAdb_()) return rec;
-  var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
-  if (r.code === 200 || r.code === 204) {
-    var l = volChoisir_(r.data, o);
-    var f = l ? volNorme_(l) : null;
+  // AirLabs d'abord (quota plus large), AeroDataBox seulement s'il ne trouve rien d'exploitable
+  var al = null, f = null, trouve = false;
+  try { al = alVol_(n, d, o); } catch (e) { console.error(e && e.stack || e); }
+  // horaires réguliers seulement : ne remplacent jamais un vol déjà suivi en direct (posé, retardé…)
+  if (al && al.f && al.f.src === 'alr' && rec && rec.f && rec.f.src !== 'alr') { rec.t = now; try { props.setProperty(k, JSON.stringify(rec)); } catch (e) {} return rec; }
+  if (al && al.f) { f = al.f; trouve = true; }
+  else if (budgetAdb_()) {
+    var r = volAppel_('/flights/number/' + n + '/' + d + '?withAircraftImage=false&withLocation=false');
+    if (r.code === 200 || r.code === 204) { var l = volChoisir_(r.data, o); f = l ? volNorme_(l) : null; trouve = true; }
+  }
+  if (!trouve) return rec || (al && al.rien ? { t: now, f: null, rien: 1 } : null);
+  {
     // avion reconnu à bord (ADS-B) : gardé même si AeroDataBox ne donne pas d'immatriculation
     if (f && rec && rec.f) { if (!f.rg && rec.f.rg) f.rg = rec.f.rg; if (rec.f.hx) f.hx = rec.f.hx; if (rec.f.atk && !f.tk) f.atk = rec.f.atk; if (rec.f.ald && f.st !== 'Arrived') f.ald = rec.f.ald; if (rec.f.lst) f.lst = rec.f.lst; }
     var nv = { t: now, f: f, gp: rec && rec.gp || '', gpt: rec && rec.gpt || 0 };
     if (rec && rec.alx) nv.alx = rec.alx;
+    // le vol du jour AirLabs donne déjà porte, terminal et tapis : pas de second appel tout de suite
+    if (f && f.src === 'al') { var ax = Object.assign({}, nv.alx || {}); ['g', 't', 'b', 'ag', 'ta'].forEach(function (c) { if (f[c]) ax[c] = f[c]; }); ax.tc = now; ax.t2 = now; nv.alx = ax; }
     if (f && rec && rec.f && rec.f.g && f.g && rec.f.g !== f.g) { nv.gp = rec.f.g; nv.gpt = now; }
     nv.al = (rec && rec.al) || {};
     var ev = rec && rec.f && f ? volEvenements_(rec.f, f, nv.al) : [];
@@ -1959,7 +2043,7 @@ function boardingListe_(b, pourMontre) {
   var now = Date.now() / 1000, out = [];
   b.v.forEach(function (v) {
     var rec = volStatut_(v.n, v.d, v.o, false), f = rec && rec.f;
-    if (!f) { out.push({ n: v.n, d: v.d, s: v.s || '', inconnu: true, sd: Date.parse(v.d + 'T12:00:00Z') / 1000 }); return; }
+    if (!f) { out.push({ n: v.n, d: v.d, s: v.s || '', o: v.o || '', a: v.a || '', inconnu: true, sd: Date.parse(v.d + 'T12:00:00Z') / 1000 }); return; }
     var arr = f.ea || f.sa || (f.ed || f.sd) + 3 * 3600;
     if (now > arr + 3 * 3600) return; // terminé depuis plus de 3 h
     var x = Object.assign({}, f, { s: v.s || '', d: v.d });
@@ -2380,16 +2464,17 @@ function boardingAjouter_(jeton, vol) {
   var o = texte_(vol.o, 3).toUpperCase().replace(/[^A-Z]/g, '');
   var deja = b.v.filter(function (x) { return x.n === n && x.d === d; })[0];
   if (!deja && b.v.length >= BOARDING.VOLS_MAX) throw refus_('You can follow up to ' + BOARDING.VOLS_MAX + ' flights. Remove one first.', 'limite');
-  if (!volCle_()) throw refus_('Flight data is not available right now. Please try again later.', 'config');
-  var rec = volStatut_(n, d, o, !deja);
-  if (!rec || !rec.f) throw refus_('Flight ' + n + ' not found on ' + d + '. Check the number and the local departure date.', 'introuvable');
+  var a = texte_(vol.a, 3).toUpperCase().replace(/[^A-Z]/g, '');
+  var rec = (volCle_() || cfgCle_('AIRLABS_KEY')) ? volStatut_(n, d, o, !deja) : null, f = rec && rec.f;
+  // carte d'embarquement : toujours acceptée (complétée dès qu'une source répond) ; numéro tapé : refusé seulement si une source dit qu'il n'existe pas
+  if (!f && vol.bp !== true && rec) throw refus_('Flight ' + n + ' not found on ' + d + '. Check the number and the local departure date.', 'introuvable');
   // plusieurs cartes d'embarquement pour le même vol (famille) : sièges ajoutés, 4 au plus
   if (deja && vol.bp === true) deja.bp = 1;
   if (deja) { if (s) { var l = String(deja.s || '').split(' ').filter(String); if (l.indexOf(s) < 0 && l.length < 4) l.push(s); deja.s = l.join(' '); } }
-  else { var nv = { n: n, d: d, s: s, o: rec.f.o }; if (vol.bp === true) nv.bp = 1; b.v.push(nv); }
+  else { var nv = { n: n, d: d, s: s, o: f ? f.o : o }; if (a) nv.a = f && f.a ? f.a : a; if (vol.bp === true) nv.bp = 1; b.v.push(nv); }
   b.v.sort(function (x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; });
   proprioEcrire_(p, b);
-  return { ok: true, vol: Object.assign({ s: s, d: d }, rec.f), vols: boardingListe_(b, false), enregistres: b.v };
+  return { ok: true, vol: f ? Object.assign({ s: s, d: d }, f) : { n: n, d: d, s: s, o: o, a: a, inconnu: true }, vols: boardingListe_(b, false), enregistres: b.v };
 }
 function boardingSupprimer_(jeton, n, d) {
   var p = proprioDuJeton_(jeton), b = boardingDe_(p.row);

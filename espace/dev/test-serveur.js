@@ -473,6 +473,8 @@ console.log('Boarding (cadran vol)');
   ok(/Alerts are on/.test(JSON.parse(bo.pushAppels[bo.pushAppels.length - 1].body.payload).body), 'message de confirmation envoyé au téléphone');
   ok(JSON.stringify(bo.props).indexOf('BOARDING_VAPID') >= 0 && !JSON.stringify(bo.post({ action: 'boarding.cle' })).includes('PRIVATE'), 'la clé privée n\'est jamais renvoyée');
   const nPush = bo.pushAppels.length;
+  const jAdb = () => { delete bo.cache['adb:' + new Date().toISOString().slice(0, 10)]; }; // plafond AeroDataBox du jour remis à zéro entre les étapes
+  jAdb();
   const rec2 = JSON.parse(bo.props[k]); rec2.t -= 10000; rec2.f.g = 'C7'; delete rec2.al.g; bo.props[k] = JSON.stringify(rec2);
   bo.get({ a: 'w', id: ID, k: K, v: 'B0.2.0', r: '0' });
   const env = bo.pushAppels.slice(nPush);
@@ -687,6 +689,47 @@ console.log('Compteur de visites');
   const st2 = srv.post({ action: 'stats.visites', token: tJB });
   ok(st2.parSite.aviator === 3 && srv.sheets.Visites.data.filter((l) => l[2] === '/aviator/').length === 1, 'nouvelle vue ajoutée à la même ligne du jour');
   ok(JSON.stringify(srv.sheets.Visites.data).indexOf('google') < 0 && srv.sheets.Visites.data[0].join() === 'Date,Site,Page,Vues,Telephone,Ordinateur', 'onglet Visites : aucune autre donnée que jour, page et appareil');
+}
+
+console.log('Boarding : AirLabs en principal, AeroDataBox épuisé');
+{
+  const bo = charger({ props: { SITE_NOM: 'NiderLabs', AERODATABOX_KEY: 'cle-de-test', AIRLABS_KEY: 'al-test' } });
+  bo.run('installer');
+  const ID = 'brdWatchAL23456789', K = 'brdKeyAL0123456789ABCD';
+  const w = bo.get({ a: 'w', id: ID, k: K, v: 'B0.1.0', r: '0' });
+  const o = bo.post({ action: 'aviator.ouvrir', code: w.c });
+  const jour = (j) => new Date(Date.now() + j * 86400000).toISOString().slice(0, 10);
+  const appels = [];
+  let alPanne = false;
+  bo.ctx.UrlFetchApp.fetch = ((orig) => (url, opt) => {
+    if (/aerodatabox/.test(url)) { appels.push('adb'); return { getResponseCode: () => 429, getContentText: () => '{"message":"quota"}' }; }
+    if (/airlabs\.co/.test(url)) {
+      appels.push('al');
+      if (alPanne) return { getResponseCode: () => 500, getContentText: () => '' };
+      let rep = [];
+      if (/airports\?iata_code=LUX/.test(url)) rep = [{ name: 'Luxembourg Findel Airport', iata_code: 'LUX', icao_code: 'ELLX', lat: 49.62658, lng: 6.21152 }];
+      else if (/airports\?iata_code=LIS/.test(url)) rep = [{ name: 'Lisbon Humberto Delgado Airport', iata_code: 'LIS', icao_code: 'LPPT', lat: 38.7742, lng: -9.1342 }];
+      else if (/routes\?flight_iata=LG3751/.test(url)) rep = [
+        { flight_iata: 'LG3751', dep_iata: 'BDL', dep_time: '14:30', dep_time_utc: '19:30', arr_iata: 'JFK', arr_time: '15:30', arr_time_utc: '20:30', duration: 60, counter: 3, days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] },
+        { flight_iata: 'LG3751', dep_iata: 'LUX', dep_icao: 'ELLX', dep_time: '07:05', dep_time_utc: '06:05', arr_iata: 'LIS', arr_icao: 'LPPT', arr_time: '08:55', arr_time_utc: '08:55', duration: 170, counter: 40, days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] }];
+      else if (/flight\?flight_iata=LG3751/.test(url)) rep = { flight_iata: 'LG3751', airline_name: 'Luxair', dep_iata: 'LUX', dep_icao: 'ELLX', dep_city: 'Luxembourg', dep_gate: 'B4', dep_terminal: 'A', dep_time: jour(0) + ' 23:50', dep_time_utc: jour(0) + ' 22:50', dep_time_ts: Math.floor(Date.now() / 1000) + 7200, dep_estimated_ts: Math.floor(Date.now() / 1000) + 7200 + 1200, arr_iata: 'LIS', arr_icao: 'LPPT', arr_city: 'Lisbon', arr_time: jour(1) + ' 01:40', arr_time_utc: jour(1) + ' 01:40', arr_time_ts: Math.floor(Date.now() / 1000) + 7200 + 10200, status: 'scheduled', reg_number: 'LX-LGA', model: 'Boeing 737-800' };
+      else if (/routes\?flight_iata=ZZ999|flight\?flight_iata=ZZ999/.test(url)) return { getResponseCode: () => 200, getContentText: () => '{"error":{"message":"Flight not found","code":"not_found"}}' };
+      return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ response: rep }) };
+    }
+    return orig(url, opt);
+  })(bo.ctx.UrlFetchApp.fetch);
+  let r = bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'LG3751', d: jour(10), o: 'LUX', a: 'LIS', s: '12C', bp: true } });
+  ok(r.ok && r.vol.o === 'LUX' && r.vol.a === 'LIS' && r.vol.oc === 'Luxembourg Findel' && r.vol.ola === 49.6266 && !appels.includes('adb'), 'vol dans 10 jours : horaires réguliers AirLabs (bon départ), aéroports situés, AeroDataBox pas appelé');
+  ok(new Date((r.vol.sd + r.vol.oz) * 1000).toISOString().slice(11, 16) === '07:05' && r.vol.oz === 3600 && r.vol.sa - r.vol.sd === 170 * 60, 'heure locale de départ, fuseau et durée justes');
+  r = bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'LG3751', d: jour(0), o: 'LUX' } });
+  ok(r.ok && r.vol.g === 'B4' && r.vol.rg === 'LX-LGA' && r.vol.ed - r.vol.sd === 1200 && r.vol.st === 'Expected', 'vol du jour : porte, avion et retard pris dans AirLabs');
+  ok(bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'ZZ999', d: jour(3) } }).code === 'introuvable', 'numéro tapé inexistant pour AirLabs : refusé clairement');
+  alPanne = true; appels.length = 0;
+  r = bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'KL1234', d: jour(5), o: 'LUX', a: 'AMS', s: '3A', bp: true } });
+  ok(r.ok && r.vol.inconnu && r.vol.o === 'LUX' && r.vol.a === 'AMS' && r.enregistres.some((v) => v.n === 'KL1234' && v.bp === 1), 'aucune source ne répond : la carte d\'embarquement est quand même gardée');
+  ok(r.vols.some((v) => v.n === 'KL1234' && v.inconnu), 'le vol apparaît « en attente de données »');
+  r = bo.post({ action: 'boarding.ajouter', jeton: o.jeton, vol: { n: 'AF1235', d: jour(6) } });
+  ok(r.ok && r.vol.inconnu, 'numéro tapé sans réponse des sources : gardé, pas déclaré introuvable');
 }
 
 console.log('\n' + n + ' vérifications réussies.');

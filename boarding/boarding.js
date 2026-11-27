@@ -817,7 +817,8 @@
     var fin = occupe($("#ajouter"), "Checking the flight…");
     return AVIATOR.appel({ action: "boarding.ajouter", jeton: jeton, vol: vol }).then(function (o) {
       var v = o.vol;
-      toast("Added: " + v.n + " " + v.o + " → " + v.a + ", " + jourTxt(v.ed || v.sd, v.oz) + " " + hm(v.ed || v.sd, v.oz) + ".", true);
+      if (v.inconnu) toast("Added: " + v.n + (v.o && v.a ? " " + v.o + " → " + v.a : "") + ". Flight details will appear as soon as they are available.", true);
+      else toast("Added: " + v.n + " " + v.o + " → " + v.a + ", " + jourTxt(v.ed || v.sd, v.oz) + " " + hm(v.ed || v.sd, v.oz) + ".", true);
       $("#num").value = ""; $("#siege").value = ""; $("#f-vol").hidden = true; $("#num").blur();
       afficherVols(o);
     }).catch(erreur).then(fin);
@@ -860,7 +861,7 @@
       var d = dateJulien(l.j);
       if (!d) return;
       bpGarder(l.n, d, txt, formatLu, f0 === "PDF_417" && imageLue ? imageLue() : null); // reste sur ce téléphone
-      p = p.then(function () { return ajouter({ n: l.n, d: d, s: l.s, o: l.o, bp: true }); });
+      p = p.then(function () { return ajouter({ n: l.n, d: d, s: l.s, o: l.o, a: l.a, bp: true }); });
     });
     return true;
   }
