@@ -102,7 +102,7 @@ function doGet(e) {
       }
       var budget = Number(CacheService.getScriptCache().get('adb:' + Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd')) || 0);
       return json_({ ok: true, vol: !!f, md: f ? f.md : null, rg: reg, ms: f ? f.ms || '' : '', fiche: ac, erreur: reg ? CacheService.getScriptCache().get('acerr:' + reg) : null, brut: brut,
-        enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o, tk: f && f.tk, atk: f && f.atk, ald: f && f.ald, ea: f && f.ea, ln: f && f.ln } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
+        enr: rec ? { age_min: Math.round((Date.now() / 1000 - rec.t) / 60), src: f && f.src, sd: f && f.sd, ed: f && f.ed, hx: f && f.hx, st: f && f.st, g: f && f.g, t: f && f.t, o: f && f.o, tk: f && f.tk, atk: f && f.atk, ald: f && f.ald, ea: f && f.ea, ln: f && f.ln } : null, appels_jour: budget, max: BOARDING.APPELS_JOUR });
     } catch (err) { console.error(err && err.stack || err); return json_({ ok: false, code: 'serveur' }); }
   }
   if (p.a === 'conso') return json_(consoJours_());
@@ -1574,7 +1574,8 @@ function alNorme_(n, x) {
     n: n, al: String(x.airline_name || ''),
     o: String(x.dep_iata || ''), oi: String(x.dep_icao || (p1 && p1.i) || ''), oc: alVille_(p1, x.dep_city),
     a: String(x.arr_iata || ''), ai: String(x.arr_icao || (p2 && p2.i) || ''), ac2: alVille_(p2, x.arr_city),
-    st: st, sd: sd, ed: ts(x.dep_actual_ts) || ts(x.dep_estimated_ts) || sd, sa: sa, ea: ts(x.arr_actual_ts) || ts(x.arr_estimated_ts) || sa,
+    st: st, sd: sd, ed: ts(x.dep_actual_ts) || ts(x.dep_estimated_ts) || (sd && x.dep_delayed ? sd + Number(x.dep_delayed) * 60 : sd),
+    sa: sa, ea: ts(x.arr_actual_ts) || ts(x.arr_estimated_ts) || (sa && x.arr_delayed ? sa + Number(x.arr_delayed) * 60 : sa),
     oz: alZ_(x.dep_time, x.dep_time_utc), az: alZ_(x.arr_time, x.arr_time_utc),
     g: String(x.dep_gate || ''), t: String(x.dep_terminal || ''), ck: '', ta: String(x.arr_terminal || ''), ag: String(x.arr_gate || ''), b: String(x.arr_baggage || ''),
     tk: parti ? ts(x.dep_actual_ts) : null, ln: st === 'Arrived' ? ts(x.arr_actual_ts) : null, pa: ts(x.arr_estimated_ts) || 0,
@@ -1678,6 +1679,8 @@ function adsSuivre_(rec, v) {
   if (ecrire) { rec.f = f; try { PropertiesService.getScriptProperties().setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {} }
   return lv;
 }
+/** Véhicule de piste, obstacle ou balise (pas un avion) : « GND », catégorie C*. */
+function vehiculeSol_(x) { return /^GND$|^TWR$|^GRND/i.test(x.rg || '') || /^GND$|^TWR$/i.test(x.t || '') || /^C/i.test(x.ct || ''); }
 function adsAutour_(la, lo, nm) {
   var urls = ['https://api.adsb.lol/v2/point/' + la + '/' + lo + '/' + nm, 'https://opendata.adsb.fi/api/v3/lat/' + la + '/lon/' + lo + '/dist/' + nm], out = null;
   urls.some(function (u) {
@@ -1688,7 +1691,7 @@ function adsAutour_(la, lo, nm) {
       out = (j.ac || []).filter(function (x) { return x.hex && (x.lat != null || x.lastPosition); }).map(function (x) {
         var lp = x.lastPosition || {};
         var a0 = { hx: x.hex, rg: x.r || '', t: x.t || '', cs: String(x.flight || '').trim(), la: x.lat != null ? x.lat : lp.lat, lo: x.lon != null ? x.lon : lp.lon, gr: x.alt_baro === 'ground', gs: Number(x.gs) || 0,
-          vu: Number(x.seen) || 0, vp: Number(x.seen_pos != null ? x.seen_pos : lp.seen_pos) || 0, tr: Number(x.track != null ? x.track : x.true_heading) };
+          ct: String(x.category || ''), vu: Number(x.seen) || 0, vp: Number(x.seen_pos != null ? x.seen_pos : lp.seen_pos) || 0, tr: Number(x.track != null ? x.track : x.true_heading) };
         // avion qui roule : position prolongée selon sa vitesse et son cap depuis le dernier point reçu
         if (a0.gs > 2 && isFinite(a0.tr) && a0.vp > 1 && a0.vp < 180) {
           var dkm = a0.gs * 1.852 * a0.vp / 3600, rad = a0.tr * Math.PI / 180;
@@ -1807,7 +1810,7 @@ function boardingAbord_(jeton, n, d, la, lo) {
   // même famille d'avion que le vol (737, A320…) : départage les avions voisins
   var fam = /737|B3[89]M|B73/i.test(rec.f.md || '') ? /^B3[789]M|^B73/ : /A3[12][019]|A3[12]N|A20N|A21N/i.test(rec.f.md || '') ? /^A3[12]|^A2[01]N/ : null;
   var tous = adsAutour_(la, lo, 3).map(function (x) { x.km = distKm_(la, lo, x.la, x.lo); return x; })
-    .filter(function (x) { return isFinite(x.km) && x.vu < 240 && (x.gr || x.km < 2); });
+    .filter(function (x) { return isFinite(x.km) && x.vu < 240 && (x.gr || x.km < 2) && !vehiculeSol_(x); });
   var cand = tous.map(function (x) { x.sc = x.km - (fam && fam.test(x.t) ? 0.4 : 0) + (x.gr ? 0 : 0.5); return x; })
     .filter(function (x) { return x.km < 1.5; }).sort(function (a, b) { return a.sc - b.sc; });
   if (!cand.length) return { ok: false, code: 'aucun', error: 'No aircraft found next to you (' + tous.length + ' around the airport). Its transponder may still be off: try again in a minute.' };
@@ -1979,6 +1982,7 @@ function volStatut_(n, d, o, forcer) {
   var props = PropertiesService.getScriptProperties(), k = 'bv:' + n + ':' + d, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   var now = Math.round(Date.now() / 1000);
+  if (rec && rec.f && rec.f.hx && vehiculeSol_({ rg: rec.f.rg })) { delete rec.f.hx; delete rec.f.atk; rec.f.rg = ''; rec.t = 0; }
   var ancien = rec && rec.f && (rec.f.ola === undefined || (rec.f.pa === undefined && Date.now() / 1000 < (rec.f.sd || 0))); // ancien format (avant 0.2, ou retard « prévu » mêlé au retard annoncé)
   if (rec && !forcer && !ancien && now - rec.t < volFraicheur_(rec.f)) return rec;
   // AirLabs d'abord (quota plus large), AeroDataBox seulement s'il ne trouve rien d'exploitable
