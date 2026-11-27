@@ -207,7 +207,8 @@ input.code{height:76px;font:700 40px var(--titre);letter-spacing:8px;text-align:
 .uber-ligne .prog{flex:1 1 160px;font-size:15px;color:var(--encre-2);line-height:1.35}
 .actions-vol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bouton.bp-btn{min-height:64px;font-size:19px;background:#fff;color:#0B0F14;border:2px solid #0B0F14}
-:root[data-theme="dark"] .bouton.bp-btn,:root:not([data-theme="light"]) .bouton.bp-btn{border-color:#fff}
+:root[data-theme="dark"] .bouton.bp-btn{border-color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bouton.bp-btn{border-color:#fff}}
 .enregistre{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--vert) 14%,transparent);color:var(--encre);font-weight:600}
 .enregistre small{display:block;color:var(--vert);font-size:13px;letter-spacing:1px;font-weight:700}
 .etat-sauve{min-height:22px;font-weight:600;color:var(--vert)}

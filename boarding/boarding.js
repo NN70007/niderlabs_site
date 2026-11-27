@@ -397,8 +397,41 @@
   // ---- « Next step » : une seule action, selon l'endroit où l'on est et le moment du voyage ----
   function memo(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
   function cleV(v) { return String(v.n).replace(/\s/g, "") + "|" + v.d; }
-  function aeroport(v) {   // déjà à l'aéroport de départ ? (position, sinon « I'm already at the airport »)
-    var m = memo("boarding-aero"); if (m && m.k === cleV(v)) return true;
+  // avancement du voyageur, vol par vol : chaque action prouve les étapes d'avant (on peut en sauter)
+  // 1 = à l'aéroport, 2 = sécurité passée, 3 = à la porte / embarquement
+  function niveauLu(k) {
+    var e = memo("boarding-etapes") || {}, n = (e[k] && e[k].n) || 0;
+    var a = memo("boarding-aero"), s = memo("boarding-secok");   // anciennes versions
+    if (a && a.k === k) n = Math.max(n, 1);
+    if (s && s.k === k) n = Math.max(n, 2);
+    return n;
+  }
+  function avancer(k, n, extra) {
+    var e = memo("boarding-etapes") || {}, t = now(), av = e[k] ? JSON.parse(JSON.stringify(e[k])) : null;
+    Object.keys(e).forEach(function (x) { if (t - (e[x].t || 0) > 4 * 86400) delete e[x]; });
+    var cur = e[k] || { n: 0 };
+    if (n <= (cur.n || 0) && !extra) return;
+    memo("boarding-annul", { k: k, t: t, avant: av, file: memo("boarding-file") });
+    e[k] = Object.assign({}, cur, extra || {}, { n: Math.max(cur.n || 0, n), t: t });
+    memo("boarding-etapes", e);
+  }
+  function annuler(k) {
+    var u = memo("boarding-annul"); if (!u || u.k !== k) return;
+    var e = memo("boarding-etapes") || {};
+    if (u.avant) e[k] = u.avant; else delete e[k];
+    memo("boarding-etapes", e); memo("boarding-aero", null); memo("boarding-secok", null);
+    memo("boarding-file", u.file || null); memo("boarding-annul", null);
+  }
+  function correspondance(v) {   // vol précédent posé à l'aéroport de départ : déjà sur place
+    var t = now(), dep = v.ed || v.sd;
+    return ((dernier && dernier.vols) || []).some(function (w) {
+      if (w === v || w.inconnu || w.a !== v.o) return false;
+      var ar = w.ln || w.ald || w.ea || w.sa;
+      return ar && ar < dep && dep - ar < 12 * 3600 && (w.ln || w.ald || w.st === "Arrived" || ar < t);
+    });
+  }
+  function aeroport(v) {   // déjà à l'aéroport de départ ? (action, correspondance ou position)
+    if (niveauLu(cleV(v)) >= 1 || correspondance(v)) return true;
     if (pos && v.ola != null && now() - pos.t < 900) return distKm(pos.la, pos.lo, v.ola, v.olo) < 1.5;
     return false;
   }
@@ -415,22 +448,29 @@
       return bloc("Welcome to " + esc(v.ac2 || v.a), tb ? "Baggage belt <b>" + esc(tb) + "</b>" + (v.b ? "" : " · reported by " + nVoy(cw.b.n)) : "Belt not known yet.", bt("belt", tb ? "Report a different belt" : "Report the belt", "second"));
     }
     if (parti) return bloc("In flight", "Landing " + (arr ? hm(arr, v.az) + " local time" : "") , "");
-    var q = memo("boarding-file"), secok = memo("boarding-secok"), auAero = aeroport(v);
+    var q = memo("boarding-file"), niv = niveauLu(k), auAero = aeroport(v), u = memo("boarding-annul");
     var fichier = filesCache[v.o] && filesCache[v.o].files && filesCache[v.o].files.sec;
+    var sec = (memo("boarding-etapes") || {})[k] || {}, m0 = sec.m != null ? sec.m : (memo("boarding-secok") || {}).m;
+    var defaire = u && u.k === k && t - u.t < 300 ? lien("undo", "Undo") : "";
+    // à bord (avion trouvé) : toutes les étapes au sol sont faites
+    if (v.hx) return bloc("On board", (v.rg ? "Aircraft " + esc(v.rg) + " · " : "") + "take-off expected " + hm(dep, v.oz), "");
     // dans la file de sécurité
-    if (q && q.k === k) {
+    if (q && q.k === k && niv < 2) {
       return bloc("In the security queue", "Since " + new Date(q.t0 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (locOn() ? " · we'll notice when you've moved on" : ""), bt("fin", "I'm through security") + lien("annuler", "Not in the queue"));
     }
-    // sécurité passée : porte, embarquement, à bord
-    if (secok && secok.k === k) {
-      var g = v.g || (cw.g && cw.g.v), merci = secok.m != null && t - secok.t < 1800 ? "✓ Security took ~" + secok.m + " min – thanks! " : "";
-      if (cw.bd && !v.hx) return bloc("Boarding has started", merci + (g ? "Gate <b>" + esc(g) + "</b>" : ""), bt("bord", "I'm on board · find my plane"));
-      if (g) return bloc("Gate " + esc(g), merci + (v.gp ? "Changed – was " + esc(v.gp) : cw.g && !v.g ? "Reported by " + nVoy(cw.g.n) : "Departure " + hm(dep, v.oz)), (t > dep - 3600 && !v.hx ? bt("bord", "I'm on board · find my plane", "second") : "") + lien("gate", "Report the gate / boarding"));
-      return bloc("Gate not known yet", merci + "Look at the screens and share it with the other travellers.", bt("gate", "Report the gate"));
+    // à la porte, embarquement signalé par soi-même
+    var g = v.g || (cw.g && cw.g.v), merci = m0 != null && t - (sec.mt || 0) < 1800 ? "✓ Security took ~" + m0 + " min – thanks! " : "";
+    if (niv >= 3 || (niv >= 2 && cw.bd)) return bloc("Boarding has started", merci + (g ? "Gate <b>" + esc(g) + "</b>" : ""), bt("bord", "I'm on board · find my plane") + defaire);
+    // sécurité passée : porte
+    if (niv >= 2) {
+      if (g) return bloc("Gate " + esc(g), merci + (v.gp ? "Changed – was " + esc(v.gp) : cw.g && !v.g ? "Reported by " + nVoy(cw.g.n) : "Departure " + hm(dep, v.oz)), (t > dep - 3600 ? bt("bord", "I'm on board · find my plane", "second") : "") + lien("gate", "Report the gate / boarding") + defaire);
+      return bloc("Gate not known yet", merci + "Look at the screens and share it with the other travellers.", bt("gate", "Report the gate") + defaire);
     }
-    // à l'aéroport, avant la sécurité
+    // à l'aéroport, avant la sécurité (l'embarquement signalé par d'autres ne prouve pas que soi-même on l'a passée)
     if (auAero) {
-      return bloc("Security queue", fichier ? "~" + fichier.m + " min now · " + fichier.n + (fichier.n > 1 ? " reports" : " report") : "No report yet – be the first", bt("debut", "I'm in the queue") + lien("passee", "Already through security"));
+      var presse = cw.bd ? "Boarding has started – hurry through security. " : dep - t < 1800 ? "Departure in " + Math.max(0, Math.round((dep - t) / 60)) + " min – hurry. " : "";
+      return bloc("Security queue", presse + (fichier ? "~" + fichier.m + " min now · " + fichier.n + (fichier.n > 1 ? " reports" : " report") : "No report yet – be the first"),
+        bt("debut", "I'm in the queue") + lien("passee", "Already through security") + (t > dep - 3600 ? lien("bord", "I'm already on board") : "") + defaire);
     }
     // pas encore à l'aéroport
     if (dep - t < 26 * 3600) {
@@ -444,8 +484,9 @@
     d.querySelectorAll("[data-etape]").forEach(function (b) {
       b.addEventListener("click", function () {
         var a = b.getAttribute("data-etape"), k = cleV(v);
-        if (a === "aero") { memo("boarding-aero", { k: k, t: now() }); afficherVols(dernier); }
-        else if (a === "passee") { memo("boarding-secok", { k: k, t: now(), m: null }); afficherVols(dernier); }
+        if (a === "aero") { avancer(k, 1); afficherVols(dernier); }
+        else if (a === "passee") { avancer(k, 2); afficherVols(dernier); }
+        else if (a === "undo") { annuler(k); afficherVols(dernier); afficherFiles(dernier.vols || [], false); }
         else if (a === "debut") {
           var go = function () { memo("boarding-file", { ap: v.o, q: "sec", k: k, t0: Math.round(now()), la: pos && pos.la, lo: pos && pos.lo }); afficherVols(dernier); afficherFiles(dernier.vols || [], false); };
           if (locOn()) lirePosition(go); else go();
@@ -462,7 +503,7 @@
     var q = memo("boarding-file"); if (!q) return;
     var m = Math.max(0, Math.round((now() - q.t0) / 60));
     memo("boarding-file", null);
-    memo("boarding-secok", { k: q.k, t: now(), m: m <= 180 ? m : null });
+    avancer(q.k, 2, { m: m <= 180 ? m : null, mt: now() });
     if (m > 180) { afficherVols(dernier); return; }
     AVIATOR.appel({ action: "boarding.file", jeton: jeton, ap: q.ap, q: q.q, m: m }).then(function (r) {
       if (r && r.ok) { r.lu = now(); filesCache[q.ap] = r; }
@@ -513,6 +554,7 @@
         var fin = occupe(bt, "…");
         AVIATOR.appel({ action: "boarding.signaler", jeton: jeton, n: String(v.n).replace(/\s/g, ""), d: v.d, k: k, v: val }).then(function (r) {
           fin(); if (!r.ok) { toast(r.error || "Not sent.", false); return; }
+          if (k === "g") avancer(cleV(v), 2); else if (k === "bd") avancer(cleV(v), 3);
           fermer(); toast("Thanks! Shared with the other travellers.", true); afficherVols(r);
         }).catch(function (x) { fin(); erreur(x); });
       });
@@ -529,7 +571,7 @@
     (vols || []).some(function (v) {
       if (v.inconnu || /^Canceled/.test(v.st || "")) return false;
       var dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, parti = v.tk || v.atk;
-      if (!parti && dep > t && dep - t < 12 * 3600) { cible = { ap: v.o, q: ["sec", "fast", "eu", "neu"], quand: "before your flight " + v.n }; return true; }
+      if (!parti && dep > t && dep - t < 12 * 3600) { cible = { ap: v.o, q: ["sec", "fast", "eu", "neu"], quand: "before your flight " + v.n, k: cleV(v) }; return true; }
       if ((parti || dep < t) && arr && t > arr - 3600 && t < arr + 2 * 3600) { cible = { ap: v.a, q: /^K/.test(v.ai || "") ? ["us", "vis"] : ["eu", "neu"], quand: "on arrival" }; return true; }
       return false;
     });
@@ -549,6 +591,8 @@
         if (e && e.ap === cible.ap && e.q === q) {
           var m = Math.round((now() - e.t0) / 60);
           try { localStorage.removeItem("boarding-file"); } catch (x) {}
+          if (cible.k) avancer(cible.k, q === "sec" || q === "fast" ? 2 : 1, q === "sec" || q === "fast" ? { m: m <= 180 ? m : null, mt: now() } : null);
+          if (dernier) afficherVols(dernier);
           if (m > 240) { afficherFiles(vols, false); return; }
           var fin = occupe(bt, "…");
           AVIATOR.appel({ action: "boarding.file", jeton: jeton, ap: cible.ap, q: q, m: m }).then(function (r) {
@@ -556,8 +600,11 @@
             filesCache[cible.ap] = r; toast("Thanks! " + m + " min shared with other travellers.", true); afficherFiles(vols, false);
           }).catch(function (x) { fin(); erreur(x); });
         } else {
-          try { localStorage.setItem("boarding-file", JSON.stringify({ ap: cible.ap, q: q, t0: Math.round(now()) })); } catch (x) {}
-          afficherFiles(vols, false);
+          var f0 = { ap: cible.ap, q: q, t0: Math.round(now()) };
+          if (cible.k && (q === "sec" || q === "fast")) { f0.k = cible.k; if (pos) { f0.la = pos.la; f0.lo = pos.lo; } }
+          try { localStorage.setItem("boarding-file", JSON.stringify(f0)); } catch (x) {}
+          if (cible.k) avancer(cible.k, 1);
+          afficherFiles(vols, false); if (dernier) afficherVols(dernier);
         }
       });
     });
@@ -598,18 +645,18 @@
         var e = etat(v), dep = v.ed || v.sd, arr = v.ln || v.ald || v.ea || v.sa, t = now(), cw = v.cw || {};
         // porte seulement à moins de 3 h du départ (avant, souvent provisoire) ; avant : le terminal
         var gOk = v.g && (dep - t < 3 * 3600 || v.gp || v.tk || dep < t);
-        var bp = bpDe(v);
+        var bp = bpDe(v), eh = etapeHtml(v);
         d.innerHTML = '<div class="tete"><div><div class="num">' + esc(v.n) + '</div><div class="jourv">' + esc(jourTxt(dep, v.oz)) + (v.al ? " · " + esc(v.al) : "") + '</div></div><span class="pill ' + e[1] + '">' + e[0] + "</span></div>" +
           '<div class="trajetv"><div class="apt"><span class="code3">' + esc(v.o) + '</span><span class="ville">' + esc(v.oc || "") + '</span><span class="h' + (v.dl > 5 ? " ambre" : "") + '">' + hm(dep, v.oz) + '</span></div><span class="fleche">→</span>' +
           '<div class="apt"><span class="code3">' + esc(v.a) + '</span><span class="ville">' + esc(v.ac2 || "") + '</span><span class="h">' + (arr ? hm(arr, v.az) : "") + "</span></div></div>" +
-          etapeHtml(v) +
+          eh +
           (cw.pax ? '<p class="foule">' + cw.pax + " Boarding travellers on this flight</p>" : "") +
           (cw.bd && !(v.tk || v.atk) && dep > t - 1800 ? '<div class="bandeau bleu"><span>BOARDING STARTED<small>Reported by ' + nVoy(cw.bd.n) + " at " + hm(cw.bd.t, v.oz) + "</small></span></div>" : "") +
           bandeaux(v) +
           '<div class="actions-vol">' + (bp || v.bp ? '<button type="button" class="bouton bp-btn" data-bp>Boarding pass</button>' : "") +
           '<button type="button" class="bouton second" data-partager' + (bp || v.bp ? "" : ' style="grid-column:1/-1"') + ">Share flight</button>" +
-          (t > dep - 4 * 3600 && t < arr + 5400 ? '<button type="button" class="bouton second" data-signaler style="grid-column:1/-1">Report gate · boarding · belt</button>' : "") +
-          (!v.hx && t > dep - 5400 && t < arr && !(v.tk || v.atk) ? '<button type="button" class="bouton" data-abord style="grid-column:1/-1">I\'m on board · find my plane</button>' : "") + "</div>" +
+          (t > dep - 4 * 3600 && t < arr + 5400 && !/data-etape="(gate|belt)"/.test(eh) ? '<button type="button" class="bouton second" data-signaler style="grid-column:1/-1">Report gate · boarding · belt</button>' : "") +
+          (!v.hx && t > dep - 5400 && t < arr && !(v.tk || v.atk) && !/data-etape="(bord|debut|fin)"/.test(eh) ? '<button type="button" class="bouton" data-abord style="grid-column:1/-1">I\'m on board · find my plane</button>' : "") + "</div>" +
           '<div class="mini sauts"><button type="button" data-s="info">Details</button><button type="button" data-s="jour">My day</button><button type="button" data-s="carte">Map</button></div>' +
           '<section class="sec" data-sec="info"><h3 class="sec-titre">Details</h3>' +
           '<div class="escale"><p class="escale-t"><b>' + esc(v.o) + "</b> " + esc(v.oc || "") + "<span>DEPARTURE</span></p>" +
