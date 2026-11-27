@@ -24,7 +24,7 @@
 
 /* ======================= Réglages ======================= */
 var CONFIG = {
-  VERSION: '2026-11-27-proche',
+  VERSION: '2026-11-28-recu',
   // Adresses qui reçoivent tous les droits au premier lancement de « installer ».
   ADMINS_INITIAUX: ['jb@niedercorn.com'],
   NOM_ADMIN_INITIAL: 'Jean-Baptiste Niedercorn',
@@ -153,6 +153,7 @@ function route_(req) {
   if (a === 'aviator.reprendre') return aviatorReprendre_(req.memo);
   if (a === 'aviator.oublier') return aviatorOublier_(req.memo, req.jeton, req.tous === true);
   if (a === 'aviator.enregistrer') return aviatorEnregistrer_(req.jeton, req.reglages, req.accepte);
+  if (a === 'aviator.etat') return aviatorEtat_(req.jeton);
   if (a === 'aviator.carte') return aviatorCarte_();
   if (a === 'aviator.aeroport') return aviatorAeroport_(req.icao);
   if (a === 'avis') return avis_(req);
@@ -650,6 +651,13 @@ function montreAppel_(p) {
   var c = codeMontre_(id);
   var out = { ok: true, c: c.code, ce: Math.round((c.exp - Date.now()) / 1000), st: STATUTS.indexOf(m.Statut) > -1 ? m.Statut : 'beta', rv: Number(m.Rev) || 0 };
   if ((Number(m.Rev) || 0) > rev && m.Reglages) { try { out.s = JSON.parse(m.Reglages); } catch (e) { /* réglages illisibles : ignorés */ } }
+  // Suivi pour la page de réglages : dernier contact du cadran, et réglages bien reçus (envoyés dans cette réponse, ou déjà à jour)
+  if (!/^A/.test(ver)) {
+    try {
+      cache.put('vu:' + id, String(Date.now()), 21600);
+      if (out.s || rev >= (Number(m.Rev) || 0)) cache.put('recu:' + id, String(Number(m.Rev) || 0), 21600);
+    } catch (e) { /* suivi facultatif */ }
+  }
   // Appli Aviator METAR (version « A… ») : réglages du cadran lié ; débloquée si ce cadran a été vu depuis 60 jours
   if (/^A/.test(ver)) {
     var fid = lienAppli_(id), f = fid ? montre_(fid) : null;
@@ -966,6 +974,16 @@ function aviatorEnregistrer_(jeton, reg, accepte) {
   });
   try { aeroportsConnus_([s.icao, s.icao2, s.icao3].filter(String)); } catch (e) { /* la carte se complétera plus tard */ }
   return { ok: true, rev: rev, reglages: s };
+}
+
+/** Page de réglages : la montre a-t-elle reçu les derniers réglages ? (dernier contact pour estimer le prochain, toutes les 5 min) */
+function aviatorEtat_(jeton) {
+  var cache = CacheService.getScriptCache(), id = cache.get('mtok:' + hash_(String(jeton || '')));
+  if (!id) throw refus_('Your session has expired. Enter a new code from your watch.', 'session');
+  var m = montre_(id);
+  if (!m) throw refus_('Unknown watch.', 'code');
+  var rev = Number(m.Rev) || 0, recu = Number(cache.get('recu:' + id));
+  return { ok: true, rev: rev, recu: isFinite(recu) && cache.get('recu:' + id) !== null && recu >= rev, vu: Number(cache.get('vu:' + id)) || 0, maintenant: Date.now() };
 }
 
 /** Coordonnées des aéroports (aviationweather.gov), gardées dans l'onglet Aeroports. */
