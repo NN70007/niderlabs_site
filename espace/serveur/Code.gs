@@ -2140,9 +2140,15 @@ function avionInfo_(reg) {
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   var now = Math.round(Date.now() / 1000);
   if (rec && now - rec.t < (rec.a ? 60 : 7) * 86400) return rec.a;
-  if (!budgetAdb_()) return rec ? rec.a : null;
-  var r = volAppel_('/aircrafts/reg/' + encodeURIComponent(reg) + '?withImage=true&withRegistrations=false');
-  if (r.code !== 200 && r.code !== 204 && r.code !== 404) { CacheService.getScriptCache().put('acerr:' + reg, String(r.code), 3600); return rec ? rec.a : null; }
+  if (rec && rec.a && rec.a.src === 'al' && now - rec.t < 2 * 86400) return rec.a;
+  var r = budgetAdb_() ? volAppel_('/aircrafts/reg/' + encodeURIComponent(reg) + '?withImage=true&withRegistrations=false') : { code: 'budget' };
+  if (r.code !== 200 && r.code !== 204 && r.code !== 404) {
+    CacheService.getScriptCache().put('acerr:' + reg, String(r.code), 3600);
+    // AeroDataBox indisponible (quota) : AirLabs pour le modèle et l'âge, Planespotters pour la photo (avec le nom du photographe)
+    var b = avionSecours_(reg);
+    if (b) { props.setProperty(k, JSON.stringify({ t: now, a: b })); return b; }
+    return rec ? rec.a : null;
+  }
   var d = r.code === 200 && r.data ? r.data : null, a = null;
   if (d) {
     a = { rg: d.reg || reg, md: d.typeName || d.model || '', age: isFinite(Number(d.ageYears)) ? Math.round(Number(d.ageYears) * 10) / 10 : null,
@@ -2154,6 +2160,28 @@ function avionInfo_(reg) {
   }
   props.setProperty(k, JSON.stringify({ t: now, a: a }));
   return a;
+}
+
+function avionSecours_(reg) {
+  var a = { rg: reg, md: '', age: null, ff: '', dv: '', se: null, en: '', al: '', src: 'al' };
+  var x = alAppel_('fleets?reg_number=' + encodeURIComponent(reg));
+  x = Array.isArray(x) ? x[0] : x;
+  if (x) {
+    a.md = String(x.model || '') || [x.manufacturer, x.type].filter(Boolean).join(' ');
+    var built = Number(x.built), age = Number(x.age);
+    a.age = isFinite(age) && age >= 0 ? age : isFinite(built) && built > 1950 ? new Date().getUTCFullYear() - built : null;
+    if (isFinite(built) && built > 1950) a.ff = String(built);
+    if (x.engine_count && x.engine) a.en = x.engine_count + ' × ' + String(x.engine).toLowerCase();
+  }
+  try {
+    var r = UrlFetchApp.fetch('https://api.planespotters.net/pub/photos/reg/' + encodeURIComponent(reg), { muteHttpExceptions: true, headers: { 'User-Agent': 'NiderLabs-Boarding/1.0 (+https://niderlabs.com/boarding)' } });
+    compter_('planespotters');
+    if (r.getResponseCode() === 200) {
+      var ph = (JSON.parse(r.getContentText() || '{}').photos || [])[0], im = ph && (ph.thumbnail_large || ph.thumbnail);
+      if (im && /^https:\/\//.test(im.src || '')) a.ph = { u: im.src, w: /^https:\/\//.test(ph.link || '') ? ph.link : '', by: String(ph.photographer || '').slice(0, 80), l: 'Planespotters.net' };
+    }
+  } catch (e) { console.error(e); }
+  return a.md || a.ph || a.age != null ? a : null;
 }
 
 /* ----- Boarding : prévision météo à l'heure d'arrivée (Open-Meteo, sans clé) ----- */
