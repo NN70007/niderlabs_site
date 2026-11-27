@@ -2139,8 +2139,9 @@ function avionInfo_(reg) {
   var props = PropertiesService.getScriptProperties(), k = 'ac:' + reg, rec = null;
   try { rec = JSON.parse(props.getProperty(k) || 'null'); } catch (e) { rec = null; }
   var now = Math.round(Date.now() / 1000);
-  if (rec && now - rec.t < (rec.a ? 60 : 7) * 86400) return rec.a;
-  if (rec && rec.a && rec.a.src === 'al' && now - rec.t < 2 * 86400) return rec.a;
+  // fiche de secours (AirLabs/Planespotters) : redemandée à AeroDataBox après 2 jours ; âge 0 sans année = inconnu (ancienne fiche corrigée)
+  if (rec && rec.a && rec.a.src === 'al' && rec.a.age === 0 && !rec.a.ff) rec.a.age = null;
+  if (rec && now - rec.t < (rec.a ? (rec.a.src === 'al' ? 2 : 60) : 7) * 86400) return rec.a;
   var r = budgetAdb_() ? volAppel_('/aircrafts/reg/' + encodeURIComponent(reg) + '?withImage=true&withRegistrations=false') : { code: 'budget' };
   if (r.code !== 200 && r.code !== 204 && r.code !== 404) {
     CacheService.getScriptCache().put('acerr:' + reg, String(r.code), 3600);
@@ -2169,7 +2170,7 @@ function avionSecours_(reg) {
   if (x) {
     a.md = String(x.model || '') || [x.manufacturer, x.type].filter(Boolean).join(' ');
     var built = Number(x.built), age = Number(x.age);
-    a.age = isFinite(age) && age >= 0 ? age : isFinite(built) && built > 1950 ? new Date().getUTCFullYear() - built : null;
+    a.age = isFinite(built) && built > 1950 ? Math.max(0, new Date().getUTCFullYear() - built) : isFinite(age) && age > 0 ? age : null;
     if (isFinite(built) && built > 1950) a.ff = String(built);
     if (x.engine_count && x.engine) a.en = x.engine_count + ' × ' + String(x.engine).toLowerCase();
   }
