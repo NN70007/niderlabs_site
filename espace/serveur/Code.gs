@@ -1570,12 +1570,14 @@ function alNorme_(n, x) {
   var st = { scheduled: 'Expected', active: 'EnRoute', 'en-route': 'EnRoute', landed: 'Arrived', cancelled: 'Canceled', diverted: 'Diverted' }[String(x.status || '')] || 'Unknown';
   var sd = ts(x.dep_time_ts), sa = ts(x.arr_time_ts), parti = /EnRoute|Arrived|Diverted/.test(st);
   var p1 = alAeroport_(x.dep_iata, x.dep_city), p2 = alAeroport_(x.arr_iata, x.arr_city);
+  var ed0 = ts(x.dep_actual_ts) || ts(x.dep_estimated_ts) || (sd && x.dep_delayed ? sd + Number(x.dep_delayed) * 60 : sd);
+  var ea0 = ts(x.arr_actual_ts) || ts(x.arr_estimated_ts) || (sa && x.arr_delayed ? sa + Number(x.arr_delayed) * 60 : sa);
+  if (sa && ea0 === sa && ed0 && sd && ed0 > sd) ea0 = sa + (ed0 - sd);   // départ retardé, arrivée pas encore recalculée
   return {
     n: n, al: String(x.airline_name || ''),
     o: String(x.dep_iata || ''), oi: String(x.dep_icao || (p1 && p1.i) || ''), oc: alVille_(p1, x.dep_city),
     a: String(x.arr_iata || ''), ai: String(x.arr_icao || (p2 && p2.i) || ''), ac2: alVille_(p2, x.arr_city),
-    st: st, sd: sd, ed: ts(x.dep_actual_ts) || ts(x.dep_estimated_ts) || (sd && x.dep_delayed ? sd + Number(x.dep_delayed) * 60 : sd),
-    sa: sa, ea: ts(x.arr_actual_ts) || ts(x.arr_estimated_ts) || (sa && x.arr_delayed ? sa + Number(x.arr_delayed) * 60 : sa),
+    st: st, sd: sd, ed: ed0, sa: sa, ea: ea0,
     oz: alZ_(x.dep_time, x.dep_time_utc), az: alZ_(x.arr_time, x.arr_time_utc),
     g: String(x.dep_gate || ''), t: String(x.dep_terminal || ''), ck: '', ta: String(x.arr_terminal || ''), ag: String(x.arr_gate || ''), b: String(x.arr_baggage || ''),
     tk: parti ? ts(x.dep_actual_ts) : null, ln: st === 'Arrived' ? ts(x.arr_actual_ts) : null, pa: ts(x.arr_estimated_ts) || 0,
