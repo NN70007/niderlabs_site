@@ -1879,7 +1879,8 @@ function compter_(src) {
 function consoJours_() {
   var c = CacheService.getScriptCache(), out = {};
   for (var i = 0; i < 3; i++) { var j = Utilities.formatDate(new Date(Date.now() - i * 86400000), 'UTC', 'yyyy-MM-dd'); out[j] = JSON.parse(c.get('cnt:' + j) || '{}'); }
-  return { ok: true, jours: out, plafonds: { aerodatabox_jour: BOARDING.APPELS_JOUR, airlabs_jour: BOARDING.AIRLABS_JOUR } };
+  var jj = Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
+  return { ok: true, jours: out, plafonds: { aerodatabox_jour: BOARDING.APPELS_JOUR, airlabs_jour: BOARDING.AIRLABS_JOUR }, compteurs_plafond: { airlabs: Number(c.get('al:' + jj) || 0), aerodatabox: Number(c.get('adb:' + jj) || 0) } };
 }
 function volAppel_(chemin) {
   var cle = volCle_();
