@@ -1673,6 +1673,11 @@ function alSuivre_(rec, v) {
       if (avant && x.g && avant !== x.g && f.g !== x.g) { rec.gp = avant; rec.gpt = Math.round(now); try { boardingAlerter_(v.n, v.d, f, [f.n.replace(/^([A-Z0-9]{2})(\d)/, '$1 $2') + ' gate changed to ' + x.g + '.']); } catch (e) {} }
     }
   } catch (e) { console.error(e); }
+  // AirLabs n'a pas la porte à 50 min du départ (certains aéroports) : AeroDataBox une seule fois pour ce vol, s'il reste du quota
+  if (!x.g && !porte && !envol && !x.ga && now > dep - 3000 && now < dep && budgetAdb_()) {
+    x.ga = 1;
+    try { var ra = volAppel_('/flights/number/' + v.n + '/' + v.d + '?withAircraftImage=false&withLocation=false'); if (ra.code === 200) { var la = volChoisir_(ra.data, f.o), fa = la ? volNorme_(la) : null; if (fa && fa.g) x.g = fa.g; } } catch (e) { console.error(e); }
+  }
   rec.alx = x;
   try { props.setProperty('bv:' + v.n + ':' + v.d, JSON.stringify(rec)); } catch (e) {}
 }
