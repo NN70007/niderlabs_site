@@ -271,6 +271,7 @@ console.log('Aviator METAR : montres');
     // Veille des nouveaux utilisateurs : un seul e-mail par jour, rien s'il n'y a personne
     const vm = require('vm');
     const demain = new Date(Date.now() + 86400000); demain.setUTCHours(20, 30, 0, 0); // 21 h 30 à Luxembourg (hiver)
+    while (demain.getUTCDay() === 0 || demain.getUTCDay() === 1) demain.setUTCDate(demain.getUTCDate() + 1); // pas le dimanche/lundi (bilan hebdomadaire)
     const veille = (d) => vm.runInContext('veilleUtilisateurs_(new Date(' + d.getTime() + '))', av.ctx);
     av.props.VEILLE_DEPUIS = '1'; delete av.props.VEILLE_JOUR; av.props.VEILLE_BILAN_INITIAL = 'test';
     const avantV = av.mails.length;
